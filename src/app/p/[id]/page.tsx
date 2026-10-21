@@ -209,7 +209,15 @@ export default async function PersonPage({
         </h2>
         <div className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_2fr]">
           <div className="rounded-[14px] bg-card p-5">
-            <p className="text-xs text-mute">{top ? `${top.domain} · 综合分` : "综合分"}</p>
+            <p className="text-xs text-mute">
+              {top ? (
+                <>
+                  综合分 · 判定最多的领域：<b className="font-semibold text-ink">{top.domain}</b>
+                </>
+              ) : (
+                "综合分"
+              )}
+            </p>
             {top?.composite.value != null ? (
               <p className="display-num mt-1 text-[56px] leading-none font-[800] text-blue">{top.composite.value.toFixed(1)}</p>
             ) : (
@@ -218,6 +226,7 @@ export default async function PersonPage({
             <p className="mt-2 text-xs leading-5 text-mute">
               {top?.composite.low != null ? `80% 区间 ${top.composite.low}–${top.composite.high}，基于 ${top.accuracy.n} 条已判定。` : ""}
               {top && top.composite.used.length === 1 ? "目前只含兑现率：可信度还没有数据，不参与合成。" : null}
+              {profile.length > 1 ? `综合分按领域分开算，不跨领域平均；其余 ${profile.length - 1} 个领域见下表。` : null}
               {!top || top.composite.used.length === 0 ? "有一条主张被判定后就会出分。" : null}
             </p>
           </div>
