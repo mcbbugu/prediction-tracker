@@ -1,12 +1,13 @@
 import { sql } from "./db";
 
-export const FORMULA_VERSION = "v1";
+// v1.1 (2026-10-21): same formula; a score and its 80% interval show from the first judged claim (no 3/8 tiers).
+export const FORMULA_VERSION = "v1.1";
 const KAPPA = 4;
 const PRIOR = 0.5;
 const HALF_LIFE_DAYS = 180;
-export const MIN_SCORED = 8;
-// Below this many judged claims nothing is shown; from here to MIN_SCORED only the interval is shown.
-export const MIN_INTERVAL = 3;
+// One judged claim is enough to show a score; the Beta prior pulls small samples toward 50 and the interval
+// shows how unsure that is. Zero judged claims → 样本不足.
+export const MIN_JUDGED = 1;
 const INTERVAL_MASS = 0.8;
 
 const OUTCOME: Record<string, number> = {
@@ -29,6 +30,7 @@ function weight(deadline: string, now: Date) {
 }
 
 function confidence(n: number) {
+  if (n < 3) return "很低";
   if (n < 16) return "低";
   if (n < 40) return "中";
   return "高";
@@ -110,13 +112,10 @@ export function scoreDomain(rows: ScoredRow[], now = new Date()) {
   const alpha = KAPPA * PRIOR + weightedOutcome;
   const beta = KAPPA * (1 - PRIOR) + (weightedEvidence - weightedOutcome);
   const tail = (1 - INTERVAL_MASS) / 2;
-  const interval =
-    n >= MIN_INTERVAL
-      ? { low: Math.round(100 * betaQuantile(tail, alpha, beta)), high: Math.round(100 * betaQuantile(1 - tail, alpha, beta)) }
-      : { low: null as number | null, high: null as number | null };
-  if (n < MIN_SCORED) {
-    return { n, value: null as number | null, ...interval, confidence: "不足", alpha, beta };
+  if (n < MIN_JUDGED) {
+    return { n, value: null as number | null, low: null as number | null, high: null as number | null, confidence: "不足", alpha, beta };
   }
+  const interval = { low: Math.round(100 * betaQuantile(tail, alpha, beta)), high: Math.round(100 * betaQuantile(1 - tail, alpha, beta)) };
   const value = (100 * alpha) / (alpha + beta);
   return { n, value: Math.round(value * 10) / 10, ...interval, confidence: confidence(n), alpha, beta };
 }
@@ -172,10 +171,9 @@ function betaSample(a: number, b: number, rand: () => number) {
   return x / (x + gamma(b, rand));
 }
 
-// Parts with fewer than MIN_INTERVAL judged items sit out; the remaining weights are renormalised.
-// The number shows only when every participating part has MIN_SCORED items; otherwise only the interval.
+// Parts with no judged items sit out; the remaining weights are renormalised.
 export function compositeScore(parts: Part[]) {
-  const used = parts.filter((part) => part.n >= MIN_INTERVAL);
+  const used = parts.filter((part) => part.n >= MIN_JUDGED);
   if (used.length === 0) return { value: null as number | null, low: null as number | null, high: null as number | null, used: [] as string[] };
   if (used.length === 1 && used[0].exact) return { ...used[0].exact, used: [used[0].key] as string[] };
   const total = used.reduce((sum, part) => sum + COMPOSITE_WEIGHTS[part.key], 0);
@@ -189,9 +187,8 @@ export function compositeScore(parts: Part[]) {
   draws.sort((a, b) => a - b);
   const mean = draws.reduce((sum, v) => sum + v, 0) / draws.length;
   const at = (q: number) => draws[Math.min(draws.length - 1, Math.floor(q * draws.length))];
-  const scored = used.every((part) => part.n >= MIN_SCORED);
   return {
-    value: scored ? Math.round(mean * 10) / 10 : null,
+    value: Math.round(mean * 10) / 10,
     low: Math.round(at(0.1)),
     high: Math.round(at(0.9)),
     used: used.map((part) => part.key),
@@ -247,24 +244,35 @@ export async function recomputeScores(
   personId: string,
   trigger: { claim_id?: string; action?: string } = {},
 ) {
-  const rows = await sql<ScoredRow[]>`
-    SELECT category,
+  const rows = await sql<(ScoredRow & { id: string })[]>`
+    SELECT id,
+           category,
            status,
            to_char(deadline, 'YYYY-MM-DD') AS deadline,
            jsonb_array_length(evidence) AS evidence_count
     FROM claims
     WHERE person_id = ${personId} AND publication = 'published'
   `;
-  const byDomain = new Map<string, ScoredRow[]>();
+  const byDomain = new Map<string, (ScoredRow & { id: string })[]>();
   for (const row of rows) {
     const list = byDomain.get(row.category) ?? [];
     list.push(row);
     byDomain.set(row.category, list);
   }
   const latest = await sql<
-    { domain: string; value: number | null; low: number | null; high: number | null; n: number; confidence: string }[]
+    {
+      domain: string;
+      value: number | null;
+      low: number | null;
+      high: number | null;
+      n: number;
+      confidence: string;
+      formula_version: string;
+      basis: { id: string; status: string }[] | null;
+    }[]
   >`
-    SELECT DISTINCT ON (domain) domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence
+    SELECT DISTINCT ON (domain) domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence,
+           formula_version, basis
     FROM score_snapshots
     WHERE person_id = ${personId}
     ORDER BY domain, computed_at DESC
@@ -278,21 +286,28 @@ export async function recomputeScores(
       VALUES (${personId}, ${domain}, ${null}, 0, '已移除', ${FORMULA_VERSION}, ${trigger.claim_id ?? null}, ${trigger.action ?? null})
     `;
   }
-  // Snapshots are append-only: a new row is written only when a domain's value or sample size changes.
+  // Snapshots are append-only: a new row is written when the value, the sample, the set of counted claims
+  // (basis) or the formula version changes. basis lets the site say which claims moved the score.
   for (const [domain, domainRows] of byDomain) {
     const scored = scoreDomain(domainRows);
+    const basis = domainRows
+      .filter((row) => row.status in OUTCOME)
+      .map((row) => ({ id: row.id, status: row.status }))
+      .sort((a, b) => a.id.localeCompare(b.id));
     const before = previous.get(domain);
     if (
       before &&
       before.confidence !== "已移除" &&
+      before.formula_version === FORMULA_VERSION &&
       before.n === scored.n &&
       (before.value ?? null) === scored.value &&
       (before.low ?? null) === scored.low &&
-      (before.high ?? null) === scored.high
+      (before.high ?? null) === scored.high &&
+      JSON.stringify(before.basis ?? null) === JSON.stringify(basis)
     )
       continue;
     await sql`
-      INSERT INTO score_snapshots (person_id, domain, value, low, high, n, confidence, formula_version, trigger_claim_id, trigger_action)
+      INSERT INTO score_snapshots (person_id, domain, value, low, high, n, confidence, formula_version, trigger_claim_id, trigger_action, basis)
       VALUES (
         ${personId},
         ${domain},
@@ -303,7 +318,8 @@ export async function recomputeScores(
         ${scored.confidence},
         ${FORMULA_VERSION},
         ${trigger.claim_id ?? null},
-        ${trigger.action ?? null}
+        ${trigger.action ?? null},
+        ${sql.json(basis)}
       )
     `;
   }

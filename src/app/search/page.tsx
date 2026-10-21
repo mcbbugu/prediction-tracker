@@ -68,19 +68,11 @@ export default async function SearchPage({
                     {item.person_name} · {item.domain}
                   </span>
                   <span className="mt-1 flex items-baseline justify-between">
-                    {item.score == null && item.interval_80 ? (
-                      <span className="num text-3xl text-mute">
-                        {item.interval_80.low}–{item.interval_80.high}
-                      </span>
-                    ) : (
-                      <ScoreNum value={item.score} className="text-5xl" />
-                    )}
+                    <ScoreNum value={item.score} className="text-5xl" />
                     <span className="text-xs text-mute">
                       {item.score != null
                         ? `P ${item.prior_weight?.toFixed(3)} · n=${item.verified_count}${item.interval_80 ? ` · 80% 区间 ${item.interval_80.low}–${item.interval_80.high}` : ""}`
-                        : item.interval_80
-                          ? `80% 区间 · n=${item.verified_count}，满 8 条出分`
-                          : "样本不足"}
+                        : "还没有已判定的主张"}
                     </span>
                   </span>
                   <span className="mt-3 block text-sm leading-6 text-mute">{item.directive}</span>

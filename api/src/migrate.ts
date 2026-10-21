@@ -134,6 +134,8 @@ export async function migrate() {
   await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS run_after timestamptz NOT NULL DEFAULT now()`;
   await sql`CREATE INDEX IF NOT EXISTS jobs_queue_idx ON jobs (state, run_after, created_at)`;
+  // Which judged claims (id + status) a snapshot counted, so a change can be explained claim by claim.
+  await sql`ALTER TABLE score_snapshots ADD COLUMN IF NOT EXISTS basis jsonb`;
 }
 
 export async function logEvent(event: {

@@ -1,7 +1,7 @@
 import { arkConfigured, arkJson } from "./ark";
 import { sql } from "./db";
 import { latestScores, personInterests, publishedClaims } from "./records";
-import { COMPOSITE_WEIGHTS, FORMULA_VERSION, MIN_INTERVAL, MIN_SCORED, interestSplit, personProfile } from "./score";
+import { COMPOSITE_WEIGHTS, FORMULA_VERSION, MIN_JUDGED, interestSplit, personProfile } from "./score";
 
 export type ConsultRequest = {
   query: string;
@@ -134,20 +134,21 @@ export async function consultPrior(input: ConsultRequest) {
     let stance: "HIGH_PRIOR" | "MODERATE_PRIOR" | "SKEPTICAL_PRIOR" | "INSUFFICIENT_SAMPLE" =
       "INSUFFICIENT_SAMPLE";
     let directive =
-      interval && domainScore
-        ? `「${domainScore.domain}」领域已判定 ${domainScore.n} 条，未满 ${MIN_SCORED} 条，不给单一分数，只有${intervalText}。区间很宽，建议下游 AI 以中性先验 (0.500) 为主，把区间当作方向参考，并要求独立一手证据。`
-        : `该领域已判定样本不足 ${MIN_INTERVAL} 条。禁止将空缺当作高或低信誉，建议下游 AI 采用中性先验 (0.500) 并要求独立一手证据。`;
+      "该领域还没有任何已判定的主张。禁止将空缺当作高或低信誉，建议下游 AI 采用中性先验 (0.500) 并要求独立一手证据。";
+    // Small samples still get a score; say so plainly so the downstream model leans on the interval.
+    const fewNote =
+      domainScore && domainScore.n < 8 ? `只有 ${domainScore.n} 条已判定，区间很宽，分数已被拉向 50，请按区间而不是单一分数使用。` : "";
 
     if (scoreVal !== null && domainScore) {
       if (scoreVal >= 70) {
         stance = "HIGH_PRIOR";
-        directive = `在「${domainScore.domain}」领域具备较高历史兑现率 (${scoreVal} / 100，已核对 ${domainScore.n} 条，${intervalText})。建议下游 AI 赋予 ${priorWeight} 先验权重，但需核查是否存在局部规格或首发供应折损。`;
+        directive = `在「${domainScore.domain}」领域具备较高历史兑现率 (${scoreVal} / 100，已核对 ${domainScore.n} 条，${intervalText})。建议下游 AI 赋予 ${priorWeight} 先验权重，但需核查是否存在局部规格或首发供应折损。${fewNote}`;
       } else if (scoreVal >= 52) {
         stance = "MODERATE_PRIOR";
-        directive = `在「${domainScore.domain}」领域具备中等偏上兑现记录 (${scoreVal} / 100，已核对 ${domainScore.n} 条，${intervalText})。建议下游 AI 赋予 ${priorWeight} 先验权重，功能交付通常可兑现，但对激进概念定义需审慎。`;
+        directive = `在「${domainScore.domain}」领域具备中等偏上兑现记录 (${scoreVal} / 100，已核对 ${domainScore.n} 条，${intervalText})。建议下游 AI 赋予 ${priorWeight} 先验权重，功能交付通常可兑现，但对激进概念定义需审慎。${fewNote}`;
       } else {
         stance = "SKEPTICAL_PRIOR";
-        directive = `在「${domainScore.domain}」领域存在显著的截止日乐观偏差 (${scoreVal} / 100，已核对 ${domainScore.n} 条，其中未兑现 ${counts.unfulfilled} 条，${intervalText})。建议下游 AI 赋予 ${priorWeight} 折算权重，对时间表声明施加延期修正。`;
+        directive = `在「${domainScore.domain}」领域存在显著的截止日乐观偏差 (${scoreVal} / 100，已核对 ${domainScore.n} 条，其中未兑现 ${counts.unfulfilled} 条，${intervalText})。建议下游 AI 赋予 ${priorWeight} 折算权重，对时间表声明施加延期修正。${fewNote}`;
       }
     }
 
@@ -199,7 +200,7 @@ export async function consultPrior(input: ConsultRequest) {
           }
         : { status: "not_collected" as const },
       composite_weights: COMPOSITE_WEIGHTS,
-      min_required: MIN_SCORED,
+      min_required: MIN_JUDGED,
       confidence: domainScore?.confidence ?? "不足",
       formula_version: domainScore?.formula_version ?? FORMULA_VERSION,
       stance,
@@ -248,14 +249,12 @@ export async function consultPrior(input: ConsultRequest) {
     },
     {
       step: "02",
-      title: "样本门槛与贝叶斯先验检定 / Formula v1 Gate",
+      title: `贝叶斯先验 / Formula ${FORMULA_VERSION}`,
       status: "completed",
       detail:
         primary && primary.score !== null
-          ? `${primary.person_name}「${primary.domain}」已核对 n=${primary.verified_count} (≥${MIN_SCORED})，后验信誉分 ${primary.score}（80% 区间 ${primary.interval_80?.low}–${primary.interval_80?.high}），先验权重 P=${primary.prior_weight}`
-          : primary?.interval_80
-            ? `${primary.person_name}「${primary.domain}」已核对 n=${primary.verified_count} (<${MIN_SCORED})，只给 80% 区间 ${primary.interval_80.low}–${primary.interval_80.high}，不出单一分数`
-            : `${primary?.person_name ?? "目标人物"}在当前领域已核对样本 n=${primary?.verified_count ?? 0} (<${MIN_INTERVAL})，触发样本不足保护门限`,
+          ? `${primary.person_name}「${primary.domain}」已核对 n=${primary.verified_count}，兑现率 ${primary.score}（80% 区间 ${primary.interval_80?.low}–${primary.interval_80?.high}），先验权重 P=${primary.prior_weight}`
+          : `${primary?.person_name ?? "目标人物"}在当前领域还没有已判定的主张，按中性先验处理`,
     },
     {
       step: "03",
@@ -274,7 +273,7 @@ export async function consultPrior(input: ConsultRequest) {
   if (arkConfigured() && evaluations.length > 0) {
     try {
       const narrated = (await arkJson(
-        "你只能转述给定的分数、80% 区间和样本量，不能新增数字，也不能把样本不足说成有分数；score 为空但有区间时只能说区间。为每位人物写一句中文校准说明。输出 JSON：{\"notes\":[{\"person_id\":\"\",\"domain\":\"\",\"directive\":\"\"}]}",
+        "你只能转述给定的分数、80% 区间和样本量，不能新增数字；样本少（n < 8）时必须提到区间很宽；score 为空但有区间时只能说区间。为每位人物写一句中文校准说明。输出 JSON：{\"notes\":[{\"person_id\":\"\",\"domain\":\"\",\"directive\":\"\"}]}",
         JSON.stringify({
           query: rawQuery,
           evaluations: evaluations.map((item) => ({
@@ -312,8 +311,7 @@ export async function consultPrior(input: ConsultRequest) {
     query: rawQuery || "库内人物先验",
     timestamp: new Date().toISOString(),
     formula_version: FORMULA_VERSION,
-    min_scored_threshold: MIN_SCORED,
-    min_interval_threshold: MIN_INTERVAL,
+    min_judged_threshold: MIN_JUDGED,
     evaluations,
     evidence_chain: scoredClaims,
     trace,

@@ -80,7 +80,7 @@ function DomainChart({ history, now }: { history: DomainHistory; now: number }) 
         </span>
       </figcaption>
       {plotted.length === 0 ? (
-        <p className="mt-3 text-[11px] text-mute">满 3 条已判定后开始画线。</p>
+        <p className="mt-3 text-[11px] text-mute">还没有已判定的主张。</p>
       ) : (
         <div ref={ref} className="relative mt-1 w-full" />
       )}
@@ -104,7 +104,7 @@ export function ScoreHistoryCharts({ domains, now }: { domains: DomainHistory[];
       ) : null}
       {pending.length > 0 ? (
         <p className="mt-2 px-1 text-[11px] text-mute">
-          {pending.map((history) => history.domain).join("、")}：已判定不足 3 条，暂不画线。
+          {pending.map((history) => history.domain).join("、")}：还没有已判定的主张，暂不画线。
         </p>
       ) : null}
     </div>

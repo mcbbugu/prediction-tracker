@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Catalog } from "@/components/catalog";
 import { Portrait } from "@/components/portrait";
-import { hasInterval, ScoreText } from "@/components/score-badge";
+import { ScoreText } from "@/components/score-badge";
 import { ScoreNum } from "@/components/score-num";
 import { getJson, type HomePayload } from "@/lib/api";
 
@@ -13,7 +13,7 @@ export default async function SpeakersPage() {
     <Catalog title="人物" icon="person" lede="每一位人物是一个可调用的先验。点进去看领域分数和原话。">
       {data.people.map((person) => {
         const scores = data.scores.filter((score) => score.person_id === person.id);
-        const headline = scores.find((score) => score.value != null) ?? scores.find((score) => hasInterval(score));
+        const headline = [...scores].filter((score) => score.value != null).sort((a, b) => b.n - a.n)[0];
         const count = data.claims.filter((claim) => claim.person_id === person.id).length;
         return (
           <Link

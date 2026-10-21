@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { Portrait } from "@/components/portrait";
-import { hasInterval, MIN_INTERVAL, MIN_SCORED, ScoreBadge } from "@/components/score-badge";
+import { ScoreBadge } from "@/components/score-badge";
+import { explainChanges, type ChangeLine, type Snapshot } from "@/lib/score-changes";
 import { CopyButton } from "@/components/copy-button";
 import { ScoreHistoryCharts, type DomainHistory } from "@/components/score-history-chart";
 import { StatusPill } from "@/components/status-pill";
@@ -10,20 +11,36 @@ import { apiBase, getJson, type Claim, type Interest, type Person, type PersonIn
 
 export const dynamic = "force-dynamic";
 
-type Snapshot = Score & { trigger_action: string | null; computed_at: string };
-
 const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
-const TRIGGER: Record<string, string> = {
-  seed_autochecked: "种子自动核对",
-  auto_publish: "按需分析公开",
-  rescore: "公式重算",
-  domain_remap: "领域归并",
-  verdict_applied: "判定生效",
-  review_publish: "审核发布",
-  quote_review: "原话复核",
-  quote_corrected: "原话校正",
-  quote_rejected: "原话撤回",
-};
+
+function quoteSnippet(claim: Claim | undefined) {
+  if (!claim) return "一条已不再公开的主张";
+  const text = claim.quote_zh.replace(/\s+/g, " ");
+  return `「${text.length > 34 ? `${text.slice(0, 34)}…` : text}」`;
+}
+
+// One reason line, in the reader's terms: what happened to which of this person's claims.
+function describe(line: ChangeLine, personId: string) {
+  const link = (claim: Claim | undefined) =>
+    claim ? (
+      <Link href={`/p/${personId}/${claim.id}`} className="text-ink/80 no-underline hover-fine:text-blue">
+        {quoteSnippet(claim)}
+      </Link>
+    ) : (
+      quoteSnippet(claim)
+    );
+  if (line.kind === "added") return <>新判定 <b className="font-medium text-ink">{line.status}</b>：{link(line.claim)}</>;
+  if (line.kind === "removed") return <>撤回不计（{line.status}）：{link(line.claim)}</>;
+  if (line.kind === "changed")
+    return (
+      <>
+        判定改为 <b className="font-medium text-ink">{line.to}</b>（原为 {line.from}）：{link(line.claim)}
+      </>
+    );
+  if (line.kind === "count")
+    return line.to > line.from ? `新增 ${line.to - line.from} 条已判定（${line.from} → ${line.to}）` : `减少 ${line.from - line.to} 条已判定（${line.from} → ${line.to}）`;
+  return `计分规则调整为 ${line.version}：有一条判定就出分，并给出区间`;
+}
 
 function host(url: string) {
   try {
@@ -61,8 +78,8 @@ export default async function PersonPage({
   const claims = data.claims;
   const count = (list: Claim[], p: string) => list.filter((claim) => phase(claim, today) === p).length;
 
-  // One row per domain: scored first, then interval-only, then by sample size.
-  const stage = (score: Score) => (score.value != null ? 2 : hasInterval(score) ? 1 : 0);
+  // One row per domain: scored first, then by sample size.
+  const stage = (score: Score) => (score.value != null ? 1 : 0);
   const domains = [...data.scores]
     .sort((a, b) => stage(b) - stage(a) || b.n - a.n)
     .map((score) => {
@@ -96,6 +113,8 @@ export default async function PersonPage({
   const lastChange = history.snapshots[0]?.computed_at?.slice(0, 10);
   const lead = domains.find((row) => row.score.value != null)?.score;
 
+  const changes = explainChanges(history.snapshots, claims, new Set(data.scores.map((score) => score.domain)));
+
   // Snapshots grouped per domain (oldest first), for the domains the person still has.
   const charts: DomainHistory[] = domains
     .map((row) => ({
@@ -110,13 +129,13 @@ export default async function PersonPage({
   -H 'content-type: application/json' \\
   -d '{"person_id":"${id}","domain":"${lead?.domain ?? domains[0]?.score.domain ?? ""}","query":"${data.person.name}说明年……"}'`;
 
-  // Profile rows: composites with a number first, then interval-only, then the rest; larger samples first.
-  const cstage = (row: ProfileRow) => (row.composite.value != null ? 2 : row.composite.low != null ? 1 : 0);
+  // Profile rows: composites with a score first; larger samples first.
+  const cstage = (row: ProfileRow) => (row.composite.value != null ? 1 : 0);
   const profile = [...(data.profile ?? [])].sort((a, b) => cstage(b) - cstage(a) || b.accuracy.n - a.accuracy.n);
   const top = profile[0];
   const pct = (w: number) => `${Math.round(w * 100)}%`;
   const fmtPart = (part: { value: number | null; low: number | null; high: number | null }) =>
-    part.value != null ? `${part.value.toFixed(1)}（${part.low}–${part.high}）` : part.low != null ? `${part.low}–${part.high}` : "样本不足";
+    part.value != null ? `${part.value.toFixed(1)}（${part.low}–${part.high}）` : "样本不足";
 
   // 利益关系 grouped by organisation: 「特斯拉：CEO 2008 至今 · 持股约 20.3%」.
   const interests = data.interests ?? { status: "not_collected" as const, relations: [] as Interest[] };
@@ -187,17 +206,13 @@ export default async function PersonPage({
             <p className="text-xs text-mute">{top ? `${top.domain} · 综合分` : "综合分"}</p>
             {top?.composite.value != null ? (
               <p className="display-num mt-1 text-[56px] leading-none font-[800] text-blue">{top.composite.value.toFixed(1)}</p>
-            ) : top?.composite.low != null ? (
-              <p className="display-num mt-1 text-[40px] leading-none font-[800] text-blue/80">
-                {top.composite.low}–{top.composite.high}
-              </p>
             ) : (
               <p className="mt-2 text-2xl font-bold text-mute">样本不足</p>
             )}
             <p className="mt-2 text-xs leading-5 text-mute">
-              {top?.composite.low != null ? `80% 区间 ${top.composite.low}–${top.composite.high}。` : ""}
+              {top?.composite.low != null ? `80% 区间 ${top.composite.low}–${top.composite.high}，基于 ${top.accuracy.n} 条已判定。` : ""}
               {top && top.composite.used.length === 1 ? "目前只含兑现率：可信度还没有数据，不参与合成。" : null}
-              {!top || top.composite.used.length === 0 ? `任一项满 ${MIN_INTERVAL} 条后出区间。` : null}
+              {!top || top.composite.used.length === 0 ? "有一条主张被判定后就会出分。" : null}
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -264,7 +279,7 @@ export default async function PersonPage({
                     </td>
                     <td className="px-2 text-xs text-mute">尚未收集</td>
                     <td className="py-2 pr-4 pl-2 text-[11px] text-mute">
-                      {row.composite.used.length === 0 ? "两项都不足 3 条" : "只含兑现率"}
+                      {row.composite.used.length === 0 ? "还没有已判定的主张" : "只含兑现率"}
                     </td>
                   </tr>
                 ))}
@@ -311,7 +326,7 @@ export default async function PersonPage({
         <h2 className="flex items-baseline justify-between text-[15px] font-bold">
           兑现记录
           <span className="text-xs font-normal text-mute">
-            满 {MIN_INTERVAL} 条已判定给 80% 区间，满 {MIN_SCORED} 条出分 ·{" "}
+            有判定就出分，区间越宽、条数越少越不确定 ·{" "}
             <Link href="/method" className="text-blue no-underline">
               怎么算
             </Link>
@@ -349,10 +364,8 @@ export default async function PersonPage({
                         <ScoreBadge value={row.score.value} n={row.score.n} low={row.score.low} high={row.score.high} size="sm" />
                         <span className="text-[11px] leading-4 text-mute">
                           {row.score.value != null
-                            ? `区间 ${row.score.low}–${row.score.high} · 先验 ${(row.score.value / 100).toFixed(3)}`
-                            : hasInterval(row.score)
-                              ? `${row.score.n} 条，满 ${MIN_SCORED} 条出分`
-                              : `${row.score.n} 条已判定`}
+                            ? `区间 ${row.score.low}–${row.score.high} · ${row.score.n} 条 · 先验 ${(row.score.value / 100).toFixed(3)}`
+                            : "还没有已判定"}
                         </span>
                       </span>
                     </td>
@@ -393,33 +406,46 @@ export default async function PersonPage({
           <ScoreHistoryCharts domains={charts} now={Date.now()} />
         </div>
         <h3 className="mt-5 flex items-baseline justify-between text-[13px] font-bold">
-          变化明细
-          <span className="text-xs font-normal text-mute">共 {history.snapshots.length} 条快照，新的在上</span>
+          变化原因
+          <span className="text-xs font-normal text-mute">每次分数变化是哪几条主张引起的，新的在上</span>
         </h3>
-          <ul className="mt-2 rounded-[14px] bg-card px-4 py-2 text-sm">
-            {history.snapshots.slice(0, 30).map((snap, index) => (
-              <li key={`${snap.domain}-${snap.computed_at}-${index}`} className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-0">
-                <span className="min-w-0 truncate">
-                  {snap.domain}
-                  <span className="ml-2 text-xs text-mute">{TRIGGER[snap.trigger_action ?? ""] ?? snap.trigger_action ?? "更新"}</span>
-                </span>
-                <span className="flex shrink-0 items-center gap-3 text-xs text-mute">
-                  <span className="num text-ink">
-                    {snap.confidence === "已移除"
-                      ? "已移除"
-                      : snap.value != null
-                        ? `${snap.value.toFixed(1)}（${snap.low}–${snap.high}）`
-                        : hasInterval(snap)
-                          ? `${snap.low}–${snap.high}`
-                          : "样本不足"}
+        <ul className="mt-2 rounded-[14px] bg-card px-4 py-1 text-sm">
+          {changes.slice(0, 30).map((change) => {
+            const after = change.after;
+            const delta = change.before?.value != null && after.value != null ? after.value - change.before.value : null;
+            return (
+              <li key={`${change.domain}-${change.at}`} className="grid gap-x-4 gap-y-1 border-b border-line py-2.5 last:border-0 sm:grid-cols-[1fr_auto]">
+                <div className="min-w-0">
+                  <p className="font-medium">{change.domain}</p>
+                  <ul className="mt-0.5 space-y-0.5 text-xs text-mute">
+                    {change.lines.length === 0 ? <li>旧判定随时间降低权重，分数略有变化</li> : null}
+                    {change.lines.slice(0, 4).map((line, index) => (
+                      <li key={index} className="truncate">
+                        {describe(line, id)}
+                      </li>
+                    ))}
+                    {change.lines.length > 4 ? <li>另有 {change.lines.length - 4} 条变化</li> : null}
+                  </ul>
+                </div>
+                <div className="flex shrink-0 items-start gap-3 text-xs text-mute sm:flex-col sm:items-end sm:gap-0.5">
+                  <span className="num text-sm text-ink">
+                    {after.value != null ? `${after.value.toFixed(1)}（${after.low}–${after.high}）` : "样本不足"}
+                    {delta != null && Math.abs(delta) >= 0.05 ? (
+                      <span className={cn("ml-1.5 text-xs", delta > 0 ? "text-blue" : "text-ink/60")}>
+                        {delta > 0 ? "↑" : "↓"}
+                        {Math.abs(delta).toFixed(1)}
+                      </span>
+                    ) : null}
                   </span>
-                  <span className="num">{snap.n} 条</span>
-                  <span className="num">{snap.computed_at.slice(5, 16).replace("T", " ")}</span>
-                </span>
+                  <span className="num">
+                    {after.n} 条 · {change.at.slice(5, 16).replace("T", " ")}
+                  </span>
+                </div>
               </li>
-            ))}
-            {history.snapshots.length === 0 ? <li className="py-2 text-xs text-mute">还没有分数快照。</li> : null}
-          </ul>
+            );
+          })}
+          {changes.length === 0 ? <li className="py-2 text-xs text-mute">分数还没有变化过。</li> : null}
+        </ul>
       </section>
 
       {/* Upcoming deadlines */}

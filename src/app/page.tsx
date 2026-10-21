@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { Portrait } from "@/components/portrait";
-import { hasInterval, ScoreBadge, scoreCaption } from "@/components/score-badge";
+import { ScoreBadge, scoreCaption } from "@/components/score-badge";
 import { getJson, type HomePayload, type Score } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
 
-// Scored domains first, then interval-only ones, then the ones still collecting; larger samples first.
-const stage = (score: Score) => (score.value != null ? 2 : hasInterval(score) ? 1 : 0);
+// Scored domains first, then the ones with nothing judged yet; larger samples first.
+const stage = (score: Score) => (score.value != null ? 1 : 0);
 function rankDomains(scores: Score[]) {
   return [...scores].sort((a, b) => stage(b) - stage(a) || b.n - a.n);
 }
@@ -69,13 +69,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <dt>52 以下</dt>
           </div>
           <div className="flex items-center gap-1.5">
-            <ScoreBadge value={null} n={5} low={30} high={60} size="sm" />
-            <dt>3–7 条只给 80% 区间</dt>
+            <ScoreBadge value={null} n={0} size="sm" />
+            <dt>还没有已判定的主张</dt>
           </div>
-          <div className="flex items-center gap-1.5">
-            <ScoreBadge value={null} n={2} size="sm" />
-            <dt>样本不足</dt>
-          </div>
+          <dt className="basis-full text-[11px] sm:basis-auto">分数旁的区间越宽、条数越少，越不确定</dt>
         </dl>
       </section>
 

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function DomainsPage() {
   const data = await getJson<HomePayload>("/v1/home");
   const scores = [...data.scores].sort(
-    (a, b) => (b.value ?? -1) - (a.value ?? -1) || Number(hasInterval(b)) - Number(hasInterval(a)) || b.n - a.n,
+    (a, b) => (b.value ?? -1) - (a.value ?? -1) || b.n - a.n,
   );
   return (
     <Catalog title="领域" icon="grid" lede="分数按领域分开。同一个人可以在一件事上可信，在另一件事上样本还不够。">
