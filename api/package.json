@@ -17,7 +17,9 @@
     "remap": "bun run src/remap-domains.ts",
     "rescore": "bun run src/score.ts",
     "requote": "bun run src/requote.ts",
-    "portraits": "bun run src/portrait.ts"
+    "portraits": "bun run src/portrait.ts",
+    "worker": "bun run src/worker.ts",
+    "enqueue": "bun run src/enqueue.ts"
   },
   "dependencies": {
     "@elysiajs/cors": "1.2.0",

@@ -112,6 +112,28 @@ export async function migrate() {
       PRIMARY KEY (claim_id, interest_id)
     )
   `;
+  // Every Ark call, from any process: the shared rate limiter reserves slots here and the AFP budget sums it.
+  await sql`
+    CREATE TABLE IF NOT EXISTS ark_calls (
+      id bigserial PRIMARY KEY,
+      kind text NOT NULL,
+      path text NOT NULL,
+      caller text NOT NULL DEFAULT '',
+      slot_at timestamptz NOT NULL,
+      afp numeric NOT NULL DEFAULT 0,
+      tokens integer,
+      ok boolean,
+      error text,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS ark_calls_kind_slot_idx ON ark_calls (kind, slot_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS ark_calls_created_idx ON ark_calls (created_at DESC)`;
+  // Queue fields: one worker claims queued jobs; payload carries per-kind input (e.g. claim_id).
+  await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS payload jsonb NOT NULL DEFAULT '{}'::jsonb`;
+  await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS run_after timestamptz NOT NULL DEFAULT now()`;
+  await sql`CREATE INDEX IF NOT EXISTS jobs_queue_idx ON jobs (state, run_after, created_at)`;
 }
 
 export async function logEvent(event: {

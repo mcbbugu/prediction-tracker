@@ -1,4 +1,62 @@
+import { basename } from "node:path";
+import { sql } from "./db";
+
 const base = () => (process.env.ARK_BASE_URL || "").replace(/\/$/, "");
+
+// ---- Shared limiter and AFP budget, across every process that talks to Ark (batch, worker, API, scripts).
+// Each call reserves a time slot in ark_calls under one advisory lock, so N processes together keep one pace.
+const GAP_MS = {
+  search: Number(process.env.ARK_SEARCH_GAP_MS || 2000),
+  chat: Number(process.env.ARK_CHAT_GAP_MS || 700),
+};
+// Web search beyond the free monthly quota is charged from the Agent Plan at 5 AFP per call.
+const SEARCH_AFP = Number(process.env.ARK_SEARCH_AFP || 5);
+const DAILY_AFP_BUDGET = Number(process.env.AFP_DAILY_BUDGET || 3000);
+const caller = basename(process.argv[1] ?? "");
+
+export class BudgetExceeded extends Error {}
+
+type CallKind = keyof typeof GAP_MS;
+
+async function reserve(kind: CallKind, path: string) {
+  return sql.begin(async (tx) => {
+    await tx`SELECT pg_advisory_xact_lock(hashtext('ark_calls'))`;
+    if (kind === "search") {
+      const [{ used }] = await tx<{ used: number }[]>`
+        SELECT coalesce(sum(afp), 0)::float8 AS used FROM ark_calls
+        WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')
+      `;
+      if (used + SEARCH_AFP > DAILY_AFP_BUDGET) {
+        throw new BudgetExceeded(`AFP 额度：今日预算 ${DAILY_AFP_BUDGET} 已用 ${used}，停止联网搜索（AFP_DAILY_BUDGET 可调）`);
+      }
+    }
+    const [last] = await tx<{ at: Date | null }[]>`SELECT max(slot_at) AS at FROM ark_calls WHERE kind = ${kind}`;
+    const slot = Math.max(Date.now(), (last?.at ? new Date(last.at).getTime() : 0) + GAP_MS[kind]);
+    const [row] = await tx<{ id: number }[]>`
+      INSERT INTO ark_calls (kind, path, caller, slot_at, afp)
+      VALUES (${kind}, ${path}, ${caller}, ${new Date(slot)}, ${kind === "search" ? SEARCH_AFP : 0})
+      RETURNING id
+    `;
+    return { id: Number(row.id), wait: slot - Date.now() };
+  });
+}
+
+async function finish(id: number, ok: boolean, detail: { tokens?: number; error?: string }) {
+  // A failed call is not charged.
+  await sql`
+    UPDATE ark_calls SET ok = ${ok}, tokens = ${detail.tokens ?? null}, error = ${detail.error?.slice(0, 300) ?? null},
+      afp = CASE WHEN ${ok} THEN afp ELSE 0 END
+    WHERE id = ${id}
+  `.catch(() => {});
+}
+
+export async function afpUsedToday() {
+  const [row] = await sql<{ used: number; searches: number }[]>`
+    SELECT coalesce(sum(afp), 0)::float8 AS used, count(*) FILTER (WHERE kind = 'search' AND ok)::int AS searches FROM ark_calls
+    WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')
+  `;
+  return { ...row, budget: DAILY_AFP_BUDGET };
+}
 
 export function arkConfigured() {
   return Boolean(process.env.ARK_API_KEY && process.env.ARK_BASE_URL && process.env.ARK_MODEL);
@@ -29,10 +87,17 @@ const RETRYABLE = /RequestBurstTooFast|request burst|429|Too Many Requests|RateL
 const BACKOFF_SECONDS = [15, 30, 60, 120];
 
 export async function arkPost(path: string, payload: Record<string, unknown>) {
+  const kind: CallKind = path.includes("/responses") ? "search" : "chat";
   for (let attempt = 0; ; attempt += 1) {
+    const slot = await reserve(kind, path);
+    if (slot.wait > 0) await Bun.sleep(slot.wait);
     try {
-      return await arkPostOnce(path, payload);
+      const body = await arkPostOnce(path, payload);
+      const usage = (body as { usage?: { total_tokens?: number } }).usage;
+      await finish(slot.id, true, { tokens: usage?.total_tokens });
+      return body;
     } catch (error) {
+      await finish(slot.id, false, { error: error instanceof Error ? error.message : String(error) });
       const message = error instanceof Error ? error.message : String(error);
       if (attempt >= BACKOFF_SECONDS.length || !RETRYABLE.test(message)) throw error;
       await Bun.sleep(BACKOFF_SECONDS[attempt] * 1000);

@@ -19,7 +19,9 @@
     "api:remap": "cd api && bun run remap",
     "api:rescore": "cd api && bun run rescore",
     "api:requote": "cd api && bun run requote",
-    "api:portraits": "cd api && bun run portraits"
+    "api:portraits": "cd api && bun run portraits",
+    "api:worker": "cd api && bun run worker",
+    "api:enqueue": "cd api && bun run enqueue"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

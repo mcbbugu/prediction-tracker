@@ -109,6 +109,7 @@
 | L4 证据评估 | 来源可靠性、反证、复核 | `verify.ts` + `verdict_proposals` + 审核台 |
 | L5 评分引擎 | 兑现率、可信度、综合分、时间衰减、不确定性 | 公式 v1 + 80% 区间，快照只追加；综合分见 P11 |
 | L6 产品 | 网站、API、插件、AI 集成 | 网站 + `/v1/consult` 雏形 |
+| 调度 | 后台任务排队、全局限速、AFP 预算 | `jobs` 队列 + `worker.ts` + `ark_calls`；网站上的按需分析仍在接口进程内直接跑（同样受限速和预算约束） |
 
 技术栈（已定，不再换）：Next.js 16 + Tailwind v4 + Base UI 组件 + Proicons 图标；后端 Bun + Elysia + postgres.js + Postgres 16；模型走火山方舟（`api/.env` 的 `ARK_*`，`ark-code-latest` 支持联网搜索）。
 
@@ -192,7 +193,15 @@ pnpm api:dev         # 接口 3011
 pnpm dev             # 网站 4321
 pnpm api:probe       # 检查联网搜索
 pnpm api:verify -- --person=musk --limit=3   # 到期核对
-pnpm api:batch -- --publish                  # 批量分析名单里的人（本机模式）
+pnpm api:batch -- --publish                  # 批量分析名单里的人（本机模式，旧入口，单进程直接跑）
+
+# 统一任务队列（推荐）：所有后台工作排进 jobs 表，由一个 worker 执行
+pnpm api:enqueue -- due                      # 已过期、仍待定的公开主张 → 到期核对
+pnpm api:enqueue -- people --limit=40 --retry-empty   # 名单前 40 人 → 按需分析
+pnpm api:enqueue -- status                   # 队列状态 + 今日 AFP
+pnpm api:worker -- --publish                 # 执行队列（本机模式自动公开）；--once 队列空了就退出
 ```
 
 审核台 `/review`，口令是 `api/.env` 的 `REVIEW_TOKEN`。
+
+**方舟调用的限速与预算**（`api/src/ark.ts`，跨进程生效）：每次调用先在 `ark_calls` 表里预约时间槽，联网搜索全局间隔 `ARK_SEARCH_GAP_MS`（默认 2000ms），对话 `ARK_CHAT_GAP_MS`（默认 700ms）；联网搜索每次记 `ARK_SEARCH_AFP`（默认 5）AFP，北京时间每天累计超过 `AFP_DAILY_BUDGET`（默认 3000）就拒绝继续搜索，batch 和 worker 会自动停下。失败的调用不计费。
