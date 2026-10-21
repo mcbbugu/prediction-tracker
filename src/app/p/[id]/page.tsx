@@ -13,6 +13,12 @@ export const dynamic = "force-dynamic";
 
 const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
 
+// What each formula version changed, in reader terms (see SPEC 分数显示).
+const FORMULA_NOTES: Record<string, string> = {
+  "v1.1": "有一条判定就出分，并给出区间",
+  "v1.2": "时间衰减放宽为每 3 年减半，几年前的判定重新计入",
+};
+
 function quoteSnippet(claim: Claim | undefined) {
   if (!claim) return "一条已不再公开的主张";
   const text = claim.quote_zh.replace(/\s+/g, " ");
@@ -39,7 +45,7 @@ function describe(line: ChangeLine, personId: string) {
     );
   if (line.kind === "count")
     return line.to > line.from ? `新增 ${line.to - line.from} 条已判定（${line.from} → ${line.to}）` : `减少 ${line.from - line.to} 条已判定（${line.from} → ${line.to}）`;
-  return `计分规则调整为 ${line.version}：有一条判定就出分，并给出区间`;
+  return `计分规则调整为 ${line.version}：${FORMULA_NOTES[line.version] ?? "计算方式调整"}`;
 }
 
 function host(url: string) {

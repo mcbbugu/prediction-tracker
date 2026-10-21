@@ -1,7 +1,7 @@
 import { arkConfigured, arkJson } from "./ark";
 import { sql } from "./db";
 import { latestScores, personInterests, publishedClaims } from "./records";
-import { COMPOSITE_WEIGHTS, FORMULA_VERSION, MIN_JUDGED, interestSplit, personProfile } from "./score";
+import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, interestSplit, personProfile } from "./score";
 
 export type ConsultRequest = {
   query: string;
@@ -43,7 +43,7 @@ function covers(haystack: string, terms: string[]) {
 
 function halfLifeWeight(deadline: string, now = new Date()): number {
   const days = Math.max(0, (now.getTime() - new Date(deadline).getTime()) / 86_400_000);
-  return Number(Math.pow(2, -days / 180).toFixed(3));
+  return Number(Math.pow(2, -days / HALF_LIFE_DAYS).toFixed(3));
 }
 
 export async function consultPrior(input: ConsultRequest) {
@@ -260,7 +260,7 @@ export async function consultPrior(input: ConsultRequest) {
       step: "03",
       title: "历史原话与独立证据链召回 / Precedent Retrieval",
       status: "completed",
-      detail: `从已人工复核的公开档案库中召回 ${scoredClaims.length} 条历史原话与到期核对结果（半衰期 τ=180 天）`,
+      detail: `从已人工复核的公开档案库中召回 ${scoredClaims.length} 条历史原话与到期核对结果（半衰期 ${Math.round(HALF_LIFE_DAYS / 365)} 年）`,
     },
     {
       step: "04",

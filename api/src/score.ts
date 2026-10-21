@@ -1,10 +1,13 @@
 import { sql } from "./db";
 
 // v1.1 (2026-10-21): same formula; a score and its 80% interval show from the first judged claim (no 3/8 tiers).
-export const FORMULA_VERSION = "v1.1";
+// v1.2 (2026-10-21): half-life 180 days → 3 years, so a record from years ago still counts.
+export const FORMULA_VERSION = "v1.2";
 const KAPPA = 4;
 const PRIOR = 0.5;
-const HALF_LIFE_DAYS = 180;
+// A judged claim's weight halves every HALF_LIFE_DAYS after its deadline. 3 years: recent outcomes count more,
+// but a promise missed five years ago is still evidence about how this person talks.
+export const HALF_LIFE_DAYS = 3 * 365;
 // One judged claim is enough to show a score; the Beta prior pulls small samples toward 50 and the interval
 // shows how unsure that is. Zero judged claims → 样本不足.
 export const MIN_JUDGED = 1;
