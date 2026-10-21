@@ -1,0 +1,497 @@
+{
+  "id": "musk",
+  "name": "埃隆·马斯克",
+  "name_en": "Elon Musk",
+  "title": "特斯拉、SpaceX、Neuralink 等公司负责人",
+  "predictions": [
+    {
+      "id": "musk-001",
+      "category": "FSD",
+      "quote": {
+        "en": "We should be able to do 90 percent of miles driven [autonomously] within three years.",
+        "zh": "我们应该能在三年内实现 90% 的行驶里程（自动驾驶）。"
+      },
+      "source_url": "https://spectrum.ieee.org/tesla-working-towards-90-autonomous-car-within-three-years",
+      "published_date": "2013-09-18",
+      "deadline": "2016-12-31",
+      "actual_result": "截至 2016 年底，特斯拉 Autopilot 为需要驾驶员持续监督的辅助驾驶系统，未实现 90% 里程自动驾驶。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk",
+        "https://arstechnica.com/cars/2015/10/driving-or-kind-of-not-driving-a-tesla-model-s-with-autopilot/"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-002",
+      "category": "FSD",
+      "quote": {
+        "en": "A Tesla car next year will probably be 90-percent capable of autopilot. Like, so 90 percent of your miles can be on auto. For sure highway travel.",
+        "zh": "明年的特斯拉大概能具备 90% 的自动驾驶能力，即 90% 的里程可以自动行驶，高速公路肯定可以。"
+      },
+      "source_url": "https://www.theverge.com/2014/10/2/6894875/elon-musk-says-next-years-tesla-cars-will-be-able-to-self-drive-90-percent-of-the-time",
+      "published_date": "2014-10-02",
+      "deadline": "2015-12-31",
+      "actual_result": "2015 年 10 月特斯拉推送 Autopilot（HW1），可在高速公路上进行车道保持和自动变道，需驾驶员监督；“90% 里程自动”未有官方数据证实。",
+      "evidence_urls": [
+        "https://arstechnica.com/cars/2015/10/driving-or-kind-of-not-driving-a-tesla-model-s-with-autopilot/",
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "部分兑现"
+    },
+    {
+      "id": "musk-003",
+      "category": "FSD",
+      "quote": {
+        "en": "From a technology standpoint, Tesla will have a car that can do full autonomy in about three years, maybe a bit sooner.",
+        "zh": "从技术角度看，特斯拉将在大约三年内（也许更早）拥有能完全自动驾驶的汽车。"
+      },
+      "source_url": "https://www.greencarreports.com/news/1100482_tesla-autopilot-the-10-most-important-things-you-need-to-know",
+      "published_date": "2015-10-16",
+      "deadline": "2018-12-31",
+      "actual_result": "截至 2018 年底，特斯拉车辆无完全自动驾驶功能，Autopilot 仍为 L2 辅助驾驶。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-004",
+      "category": "FSD",
+      "quote": {
+        "en": "We're going to end up with complete autonomy, and I think we will have complete autonomy in approximately two years.",
+        "zh": "我们最终会实现完全自动驾驶，我认为大约两年内就能实现。"
+      },
+      "source_url": "https://fortune.com/2015/12/21/elon-musk-interview/",
+      "published_date": "2015-12-21",
+      "deadline": "2017-12-31",
+      "actual_result": "截至 2017 年底，特斯拉未推出完全自动驾驶功能。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-005",
+      "category": "FSD",
+      "quote": {
+        "en": "I think that within two years, you'll be able to summon your car from across the country. It will meet you wherever your phone is … and it will just automatically charge itself along the entire journey.",
+        "zh": "我认为两年内，你可以从全国另一端召唤你的车。它会到你手机所在的地方找你……并在整个旅途中自动充电。"
+      },
+      "source_url": "https://www.theverge.com/2016/1/10/10746020/elon-musk-tesla-autonomous-driving-predictions-summon",
+      "published_date": "2016-01-10",
+      "deadline": "2018-01-31",
+      "actual_result": "截至 2018 年 1 月，特斯拉“召唤”功能仅限低速短距离（停车场范围），不具备跨州召唤能力。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-006",
+      "category": "FSD",
+      "quote": {
+        "en": "Our goal is ... that we'll be able to do a demonstration drive of full autonomy all the way from LA to New York, from home in LA to let's say dropping you off in Times Square in New York, and then having the car go park itself, by the end of next year. Without the need for a single touch, including the charger.",
+        "zh": "我们的目标是……在明年底前完成一次从洛杉矶到纽约的全自动驾驶演示：从洛杉矶的家出发，把你送到纽约时代广场，然后车自己去停车，全程无需任何触碰，包括充电。"
+      },
+      "source_url": "https://www.theverge.com/2016/10/19/13341100/tesla-self-driving-autonomous-road-trip-la-nyc",
+      "published_date": "2016-10-19",
+      "deadline": "2017-12-31",
+      "actual_result": "截至 2017 年底，特斯拉未进行该横跨美国的全自动驾驶演示。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-007",
+      "category": "FSD",
+      "quote": {
+        "en": "I think [a driver will be able to sleep at the wheel in] about two years.",
+        "zh": "我认为大约两年后（驾驶员就可以在车上睡觉）。"
+      },
+      "source_url": "https://www.entrepreneur.com/living/watch-and-read-the-transcript-of-elon-musks-boring-ted/293752",
+      "published_date": "2017-04-28",
+      "deadline": "2019-12-31",
+      "actual_result": "截至 2019 年底，特斯拉要求驾驶员持续监督，不支持驾驶中睡眠。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-008",
+      "category": "FSD",
+      "quote": {
+        "en": "I think we will be feature complete — full self-driving — this year, meaning the car will be able to find you in a parking lot, pick you up and take you all the way to your destination without an intervention, this year. I would say I am of certain of that. That is not a question mark.",
+        "zh": "我认为今年就能实现全自动驾驶功能完备，即车能在停车场找到你、接上你并无需干预地把你送到目的地。我可以说我对此确定，这不是问号。"
+      },
+      "source_url": "https://www.cnbc.com/2019/02/19/elon-musk-tesla-will-have-all-its-self-driving-car-features-by-the-end-of-the-year.html",
+      "published_date": "2019-02-19",
+      "deadline": "2019-12-31",
+      "actual_result": "截至 2019 年底，特斯拉未发布可无干预点到点行驶的功能；FSD Beta 于 2020 年 10 月才开始有限测试，且需驾驶员监督。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-009",
+      "category": "Robotaxi",
+      "quote": {
+        "en": "I feel very confident predicting that there will be autonomous robotaxis from Tesla next year — not in all jurisdictions because we won't have regulatory approval everywhere. ... next year for sure, we'll have over a million robotaxis on the road.",
+        "zh": "我非常有信心地预测，明年会有特斯拉的自动驾驶出租车——不是在所有地区，因为不是所有地方都会获得监管批准……明年肯定会有超过一百万辆 Robotaxi 上路。"
+      },
+      "source_url": "https://techcrunch.com/2019/04/22/tesla-plans-to-launch-a-robotaxi-network-in-2020/",
+      "published_date": "2019-04-22",
+      "deadline": "2020-12-31",
+      "actual_result": "2020 年特斯拉未推出 Robotaxi 服务；其 Robotaxi 服务于 2025 年 6 月在奥斯汀小规模启动。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk",
+        "https://www.bbc.com/news/articles/cjwnlje3yp1o"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-010",
+      "category": "FSD",
+      "quote": {
+        "en": "I remain confident that we will have the basic functionality for level five autonomy complete this year.",
+        "zh": "我仍然有信心今年完成 L5 级自动驾驶的基本功能。"
+      },
+      "source_url": "https://www.bbc.com/news/technology-53349313",
+      "published_date": "2020-07-09",
+      "deadline": "2020-12-31",
+      "actual_result": "2020 年 10 月 FSD Beta 向少量用户推送，属需驾驶员监督的 L2 系统，未达 L5。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-011",
+      "category": "FSD",
+      "quote": {
+        "en": "I'm highly confident the car will drive itself for the reliability in excess of a human this year.",
+        "zh": "我非常有信心今年汽车自动驾驶的可靠性将超过人类。"
+      },
+      "source_url": "https://www.fool.com/earnings/call-transcripts/2021/01/27/tesla-tsla-q4-2020-earnings-call-transcript/",
+      "published_date": "2021-01-27",
+      "deadline": "2021-12-31",
+      "actual_result": "截至 2021 年底，FSD 仍为需驾驶员监督的 Beta 版，特斯拉未公布证明其可靠性超过人类的无监督运行数据。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-012",
+      "category": "FSD",
+      "quote": {
+        "en": "The two technologies I am focused on, trying to ideally get done before the end of the year, are getting our Starship into orbit ... and then having Tesla cars to be able to do self-driving. ... Have self-driving in wide release at least in the U.S., and ... potentially in Europe, depending on regulatory approval.",
+        "zh": "我关注的两项技术，理想情况下希望年底前完成：让星舰进入轨道……以及让特斯拉汽车实现自动驾驶……至少在美国广泛发布自动驾驶，并可能在欧洲（视监管批准而定）。"
+      },
+      "source_url": "https://www.reuters.com/business/energy/elon-musk-says-world-still-needs-oil-gas-2022-08-29/",
+      "published_date": "2022-08-29",
+      "deadline": "2022-12-31",
+      "actual_result": "2022 年 11 月 FSD Beta 向北美所有购买 FSD 的车主开放（需监督）；欧洲未发布；星舰 2022 年内未入轨。",
+      "evidence_urls": [
+        "https://cleantechnica.com/2022/11/28/tesla-full-self-driving-beta-goes-out-for-wide-release-in-north-america/",
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "部分兑现"
+    },
+    {
+      "id": "musk-013",
+      "category": "FSD",
+      "quote": {
+        "en": "I think we'll achieve full self-driving, maybe what you would call four or five, I think later this year.",
+        "zh": "我认为今年晚些时候我们将实现全自动驾驶，也许就是你们所说的 L4 或 L5。"
+      },
+      "source_url": "https://electrek.co/2023/07/06/elon-musk-tesla-level-4-or-5-self-driving-this-year/",
+      "published_date": "2023-07-06",
+      "deadline": "2023-12-31",
+      "actual_result": "截至 2023 年底，FSD 仍为 L2 辅助驾驶（需监督）。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-014",
+      "category": "Robotaxi",
+      "quote": {
+        "en": "We're going to be launching unsupervised Full Self-Driving as a paid service in Austin in June.",
+        "zh": "我们将于 6 月在奥斯汀推出无监督 FSD 付费服务。"
+      },
+      "source_url": "https://www.youtube.com/watch?v=Gub5qCTutZo&t=967s",
+      "published_date": "2025-01-29",
+      "deadline": "2025-06-30",
+      "actual_result": "2025 年 6 月 22 日在奥斯汀启动 Robotaxi 付费服务（4.20 美元），限邀请用户和限定区域，前排乘客座配有安全员。",
+      "evidence_urls": [
+        "https://www.bbc.com/news/articles/cjwnlje3yp1o",
+        "https://www.theverge.com/news/690245/tesla-robotaxi-rides-launch-safety-monitor-passenger-seat"
+      ],
+      "status": "部分兑现"
+    },
+    {
+      "id": "musk-015",
+      "category": "Robotaxi",
+      "quote": {
+        "en": "First Tesla that drives itself from factory end of line all the way to a customer house is June 28.",
+        "zh": "第一辆从工厂产线末端自行开到客户家中的特斯拉将在 6 月 28 日。"
+      },
+      "source_url": "https://www.cnet.com/roadshow/news/elon-musk-says-teslas-robotaxi-service-will-tentatively-kick-off-june-22-in-austin/",
+      "published_date": "2025-06-11",
+      "deadline": "2025-06-28",
+      "actual_result": "特斯拉称 2025 年 6 月（原定 6 月 28 日前后）一辆 Model Y 在无人乘坐情况下从工厂自行驶至客户住所（约 15 英里）。",
+      "evidence_urls": [
+        "https://www.theverge.com/news/694801/tesla-autonomous-delivery-factory-customer-robotaxi",
+        "https://techcrunch.com/2025/06/30/tesla-sends-driverless-model-y-from-factory-to-customer-to-promote-its-robotaxi-tech/"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "musk-016",
+      "category": "FSD",
+      "quote": {
+        "en": "The acid test is, can you go to sleep in your car and wake up in your destination and I'm confident that will be available in many cities in the US by the end of this year.",
+        "zh": "真正的考验是：你能否在车里睡着、醒来已到目的地。我有信心今年底前这将在美国许多城市实现。"
+      },
+      "source_url": "https://www.theguardian.com/technology/2025/apr/22/tesla-sales-musk-white-house-exit",
+      "published_date": "2025-04-22",
+      "deadline": "2025-12-31",
+      "actual_result": "截至 2025 年底，面向车主的 FSD 仍为“FSD (Supervised)”，需驾驶员监督。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-017",
+      "category": "Robotaxi",
+      "quote": {
+        "en": "I think we'll probably have autonomous ride hailing in probably half the population of the U.S. by the end of the year. That's at least our goal subject to regulatory approvals.",
+        "zh": "我想到年底，我们可能会在覆盖约一半美国人口的地区提供自动驾驶网约车。这至少是我们的目标，取决于监管批准。"
+      },
+      "source_url": "https://www.fool.com/earnings/call-transcripts/2025/07/23/tesla-tsla-q2-2025-earnings-call-transcript/",
+      "published_date": "2025-07-23",
+      "deadline": "2025-12-31",
+      "actual_result": "截至 2025 年底，特斯拉 Robotaxi 服务仅在奥斯汀和旧金山湾区等少数地区运营，未覆盖约半数美国人口。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-018",
+      "category": "FSD",
+      "quote": {
+        "en": "I think [FSD] will be available for unsupervised personal use by the end of this year in certain geographies.",
+        "zh": "我认为到今年底，在某些地区（FSD）将可供个人无监督使用。"
+      },
+      "source_url": "https://www.fool.com/earnings/call-transcripts/2025/07/23/tesla-tsla-q2-2025-earnings-call-transcript/",
+      "published_date": "2025-07-23",
+      "deadline": "2025-12-31",
+      "actual_result": "截至 2025 年底，特斯拉未向个人车主推出无监督 FSD。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-019",
+      "category": "Cybercab",
+      "quote": {
+        "en": "...then we expect to be in production with the CyberCab ... in probably, well, I tend to be a little optimistic with time frames ... but in 2026.",
+        "zh": "……然后我们预计 Cybercab 投产，大概——我对时间表往往有点乐观——在 2026 年。"
+      },
+      "source_url": "https://www.cnet.com/roadshow/videos/everything-announced-at-teslas-we-robot-event/",
+      "published_date": "2024-10-10",
+      "deadline": "2026-12-31",
+      "actual_result": "Cybercab 于 2026 年 4 月开始生产，马斯克称初期产量“非常慢”。",
+      "evidence_urls": [
+        "https://www.cnet.com/roadshow/news/tesla-cybercab-begins-production/"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "musk-020",
+      "category": "FSD",
+      "quote": {
+        "en": "We do expect actually to start fully autonomous, unsupervised FSD in Texas and California next year.",
+        "zh": "我们实际上预计明年在德州和加州开始全自动、无监督的 FSD。"
+      },
+      "source_url": "https://www.cnet.com/roadshow/videos/everything-announced-at-teslas-we-robot-event/",
+      "published_date": "2024-10-10",
+      "deadline": "2025-12-31",
+      "actual_result": "2025 年德州奥斯汀 Robotaxi 车内配安全员，加州湾区服务配驾驶座安全员；面向车主的无监督 FSD 未推出。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk",
+        "https://www.bbc.com/news/articles/cjwnlje3yp1o"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-021",
+      "category": "Cybercab",
+      "quote": {
+        "en": "...the CyberCab, which is a specific model that we're making, does not have a steering wheel or pedals. ... We expect to start production in April.",
+        "zh": "……Cybercab 是我们正在制造的特定车型，没有方向盘和踏板……我们预计 4 月开始生产。"
+      },
+      "source_url": "https://www.fool.com/earnings/call-transcripts/2026/01/28/tesla-tsla-q4-2025-earnings-call-transcript/",
+      "published_date": "2026-01-28",
+      "deadline": "2026-04-30",
+      "actual_result": "2026 年 4 月 Cybercab 开始生产，初期产量较低。",
+      "evidence_urls": [
+        "https://www.cnet.com/roadshow/news/tesla-cybercab-begins-production/"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "musk-022",
+      "category": "Robotaxi",
+      "quote": {
+        "en": "We expect to have fully autonomous vehicles in probably somewhere between a quarter and half of the United States by the end of the year, pending regulatory approval. ... we expect to be in dozens of major cities by the end of the year.",
+        "zh": "我们预计到年底，在大约四分之一到一半的美国地区实现全自动驾驶车辆（待监管批准）……预计年底前进入几十个主要城市。"
+      },
+      "source_url": "https://www.fool.com/earnings/call-transcripts/2026/01/28/tesla-tsla-q4-2025-earnings-call-transcript/",
+      "published_date": "2026-01-28",
+      "deadline": "2026-12-31",
+      "actual_result": "截止日期未到（2026-12-31）。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "待定"
+    },
+    {
+      "id": "musk-023",
+      "category": "FSD",
+      "quote": {
+        "en": "I predict that there will be millions of Teslas operating fully autonomously in the second half of next year.",
+        "zh": "我预测明年下半年将有数百万辆特斯拉完全自动驾驶运行。"
+      },
+      "source_url": "https://www.reuters.com/business/autos-transportation/tesla-doubles-down-robotaxi-timeline-investors-enthused-skeptical-2025-04-24/",
+      "published_date": "2025-04-22",
+      "deadline": "2026-12-31",
+      "actual_result": "截止日期未到（2026-12-31）。",
+      "evidence_urls": [
+        "https://en.wikipedia.org/wiki/List_of_predictions_for_autonomous_Tesla_vehicles_by_Elon_Musk"
+      ],
+      "status": "待定"
+    },
+    {
+      "id": "musk-024",
+      "category": "Robotaxi",
+      "quote": {
+        "en": "...confidently next year, people would be able to add or subtract their car to the Tesla, Inc. fleet.",
+        "zh": "……有信心明年人们就能把自己的车加入或移出特斯拉车队。"
+      },
+      "source_url": "https://www.fool.com/earnings/call-transcripts/2025/07/23/tesla-tsla-q2-2025-earnings-call-transcript/",
+      "published_date": "2025-07-23",
+      "deadline": "2026-12-31",
+      "actual_result": "截止日期未到（2026-12-31）。",
+      "evidence_urls": [
+        "https://fortune.com/2025/07/23/elon-musk-tesla-q2-earnings-adding-private-customer-vehicles-robotaxi-network-next-year/"
+      ],
+      "status": "待定"
+    },
+    {
+      "id": "musk-025",
+      "category": "火星",
+      "quote": {
+        "en": "Starship departs for Mars at the end of next year, carrying Optimus. If those landings go well, then human landings may start as soon as 2029, although 2031 is more likely.",
+        "zh": "星舰将于明年底搭载 Optimus 飞往火星。如果着陆顺利，载人着陆最早可能在 2029 年开始，不过 2031 年可能性更大。"
+      },
+      "source_url": "https://www.france24.com/en/live-news/20250315-musk-says-starship-to-depart-for-mars-at-end-of-2026",
+      "published_date": "2025-03-15",
+      "deadline": "2026-12-31",
+      "actual_result": "截止日期未到。2026 年 2 月据 WSJ/Reuters 报道，SpaceX 告知投资者将优先登月、推迟火星任务；马斯克 2026-02-08 在 X 称 SpaceX 已将重点转向月球城市。",
+      "evidence_urls": [
+        "https://www.reuters.com/science/spacex-delays-mars-plans-focus-moon-wsj-reports-2026-02-06/",
+        "https://www.space.com/astronomy/moon/a-city-on-the-moon-why-spacex-shifted-its-focus-away-from-mars"
+      ],
+      "status": "待定"
+    },
+    {
+      "id": "musk-026",
+      "category": "火星",
+      "quote": {
+        "en": "I think, if things go according to plan, we should be able to launch people probably in 2024, with arrival in 2025.",
+        "zh": "我认为如果一切按计划进行，我们应该能在 2024 年发射载人飞船，2025 年抵达（火星）。"
+      },
+      "source_url": "https://spaceflightnow.com/2016/06/02/elon-musk-hopes-spacex-will-send-humans-to-mars-in-2024/",
+      "published_date": "2016-06-01",
+      "deadline": "2024-12-31",
+      "actual_result": "截至 2024 年底，SpaceX 未发射任何载人火星任务；星舰仍处于亚轨道试飞阶段。",
+      "evidence_urls": [
+        "https://www.space.com/astronomy/moon/a-city-on-the-moon-why-spacex-shifted-its-focus-away-from-mars"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-027",
+      "category": "火星",
+      "quote": {
+        "en": "The basic game plan is we're going to send a mission to Mars with every Mars opportunity from 2018 onwards.",
+        "zh": "基本计划是从 2018 年开始，每个火星窗口期都发射一次火星任务。"
+      },
+      "source_url": "https://spaceflightnow.com/2016/06/02/elon-musk-hopes-spacex-will-send-humans-to-mars-in-2024/",
+      "published_date": "2016-06-01",
+      "deadline": "2018-12-31",
+      "actual_result": "2018 年无 SpaceX 火星任务；Red Dragon 计划于 2017 年 7 月被马斯克表示放弃（取消 Dragon 动力着陆）。",
+      "evidence_urls": [
+        "https://www.theverge.com/2017/7/19/15999384/elon-musk-spacex-dragon-capsule-mars-mission",
+        "https://en.wikipedia.org/wiki/SpaceX_Red_Dragon"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-028",
+      "category": "Neuralink",
+      "quote": {
+        "en": "We hope to have this aspirationally in a human patient before the end of next year. So this is not far.",
+        "zh": "我们希望（理想情况下）在明年底之前将其植入人类患者体内。所以这并不遥远。"
+      },
+      "source_url": "https://www.businessinsider.com/elon-musk-neuralink-implants-link-brains-to-internet-next-year-2019-7",
+      "published_date": "2019-07-16",
+      "deadline": "2020-12-31",
+      "actual_result": "2020 年未进行人体植入；Neuralink 首例人体植入于 2024 年 1 月完成（马斯克 2024-01-29 宣布）。",
+      "evidence_urls": [
+        "https://www.reuters.com/technology/neuralink-implants-brain-chip-first-human-musk-says-2024-01-29/"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-029",
+      "category": "Optimus",
+      "quote": {
+        "en": "The normal internal plan calls for roughly 10,000 Optimus robots to be built this year. Will we succeed in building 10,000 exactly by the end of December this year? Probably not, but will we succeed in making several thousand? Yes, I think we will.",
+        "zh": "内部常规计划是今年生产约 1 万台 Optimus。今年 12 月底能否正好造出 1 万台？可能不行，但能否造出几千台？是的，我认为可以。"
+      },
+      "source_url": "https://www.fool.com/earnings/call-transcripts/2025/01/29/tesla-tsla-q4-2024-earnings-call-transcript/",
+      "published_date": "2025-01-29",
+      "deadline": "2025-12-31",
+      "actual_result": "特斯拉未公布 2025 年 Optimus 产量达到数千台；2026 年 1 月财报会上马斯克称 Optimus 仍处研发阶段，“未在工厂中实质性使用”。",
+      "evidence_urls": [
+        "https://www.fool.com/earnings/call-transcripts/2026/01/28/tesla-tsla-q4-2025-earnings-call-transcript/"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "musk-030",
+      "category": "Semi",
+      "quote": {
+        "en": "Excited to announce start of production of Tesla Semi Truck with deliveries to @Pepsi on Dec 1st!",
+        "zh": "很高兴宣布 Tesla Semi 卡车开始生产，12 月 1 日向 @Pepsi 交付！"
+      },
+      "source_url": "https://techcrunch.com/2022/10/06/tesla-semi-production-begins-with-pepsi-getting-the-first-deliveries/",
+      "published_date": "2022-10-06",
+      "deadline": "2022-12-01",
+      "actual_result": "2022 年 12 月 1 日特斯拉在内华达州工厂举行交付活动，向百事交付首批 Semi。",
+      "evidence_urls": [
+        "https://www.theverge.com/2022/12/1/23488040/tesla-semi-delivery-event-electric-truck-elon-musk"
+      ],
+      "status": "已兑现"
+    }
+  ]
+}

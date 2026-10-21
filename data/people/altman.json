@@ -1,0 +1,190 @@
+{
+  "id": "altman",
+  "name": "山姆·奥特曼",
+  "name_en": "Sam Altman",
+  "title": "OpenAI 联合创始人兼首席执行官",
+  "predictions": [
+    {
+      "id": "altman-001",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "GPT-4 will come out at some point, when we are confident we can do it safely and responsibly.",
+        "zh": "GPT-4 会在某个时间点推出，前提是我们确信能够安全、负责任地发布（2023 年初访谈预示近期发布）。"
+      },
+      "source_url": "https://www.strictlyvc.com/2023/01/20/strictlyvc-in-conversation-with-openai-ceo-sam-altman/",
+      "published_date": "2023-01-17",
+      "deadline": "2023-06-30",
+      "actual_result": "OpenAI 于 2023 年 3 月 14 日正式发布多模态大模型 GPT-4，并同步接入 ChatGPT Plus 与 API。",
+      "evidence_urls": [
+        "https://openai.com/index/gpt-4-research/",
+        "https://www.theverge.com/2023/3/14/23638033/openai-gpt-4-launch-chatgpt-ai-language-model"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "altman-002",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "We are not currently training GPT-5 and won't for some time.",
+        "zh": "我们目前没有在训练 GPT-5，并且在未来一段时间内（至少半年内）也不会开始训练。"
+      },
+      "source_url": "https://www.theverge.com/2023/4/14/23683084/openai-gpt-5-rumors-training-sam-altman",
+      "published_date": "2023-04-13",
+      "deadline": "2023-10-31",
+      "actual_result": "2023 年 4 月至 10 月间 OpenAI 未启动旗舰 GPT-5 全量预训练，期间推出的是 GPT-4 Turbo（2023 年 11 月 DevDay）。",
+      "evidence_urls": [
+        "https://www.theverge.com/2023/11/6/23948386/openai-gpt-4-turbo-launch-devday-sam-altman"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "altman-003",
+      "category": "生态与算力",
+      "quote": {
+        "en": "Next week we are launching the GPT Store... revenue sharing with creators who build the most useful and most used GPTs.",
+        "zh": "我们将在 2023 年 11 月底推出 GPT Store，并与构建最有用、使用最广泛的 GPT 创作者进行收入分成。"
+      },
+      "source_url": "https://openai.com/index/introducing-gpts/",
+      "published_date": "2023-11-06",
+      "deadline": "2023-11-30",
+      "actual_result": "受 2023 年 11 月董事会风波影响，GPT Store 推迟至 2024 年 1 月 10 日才上线，创作者分成计划于 2024 年一季度局部试点，未在 2023 年 11 月底兑现。",
+      "evidence_urls": [
+        "https://openai.com/index/introducing-the-gpt-store/",
+        "https://www.theverge.com/2024/1/10/24032144/openai-gpt-store-launch-custom-ai-chatbots"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "altman-004",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "Sora is today available to red teamers... we'll make it available to the public later this year.",
+        "zh": "Sora 目前已向红队测试员开放，我们将在今年（2024 年）晚些时候向公众正式开放。"
+      },
+      "source_url": "https://openai.com/index/sora/",
+      "published_date": "2024-02-15",
+      "deadline": "2024-12-31",
+      "actual_result": "OpenAI 于 2024 年 12 月 9 日正式向 ChatGPT Plus 和 Pro 订阅用户上线 Sora Turbo 视频生成产品。",
+      "evidence_urls": [
+        "https://openai.com/index/sora-is-here/",
+        "https://www.theverge.com/2024/12/9/24317092/openai-sora-text-to-video-ai-launch"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "altman-005",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "We'll roll out the new Voice Mode with GPT-4o in alpha within ChatGPT Plus in the coming weeks.",
+        "zh": "我们将在未来几周内（2024 年 6 月底前）向 ChatGPT Plus 用户推出基于 GPT-4o 的新版高级语音模式 Alpha 测试。"
+      },
+      "source_url": "https://openai.com/index/hello-gpt-4o/",
+      "published_date": "2024-05-13",
+      "deadline": "2024-06-30",
+      "actual_result": "2024 年 6 月 OpenAI 宣布为改进安全检测将高级语音模式 Alpha 推迟至 7 月底小范围测试，9 月才向全部 Plus 用户推送，未在 6 月底前按最初几周时间表上线。",
+      "evidence_urls": [
+        "https://www.theverge.com/2024/6/25/24185999/openai-delays-chatgpt-voice-mode-alpha-july",
+        "https://www.theverge.com/2024/9/24/24253352/openai-advanced-voice-mode-chatgpt-plus-edu-team"
+      ],
+      "status": "未兑现"
+    },
+    {
+      "id": "altman-006",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "It is possible that we will have superintelligence in a few thousand days; it may take longer, but I'm confident we'll get there.",
+        "zh": "我们有可能在几千天内（约 2027—2034 年）拥有超级智能（Superintelligence）；也许会更久，但我确信我们会到达那里。"
+      },
+      "source_url": "https://ia.samaltman.com/",
+      "published_date": "2024-09-23",
+      "deadline": "2034-12-31",
+      "actual_result": "截止窗口尚未到来（2034 年底），当前仍处于推理模型与智能体阶段。",
+      "evidence_urls": [
+        "https://ia.samaltman.com/"
+      ],
+      "status": "待定"
+    },
+    {
+      "id": "altman-007",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "We believe that, in 2025, we may see the first AI agents 'join the workforce' and materially change the output of companies.",
+        "zh": "我们相信在 2025 年，我们可能会看到第一批 AI 智能体「加入劳动力大军」，并实质性改变企业的产出。"
+      },
+      "source_url": "https://blog.samaltman.com/reflections",
+      "published_date": "2025-01-05",
+      "deadline": "2025-12-31",
+      "actual_result": "2025 年 OpenAI 推出 Operator、Deep Research 与 Codex 云端异步编程智能体，在软件工程与研究岗位被企业规模化部署，但在通用白领岗位仍需人工复核与监护，尚未作为独立全职员工完全替代。",
+      "evidence_urls": [
+        "https://openai.com/index/introducing-operator/",
+        "https://openai.com/index/introducing-deep-research/"
+      ],
+      "status": "部分兑现"
+    },
+    {
+      "id": "altman-008",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "We are now confident we know how to build AGI as we have traditionally understood it.",
+        "zh": "我们现在确信已经知道如何构建传统意义上理解的 AGI，并在 2025 年交付下一代前沿系统。"
+      },
+      "source_url": "https://blog.samaltman.com/reflections",
+      "published_date": "2025-01-05",
+      "deadline": "2025-12-31",
+      "actual_result": "2025 年 OpenAI 发布了 o3 与统一架构模型，在竞赛数学与编程基准上大幅跃升，但行业与学术界普遍认为其仍存在幻觉与持续学习短板，未在 2025 年底达成共识意义上的通用人工智能（AGI）。",
+      "evidence_urls": [
+        "https://www.technologyreview.com/2025/01/08/1109918/what-does-openai-really-mean-by-agi/"
+      ],
+      "status": "部分兑现"
+    },
+    {
+      "id": "altman-009",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "We will next ship GPT-4.5, the model we called Orion internally, as our last non-chain-of-thought model, within weeks.",
+        "zh": "我们将在接下来几周内（2025 年 3 月底前）发布内部代号为 Orion 的 GPT-4.5，作为我们最后一个非思维链模型。"
+      },
+      "source_url": "https://www.theverge.com/openai/612291/sam-altman-openai-gpt-4-5-gpt-5-roadmap",
+      "published_date": "2025-02-12",
+      "deadline": "2025-03-31",
+      "actual_result": "OpenAI 于 2025 年 2 月 27 日如期向 Pro 用户及开发者发布 GPT-4.5 研究预览版，随后于 3 月初向 Plus 用户推送。",
+      "evidence_urls": [
+        "https://openai.com/index/introducing-gpt-4-5/",
+        "https://www.theverge.com/openai/620498/openai-gpt-4-5-launch-orion-ai-model"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "altman-010",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "After that, a top goal for us is to unify o-series models and GPT-series models by creating systems that can use all our tools... we will release GPT-5 in months.",
+        "zh": "在 GPT-4.5 之后，我们将在数月内（2025 年内）发布整合了 o 系列推理与 GPT 系列能力的统一模型 GPT-5，并对免费用户开放标准智能。"
+      },
+      "source_url": "https://www.theverge.com/openai/612291/sam-altman-openai-gpt-4-5-gpt-5-roadmap",
+      "published_date": "2025-02-12",
+      "deadline": "2025-12-31",
+      "actual_result": "OpenAI 在 2025 年下半年推出整合推理路由的 GPT-5 系列统一模型，支持根据任务复杂度自动切换快速响应与深度思考。",
+      "evidence_urls": [
+        "https://openai.com/news/"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "altman-011",
+      "category": "模型与 AGI",
+      "quote": {
+        "en": "We plan to release our first open-weight language model since GPT-2 with reasoning capabilities in the coming months.",
+        "zh": "我们计划在未来几个月内（2025 年夏季前）发布自 GPT-2 以来的首个具备推理能力的开放权重（Open-Weight）语言模型。"
+      },
+      "source_url": "https://techcrunch.com/2025/03/31/openai-plans-to-release-a-new-open-language-model-in-the-coming-months/",
+      "published_date": "2025-03-31",
+      "deadline": "2025-09-30",
+      "actual_result": "OpenAI 于 2025 年夏季发布开放权重推理模型系列（gpt-oss），允许开发者本地与私有云部署。",
+      "evidence_urls": [
+        "https://openai.com/open-models/"
+      ],
+      "status": "已兑现"
+    }
+  ]
+}

@@ -1,0 +1,517 @@
+import Link from "next/link";
+import { Icon } from "@/components/icon";
+import { Portrait } from "@/components/portrait";
+import { hasInterval, MIN_INTERVAL, MIN_SCORED, ScoreBadge } from "@/components/score-badge";
+import { CopyButton } from "@/components/copy-button";
+import { ScoreHistoryCharts, type DomainHistory } from "@/components/score-history-chart";
+import { StatusPill } from "@/components/status-pill";
+import { cn } from "@/lib/utils";
+import { apiBase, getJson, type Claim, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
+
+export const dynamic = "force-dynamic";
+
+type Snapshot = Score & { trigger_action: string | null; computed_at: string };
+
+const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
+const TRIGGER: Record<string, string> = {
+  seed_autochecked: "种子自动核对",
+  auto_publish: "按需分析公开",
+  rescore: "公式重算",
+  domain_remap: "领域归并",
+  verdict_applied: "判定生效",
+  review_publish: "审核发布",
+  quote_review: "原话复核",
+  quote_corrected: "原话校正",
+  quote_rejected: "原话撤回",
+};
+
+function host(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+// 待定 with a passed deadline is not the same as 待定 still in the future: one is our backlog, the other is time.
+function phase(claim: Claim, today: string) {
+  if (JUDGED.has(claim.status)) return "judged";
+  if (claim.status === "证据不足") return "unclear";
+  return claim.deadline < today ? "overdue" : "upcoming";
+}
+
+function yearSpan(claim: Claim) {
+  return `${claim.published_date.slice(0, 7)} → ${claim.deadline.slice(0, 7)}`;
+}
+
+export default async function PersonPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ domain?: string }>;
+}) {
+  const { id } = await params;
+  const { domain: domainFilter } = await searchParams;
+  const [data, history] = await Promise.all([
+    getJson<{ person: Person; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests }>(`/v1/people/${id}`),
+    getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history`).catch(() => ({ snapshots: [] as Snapshot[] })),
+  ]);
+  const today = new Date().toISOString().slice(0, 10);
+  const claims = data.claims;
+  const count = (list: Claim[], p: string) => list.filter((claim) => phase(claim, today) === p).length;
+
+  // One row per domain: scored first, then interval-only, then by sample size.
+  const stage = (score: Score) => (score.value != null ? 2 : hasInterval(score) ? 1 : 0);
+  const domains = [...data.scores]
+    .sort((a, b) => stage(b) - stage(a) || b.n - a.n)
+    .map((score) => {
+      const list = claims.filter((claim) => claim.category === score.domain);
+      const next = list
+        .filter((claim) => phase(claim, today) === "upcoming")
+        .sort((a, b) => a.deadline.localeCompare(b.deadline))[0];
+      return {
+        score,
+        total: list.length,
+        fulfilled: list.filter((claim) => claim.status === "已兑现").length,
+        partial: list.filter((claim) => claim.status === "部分兑现").length,
+        missed: list.filter((claim) => claim.status === "未兑现").length,
+        overdue: count(list, "overdue"),
+        upcoming: count(list, "upcoming"),
+        next,
+      };
+    });
+
+  // Past deadlines first (most recent at the top: these carry the record), then the future, soonest first.
+  const scoped = domainFilter ? claims.filter((claim) => claim.category === domainFilter) : claims;
+  const shown = [
+    ...scoped.filter((claim) => claim.deadline < today).sort((a, b) => b.deadline.localeCompare(a.deadline)),
+    ...scoped.filter((claim) => claim.deadline >= today).sort((a, b) => a.deadline.localeCompare(b.deadline)),
+  ];
+  const upcoming = claims
+    .filter((claim) => phase(claim, today) === "upcoming")
+    .sort((a, b) => a.deadline.localeCompare(b.deadline))
+    .slice(0, 3);
+  const machine = claims.filter((claim) => claim.reviewed === false).length;
+  const lastChange = history.snapshots[0]?.computed_at?.slice(0, 10);
+  const lead = domains.find((row) => row.score.value != null)?.score;
+
+  // Snapshots grouped per domain (oldest first), for the domains the person still has.
+  const charts: DomainHistory[] = domains
+    .map((row) => ({
+      domain: row.score.domain,
+      points: history.snapshots
+        .filter((snap) => snap.domain === row.score.domain && snap.confidence !== "已移除")
+        .map((snap) => ({ t: Date.parse(snap.computed_at), value: snap.value, low: snap.low, high: snap.high, n: snap.n }))
+        .reverse(),
+    }))
+    .filter((row) => row.points.length > 0);
+  const curl = `curl -X POST ${apiBase()}/v1/consult \\
+  -H 'content-type: application/json' \\
+  -d '{"person_id":"${id}","domain":"${lead?.domain ?? domains[0]?.score.domain ?? ""}","query":"${data.person.name}说明年……"}'`;
+
+  // Profile rows: composites with a number first, then interval-only, then the rest; larger samples first.
+  const cstage = (row: ProfileRow) => (row.composite.value != null ? 2 : row.composite.low != null ? 1 : 0);
+  const profile = [...(data.profile ?? [])].sort((a, b) => cstage(b) - cstage(a) || b.accuracy.n - a.accuracy.n);
+  const top = profile[0];
+  const pct = (w: number) => `${Math.round(w * 100)}%`;
+  const fmtPart = (part: { value: number | null; low: number | null; high: number | null }) =>
+    part.value != null ? `${part.value.toFixed(1)}（${part.low}–${part.high}）` : part.low != null ? `${part.low}–${part.high}` : "样本不足";
+
+  // 利益关系 grouped by organisation: 「特斯拉：CEO 2008 至今 · 持股约 20.3%」.
+  const interests = data.interests ?? { status: "not_collected" as const, relations: [] as Interest[] };
+  const span = (item: Interest) =>
+    item.started ? `${item.started}–${item.ended === "present" ? "至今" : (item.ended ?? "")}` : item.ended === "present" ? "至今" : "";
+  const orgs = [...interests.relations.reduce((map, item) => {
+    const key = item.counterparty;
+    map.set(key, [...(map.get(key) ?? []), item]);
+    return map;
+  }, new Map<string, Interest[]>())];
+
+  const stats = [
+    { label: "公开主张", value: claims.length },
+    { label: "已判定", value: claims.filter((claim) => JUDGED.has(claim.status)).length },
+    { label: "已过期待核对", value: count(claims, "overdue"), hint: "截止日已过，还没找到结果" },
+    { label: "未到期", value: count(claims, "upcoming") },
+    { label: "证据不足", value: count(claims, "unclear") },
+  ];
+
+  return (
+    <div className="pt-6">
+      {/* Identity + numbers at a glance */}
+      <section className="flex flex-wrap items-center gap-x-8 gap-y-5 rounded-[18px] bg-card p-5">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <Portrait person={data.person} riso className="w-[76px] shrink-0 !rounded-[12px]" />
+          <div className="min-w-0">
+            <p className="flex items-center gap-1 text-xs text-mute">
+              <Link href="/speakers" className="no-underline hover-fine:text-ink">
+                人物
+              </Link>
+              <Icon name="chevron-right" size={11} />
+              <span className="truncate">{data.person.name_en}</span>
+            </p>
+            <h1 className="mt-0.5 text-[28px] leading-tight font-[900] tracking-tight">{data.person.name}</h1>
+            <p className="truncate text-sm text-mute">{data.person.title}</p>
+          </div>
+        </div>
+        <dl className="grid grid-cols-5 gap-x-5 gap-y-1">
+          {stats.map((stat) => (
+            <div key={stat.label} title={stat.hint}>
+              <dd className={cn("display-num text-[26px] leading-none font-[800]", stat.value === 0 && "text-mute/50")}>
+                {stat.value}
+              </dd>
+              <dt className="mt-1 text-[11px] whitespace-nowrap text-mute">{stat.label}</dt>
+            </div>
+          ))}
+        </dl>
+      </section>
+      <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 px-1 text-[11px] text-mute">
+        <span>核对层级：机器核对 {machine} · 人工复核 {claims.length - machine}</span>
+        {lastChange ? <span>分数最近变化 {lastChange}</span> : null}
+        {data.person.portrait_credit ? <span>头像 {data.person.portrait_credit}</span> : null}
+      </p>
+
+      {/* Profile: the composite per domain, always taken apart into its parts (SPEC 人物画像与综合分) */}
+      <section className="mt-8">
+        <h2 className="flex items-baseline justify-between text-[15px] font-bold">
+          人物画像
+          <span className="text-xs font-normal text-mute">
+            综合分只在领域内合成，不跨领域平均 ·{" "}
+            <Link href="/method" className="text-blue no-underline">
+              怎么算
+            </Link>
+          </span>
+        </h2>
+        <div className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_2fr]">
+          <div className="rounded-[14px] bg-card p-5">
+            <p className="text-xs text-mute">{top ? `${top.domain} · 综合分` : "综合分"}</p>
+            {top?.composite.value != null ? (
+              <p className="display-num mt-1 text-[56px] leading-none font-[800] text-blue">{top.composite.value.toFixed(1)}</p>
+            ) : top?.composite.low != null ? (
+              <p className="display-num mt-1 text-[40px] leading-none font-[800] text-blue/80">
+                {top.composite.low}–{top.composite.high}
+              </p>
+            ) : (
+              <p className="mt-2 text-2xl font-bold text-mute">样本不足</p>
+            )}
+            <p className="mt-2 text-xs leading-5 text-mute">
+              {top?.composite.low != null ? `80% 区间 ${top.composite.low}–${top.composite.high}。` : ""}
+              {top && top.composite.used.length === 1 ? "目前只含兑现率：可信度还没有数据，不参与合成。" : null}
+              {!top || top.composite.used.length === 0 ? `任一项满 ${MIN_INTERVAL} 条后出区间。` : null}
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[14px] bg-card p-4">
+              <p className="flex items-center justify-between text-xs text-mute">
+                兑现率<span>权重 {pct(top?.accuracy.weight ?? 0.7)}</span>
+              </p>
+              <p className="num mt-1.5 text-lg font-bold">{top ? fmtPart(top.accuracy) : "—"}</p>
+              <p className="mt-1 text-[11px] leading-4 text-mute">带期限的预测和承诺，到期核对。{top ? `已判定 ${top.accuracy.n} 条。` : ""}</p>
+            </div>
+            <div className="rounded-[14px] border border-dashed border-line bg-card/60 p-4">
+              <p className="flex items-center justify-between text-xs text-mute">
+                可信度（一致性）<span>权重 {pct(top?.consistency.weight ?? 0.3)}</span>
+              </p>
+              <p className="mt-1.5 text-lg font-bold text-mute">尚未收集</p>
+              <p className="mt-1 text-[11px] leading-4 text-mute">建议和立场的前后对照、言行对照。校准后才进综合分。</p>
+            </div>
+            <div className="rounded-[14px] border border-dashed border-line bg-card/60 p-4">
+              <p className="flex items-center justify-between text-xs text-mute">
+                利益关系<span>不进综合分</span>
+              </p>
+              {interests.status === "collected" ? (
+                <>
+                  <p className="num mt-1.5 text-sm font-bold">
+                    相关 {fmtPart(interests.related)} <span className="font-normal text-mute">· {interests.related.n} 条</span>
+                  </p>
+                  <p className="num text-sm font-bold">
+                    无关 {fmtPart(interests.unrelated)} <span className="font-normal text-mute">· {interests.unrelated.n} 条</span>
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-mute">
+                    {orgs.length} 家机构的任职、持股、商业往来。主张谈的是说话当时有关系的机构，算「相关」。
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1.5 text-lg font-bold text-mute">尚未收集</p>
+                  <p className="mt-1 text-[11px] leading-4 text-mute">任职、持股、商业往来；会并排给出「利益相关 / 无关」主张的兑现率。</p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        {profile.length > 1 ? (
+          <div className="mt-3 overflow-x-auto rounded-[14px] bg-card">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-[11px] text-mute">
+                  <th className="py-2 pr-2 pl-4 font-medium">领域</th>
+                  <th className="px-2 font-medium">综合分</th>
+                  <th className="px-2 font-medium">兑现率 · {pct(profile[0].accuracy.weight)}</th>
+                  <th className="px-2 font-medium">可信度 · {pct(profile[0].consistency.weight)}</th>
+                  <th className="py-2 pr-4 pl-2 font-medium">合成说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                {profile.map((row) => (
+                  <tr key={row.domain} className="border-b border-line last:border-0">
+                    <td className="py-2 pr-2 pl-4 font-medium">{row.domain}</td>
+                    <td className="px-2 py-1.5">
+                      <ScoreBadge value={row.composite.value} n={row.accuracy.n} low={row.composite.low} high={row.composite.high} size="sm" />
+                    </td>
+                    <td className="num px-2 text-xs">
+                      {fmtPart(row.accuracy)} <span className="text-mute">· {row.accuracy.n} 条</span>
+                    </td>
+                    <td className="px-2 text-xs text-mute">尚未收集</td>
+                    <td className="py-2 pr-4 pl-2 text-[11px] text-mute">
+                      {row.composite.used.length === 0 ? "两项都不足 3 条" : "只含兑现率"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </section>
+
+      {/* Interests: roles, holdings, business ties, each with dates and an archived source (SPEC 利益关系) */}
+      {orgs.length > 0 ? (
+        <section className="mt-8">
+          <h2 className="flex items-baseline justify-between text-[15px] font-bold">
+            利益关系
+            <span className="text-xs font-normal text-mute">公开可核查的任职、持股、商业往来 · 不进综合分</span>
+          </h2>
+          <ul className="mt-3 overflow-hidden rounded-[14px] bg-card">
+            {orgs.map(([org, items]) => (
+              <li key={org} className="grid gap-x-4 gap-y-1 border-b border-line px-4 py-3 last:border-0 md:grid-cols-[160px_1fr]">
+                <span className="text-sm font-medium">
+                  {items[0].counterparty_zh || org}
+                  {items[0].counterparty_zh && items[0].counterparty_zh !== org ? <span className="ml-1 text-xs font-normal text-mute">{org}</span> : null}
+                </span>
+                <span className="flex flex-col gap-1">
+                  {items.map((item) => (
+                    <span key={item.id} className="text-xs leading-5">
+                      <span className="font-medium">{item.role || (item.kind === "role" ? "任职" : item.kind === "holding" ? "持股" : "商业往来")}</span>
+                      {span(item) ? <span className="num ml-1.5 text-mute">{span(item)}</span> : null}
+                      <a href={item.source_url} target="_blank" rel="noreferrer" title={item.quote} className="ml-1.5 text-mute">
+                        {host(item.source_url)}
+                      </a>
+                      <span className="text-mute">{item.reviewed ? " · 人工复核" : " · 机器核对"}</span>
+                    </span>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* Domain table */}
+      <section className="mt-8">
+        <h2 className="flex items-baseline justify-between text-[15px] font-bold">
+          兑现记录
+          <span className="text-xs font-normal text-mute">
+            满 {MIN_INTERVAL} 条已判定给 80% 区间，满 {MIN_SCORED} 条出分 ·{" "}
+            <Link href="/method" className="text-blue no-underline">
+              怎么算
+            </Link>
+          </span>
+        </h2>
+        <div className="mt-3 overflow-x-auto rounded-[14px] bg-card">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-[11px] text-mute">
+                <th className="py-2.5 pr-2 pl-4 font-medium">领域</th>
+                <th className="px-2 font-medium">分数</th>
+                <th className="px-2 font-medium">兑现构成</th>
+                <th className="px-2 text-right font-medium">已过期待核对</th>
+                <th className="px-2 text-right font-medium">未到期</th>
+                <th className="py-2.5 pr-4 pl-2 font-medium">下一个截止</th>
+              </tr>
+            </thead>
+            <tbody>
+              {domains.map((row) => {
+                const judged = row.fulfilled + row.partial + row.missed;
+                const active = domainFilter === row.score.domain;
+                return (
+                  <tr key={row.score.domain} className={cn("border-b border-line last:border-0", active && "bg-blue-tint/40")}>
+                    <td className="py-2.5 pr-2 pl-4">
+                      <Link
+                        href={active ? `/p/${id}` : `/p/${id}?domain=${encodeURIComponent(row.score.domain)}#claims`}
+                        className="font-medium no-underline hover-fine:text-blue"
+                      >
+                        {row.score.domain}
+                      </Link>
+                      <span className="ml-1.5 text-xs text-mute">{row.total} 条</span>
+                    </td>
+                    <td className="px-2 py-2">
+                      <span className="flex items-center gap-2">
+                        <ScoreBadge value={row.score.value} n={row.score.n} low={row.score.low} high={row.score.high} size="sm" />
+                        <span className="text-[11px] leading-4 text-mute">
+                          {row.score.value != null
+                            ? `区间 ${row.score.low}–${row.score.high} · 先验 ${(row.score.value / 100).toFixed(3)}`
+                            : hasInterval(row.score)
+                              ? `${row.score.n} 条，满 ${MIN_SCORED} 条出分`
+                              : `${row.score.n} 条已判定`}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="px-2">
+                      {judged > 0 ? (
+                        <span className="flex items-center gap-2">
+                          <span className="flex h-2 w-24 overflow-hidden rounded-full bg-sunken" aria-hidden>
+                            <span className="bg-blue" style={{ width: `${(100 * row.fulfilled) / judged}%` }} />
+                            <span className="bg-blue/45" style={{ width: `${(100 * row.partial) / judged}%` }} />
+                            <span className="bg-ink/25" style={{ width: `${(100 * row.missed) / judged}%` }} />
+                          </span>
+                          <span className="num text-[11px] whitespace-nowrap text-mute">
+                            兑现 {row.fulfilled} · 部分 {row.partial} · 未 {row.missed}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-mute">—</span>
+                      )}
+                    </td>
+                    <td className={cn("num px-2 text-right", row.overdue > 0 ? "text-ink" : "text-mute/50")}>{row.overdue}</td>
+                    <td className={cn("num px-2 text-right", row.upcoming > 0 ? "text-ink" : "text-mute/50")}>{row.upcoming}</td>
+                    <td className="num py-2.5 pr-4 pl-2 text-xs whitespace-nowrap text-mute">{row.next?.deadline ?? "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Score history: one small chart per domain, then the raw snapshots as a table */}
+      <section className="mt-8">
+        <h2 className="flex items-baseline justify-between text-[15px] font-bold">
+          分数变化
+          <span className="text-xs font-normal text-mute">深色线是分数，两条浅色线是 80% 区间上下沿；每次变化追加快照，不覆盖</span>
+        </h2>
+        <div className="mt-3">
+          <ScoreHistoryCharts domains={charts} now={Date.now()} />
+        </div>
+        <h3 className="mt-5 flex items-baseline justify-between text-[13px] font-bold">
+          变化明细
+          <span className="text-xs font-normal text-mute">共 {history.snapshots.length} 条快照，新的在上</span>
+        </h3>
+          <ul className="mt-2 rounded-[14px] bg-card px-4 py-2 text-sm">
+            {history.snapshots.slice(0, 30).map((snap, index) => (
+              <li key={`${snap.domain}-${snap.computed_at}-${index}`} className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-0">
+                <span className="min-w-0 truncate">
+                  {snap.domain}
+                  <span className="ml-2 text-xs text-mute">{TRIGGER[snap.trigger_action ?? ""] ?? snap.trigger_action ?? "更新"}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-3 text-xs text-mute">
+                  <span className="num text-ink">
+                    {snap.confidence === "已移除"
+                      ? "已移除"
+                      : snap.value != null
+                        ? `${snap.value.toFixed(1)}（${snap.low}–${snap.high}）`
+                        : hasInterval(snap)
+                          ? `${snap.low}–${snap.high}`
+                          : "样本不足"}
+                  </span>
+                  <span className="num">{snap.n} 条</span>
+                  <span className="num">{snap.computed_at.slice(5, 16).replace("T", " ")}</span>
+                </span>
+              </li>
+            ))}
+            {history.snapshots.length === 0 ? <li className="py-2 text-xs text-mute">还没有分数快照。</li> : null}
+          </ul>
+      </section>
+
+      {/* Upcoming deadlines */}
+      {upcoming.length > 0 ? (
+        <section className="mt-8">
+          <h2 className="text-[15px] font-bold">即将到期</h2>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            {upcoming.map((claim) => (
+              <Link key={claim.id} href={`/p/${id}/${claim.id}`} className="rounded-[14px] bg-card p-4 no-underline hover-fine:ring-2 hover-fine:ring-blue/20">
+                <span className="flex items-center justify-between text-xs text-mute">
+                  <span>{claim.category}</span>
+                  <span className="num font-semibold text-blue">{claim.deadline}</span>
+                </span>
+                <span className="mt-1.5 line-clamp-3 block text-sm leading-6">{claim.quote_zh}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* Claims */}
+      <section id="claims" className="mt-8 scroll-mt-24">
+        <h2 className="flex flex-wrap items-baseline gap-x-3 text-[15px] font-bold">
+          全部主张
+          <span className="text-xs font-normal text-mute">先列已到期的（最近的在上），再列未到期的</span>
+          {domainFilter ? (
+            <Link href={`/p/${id}#claims`} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
+              {domainFilter}
+              <Icon name="cancel" size={11} />
+            </Link>
+          ) : null}
+        </h2>
+        <ul className="mt-3 overflow-hidden rounded-[14px] bg-card">
+          {shown.map((claim) => {
+            const p = phase(claim, today);
+            return (
+              <li key={claim.id} className="border-b border-line last:border-0">
+                <Link
+                  href={`/p/${id}/${claim.id}`}
+                  className="grid gap-x-4 gap-y-1 px-4 py-3 no-underline hover-fine:bg-sunken/60 md:grid-cols-[112px_1fr_150px]"
+                >
+                  <span className="flex flex-wrap items-start gap-1.5">
+                    {p === "overdue" ? (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-ink/30 px-2 py-0.5 text-[12px] font-medium text-ink">
+                        <Icon name="hourglass" size={12} />
+                        待核对
+                      </span>
+                    ) : (
+                      <StatusPill status={p === "upcoming" ? "未到期" : claim.status} />
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="line-clamp-2 block text-[15px] leading-6">{claim.quote_zh}</span>
+                    {claim.interest_note ? <span className="mt-0.5 block text-xs text-mute">{claim.interest_note}</span> : null}
+                    {JUDGED.has(claim.status) && claim.actual_result ? (
+                      <span className="mt-0.5 line-clamp-1 block text-xs text-mute">
+                        <span className="font-medium text-ink/70">结果：</span>
+                        {claim.actual_result}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="flex flex-row flex-wrap gap-x-3 text-[11px] text-mute md:flex-col md:items-end md:text-right">
+                    <span className="num">{yearSpan(claim)}</span>
+                    <span>{claim.category}</span>
+                    <span className="truncate">
+                      {host(claim.source_url)}
+                      {claim.reviewed === false ? " · 机器核对" : " · 人工复核"}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {/* For agents */}
+      <section className="mt-8">
+        <h2 className="text-[15px] font-bold">给 AI 调用</h2>
+        <p className="mt-1 text-xs text-mute">采信{data.person.name}的一句新说法之前，先取这个人在该领域的先验。</p>
+        <div className="relative mt-3">
+          <pre className="overflow-x-auto rounded-[14px] bg-ink p-4 pr-20 text-[12px] leading-5 text-white/90">
+            <code>{curl}</code>
+          </pre>
+          <CopyButton text={curl} className="absolute top-3 right-3" />
+        </div>
+        {lead ? (
+          <p className="mt-2 text-xs text-mute">
+            当前返回：{lead.domain} 先验 <b className="num text-ink">{((lead.value ?? 0) / 100).toFixed(3)}</b>，80% 区间 {lead.low}–{lead.high}，基于 {lead.n} 条。
+          </p>
+        ) : null}
+      </section>
+    </div>
+  );
+}

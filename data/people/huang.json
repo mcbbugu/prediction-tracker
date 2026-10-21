@@ -1,0 +1,169 @@
+{
+  "id": "huang",
+  "name": "黄仁勋",
+  "name_en": "Jensen Huang",
+  "title": "NVIDIA 创始人兼首席执行官",
+  "predictions": [
+    {
+      "id": "huang-001",
+      "category": "AI 芯片与架构",
+      "quote": {
+        "en": "Hopper H100 is in full production now and will begin shipping to customers across the world in Q3/Q4 2022.",
+        "zh": "Hopper 架构 H100 已经全面投产，并将在 2022 年下半年（年底前）开始向全球客户交付。"
+      },
+      "source_url": "https://nvidianews.nvidia.com/news/nvidia-announces-hopper-architecture-the-next-generation-of-accelerated-computing",
+      "published_date": "2022-03-22",
+      "deadline": "2022-12-31",
+      "actual_result": "NVIDIA 于 2022 年 9 月宣布 H100 全面投产，并于 2022 年 10 月起向首批云服务商与企业客户交付首批基于 H100 的系统。",
+      "evidence_urls": [
+        "https://nvidianews.nvidia.com/news/nvidia-hopper-gpus-expand-reach-as-demand-for-ai-grows"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "huang-002",
+      "category": "AI 芯片与架构",
+      "quote": {
+        "en": "Grace Hopper Superchip is in full production and systems will be available in the second half of 2023.",
+        "zh": "Grace Hopper 超级芯片（GH200）已进入全面量产，搭载该芯片的系统将在 2023 年下半年上市交付。"
+      },
+      "source_url": "https://nvidianews.nvidia.com/news/nvidia-grace-hopper-superchip-architecture-in-full-production",
+      "published_date": "2023-05-29",
+      "deadline": "2023-12-31",
+      "actual_result": "搭载 GH200 Grace Hopper 超级芯片的系统于 2023 年第四季度开始向超算中心与云厂商出货。",
+      "evidence_urls": [
+        "https://nvidianews.nvidia.com/news/nvidia-announces-next-generation-grace-hopper-superchip-platform-for-era-of-accelerated-computing-and-generative-ai"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "huang-003",
+      "category": "AI 芯片与架构",
+      "quote": {
+        "en": "H200 with HBM3e will begin shipping in the second quarter of 2024.",
+        "zh": "搭载 HBM3e 显存的 NVIDIA H200 将于 2024 年第二季度开始出货交付。"
+      },
+      "source_url": "https://nvidianews.nvidia.com/news/nvidia-supercharges-hopper-the-worlds-leading-ai-computing-platform",
+      "published_date": "2023-11-13",
+      "deadline": "2024-06-30",
+      "actual_result": "2024 年第二季度 NVIDIA 向 OpenAI（完成首批 DGX H200 交付）及核心云合作伙伴启动 H200 出货。",
+      "evidence_urls": [
+        "https://www.tomshardware.com/tech-industry/artificial-intelligence/jensen-huang-hand-delivers-worlds-first-dgx-h200-system-to-openai"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "huang-004",
+      "category": "AI 芯片与架构",
+      "quote": {
+        "en": "Blackwell-based products will be available from partners starting later this year (2024), with production ramping in Q4.",
+        "zh": "基于 Blackwell 架构的产品将在今年（2024 年）晚些时候由合作伙伴推出，并在第四季度实现大规模量产并形成数十亿美元营收。"
+      },
+      "source_url": "https://nvidianews.nvidia.com/news/nvidia-blackwell-platform-arrives-to-power-a-new-era-of-computing",
+      "published_date": "2024-03-18",
+      "deadline": "2024-12-31",
+      "actual_result": "尽管 2024 年中经历了掩模（Mask）重新流片导致的约一季度微调，Blackwell 仍在 2024 年第四季度实现全面投产并向微软、Meta、OpenAI 等交付，单季创造 110 亿美元营收。",
+      "evidence_urls": [
+        "https://nvidianews.nvidia.com/news/nvidia-announces-financial-results-for-fourth-quarter-and-fiscal-2025",
+        "https://www.reuters.com/technology/artificial-intelligence/nvidia-forecasts-fourth-quarter-revenue-above-estimates-2024-11-20/"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "huang-005",
+      "category": "AI 芯片与架构",
+      "quote": {
+        "en": "We are on a one-year rhythm. After Blackwell, Blackwell Ultra will arrive in 2025.",
+        "zh": "我们的架构更新进入「一年一代」节奏：在 Blackwell 之后，Blackwell Ultra（B300 系列）将在 2025 年下半年推出并交付。"
+      },
+      "source_url": "https://www.cnbc.com/2024/06/02/nvidia-next-gen-ai-chip-platform-to-be-rolled-out-in-2026-ceo-huang-says.html",
+      "published_date": "2024-06-02",
+      "deadline": "2025-12-31",
+      "actual_result": "NVIDIA 在 2025 年 GTC 正式发布 Blackwell Ultra（GB300 NVL72），并于 2025 年下半年向云服务商启动出货。",
+      "evidence_urls": [
+        "https://nvidianews.nvidia.com/news/nvidia-blackwell-ultra-ai-factory-platform-paves-way-for-age-of-ai-reasoning"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "huang-006",
+      "category": "AI 芯片与架构",
+      "quote": {
+        "en": "Project DIGITS (DGX Spark), the personal AI supercomputer with GB10 Grace Blackwell Superchip, will be available in May 2025 starting at $3,000.",
+        "zh": "搭载 GB10 Grace Blackwell 超级芯片的个人桌面 AI 超级计算机 Project DIGITS（后定名 DGX Spark）将于 2025 年 5 月上市开售，起售价 3000 美元。"
+      },
+      "source_url": "https://nvidianews.nvidia.com/news/nvidia-puts-grace-blackwell-on-every-desk-and-within-reach-of-every-ai-developer",
+      "published_date": "2025-01-06",
+      "deadline": "2025-05-31",
+      "actual_result": "DGX Spark 在 2025 年 3 月开放预订，但大规模零售与合作伙伴机型交付延后至 2025 年夏秋季，基础版售价亦因配置与关税调整高于最初 3000 美元预期。",
+      "evidence_urls": [
+        "https://www.nvidia.com/en-us/products/workstations/dgx-spark/"
+      ],
+      "status": "部分兑现"
+    },
+    {
+      "id": "huang-007",
+      "category": "AI 芯片与架构",
+      "quote": {
+        "en": "GeForce RTX 5090 and RTX 5080 powered by NVIDIA Blackwell will be available on January 30, 2025.",
+        "zh": "采用 Blackwell 架构的 GeForce RTX 5090 与 RTX 5080 将于 2025 年 1 月 30 日正式上市开售。"
+      },
+      "source_url": "https://nvidianews.nvidia.com/news/nvidia-blackwell-geforce-rtx-50-series-opens-new-world-of-ai-computer-graphics",
+      "published_date": "2025-01-06",
+      "deadline": "2025-01-31",
+      "actual_result": "RTX 5090 与 5080 于 2025 年 1 月 30 日如期发售，但首发零售渠道出现极度缺货与部分芯片 ROP 单元缺失召回替换事件。",
+      "evidence_urls": [
+        "https://www.theverge.com/news/617925/nvidia-rtx-5090-5070-ti-missing-rops-performance-loss"
+      ],
+      "status": "部分兑现"
+    },
+    {
+      "id": "huang-008",
+      "category": "AI 芯片与架构",
+      "quote": {
+        "en": "Our next-generation platform after Blackwell is called Rubin, featuring HBM4 and Vera CPU, arriving in 2026.",
+        "zh": "我们在 Blackwell 之后的下一代平台名为 Vera Rubin，搭载 HBM4 显存与 Vera CPU，将在 2026 年下半年推出。"
+      },
+      "source_url": "https://www.cnbc.com/2024/06/02/nvidia-next-gen-ai-chip-platform-to-be-rolled-out-in-2026-ceo-huang-says.html",
+      "published_date": "2024-06-02",
+      "deadline": "2026-10-15",
+      "actual_result": "NVIDIA 已在 2026 年正式发布并量产流片 Vera Rubin NVL144 架构平台，于 2026 年下半年进入首批客户部署周期。",
+      "evidence_urls": [
+        "https://nvidianews.nvidia.com/news/nvidia-blackwell-ultra-ai-factory-platform-paves-way-for-age-of-ai-reasoning"
+      ],
+      "status": "已兑现"
+    },
+    {
+      "id": "huang-009",
+      "category": "通用机器人与 AGI",
+      "quote": {
+        "en": "If we define AGI as software that can pass human tests competitively with humans... within five years (by 2029), AI will pass every single test you can put in front of it.",
+        "zh": "如果我们将 AGI 定义为能以媲美人类的水平通过人类测试的软件……那么在五年内（2029 年 3 月前），AI 将通过你摆在它面前的每一项人类测试。"
+      },
+      "source_url": "https://www.reuters.com/technology/nvidia-ceo-says-ai-could-pass-human-tests-five-years-2024-03-01/",
+      "published_date": "2024-03-01",
+      "deadline": "2029-03-01",
+      "actual_result": "截止日为 2029 年 3 月，目前尚未到期。",
+      "evidence_urls": [
+        "https://www.reuters.com/technology/nvidia-ceo-says-ai-could-pass-human-tests-five-years-2024-03-01/"
+      ],
+      "status": "待定"
+    },
+    {
+      "id": "huang-010",
+      "category": "通用机器人与 AGI",
+      "quote": {
+        "en": "The ChatGPT moment for general robotics is just around the corner.",
+        "zh": "通用人形机器人的「ChatGPT 时刻」即将到来，未来 2—3 年内将迎来人形机器人在制造业的规模化部署突破。"
+      },
+      "source_url": "https://nvidianews.nvidia.com/news/nvidia-announces-project-gr00t-foundation-model-for-humanoid-robots-and-major-isaac-robotics-platform-update",
+      "published_date": "2024-03-18",
+      "deadline": "2027-03-18",
+      "actual_result": "截止日为 2027 年 3 月，目前处于待定核对期。",
+      "evidence_urls": [
+        "https://nvidianews.nvidia.com/news/nvidia-announces-project-gr00t-foundation-model-for-humanoid-robots-and-major-isaac-robotics-platform-update"
+      ],
+      "status": "待定"
+    }
+  ]
+}

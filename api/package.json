@@ -1,0 +1,30 @@
+{
+  "name": "prediction-tracker-api",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "seed": "bun run src/seed.ts",
+    "seed-check": "bun run src/seed-check.ts",
+    "interests": "bun run src/interests.ts",
+    "agent": "bun run src/agent.ts",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "verify": "bun run src/verify.ts",
+    "probe": "bun run src/probe-search.ts",
+    "batch": "bun run src/batch.ts",
+    "remap": "bun run src/remap-domains.ts",
+    "rescore": "bun run src/score.ts",
+    "requote": "bun run src/requote.ts",
+    "portraits": "bun run src/portrait.ts"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "1.2.0",
+    "elysia": "1.2.25",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/bun": "1.2.5"
+  }
+}

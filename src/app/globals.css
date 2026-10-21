@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+@custom-variant hover-fine {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/*
+  先验 design tokens
+  Black and white, with one ink: ultramarine is the only colour and always means "data" or the brand. The ink (ultramarine, a risograph "Medium Blue") is the only colour,
+  used at different densities: solid for strong records, tint for middling, outline for weak.
+  Text stays a neutral graphite so the ink always means "data".
+*/
+@theme inline {
+  --font-sans: var(--font-sans), "Noto Sans SC", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --font-inter: var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: var(--font-display), var(--font-sans), sans-serif;
+  --color-paper: #f7f7f8;
+  --color-canvas: #f7f7f8;
+  --color-card: #ffffff;
+  --color-card-2: #f4f4f5;
+  --color-sunken: #f4f4f5;
+  --color-ink: #0d0d0d;
+  --color-mute: #6b6b6f;
+  --color-line: #e5e5e7;
+  --color-blue: #2f3fc4;
+  --color-blue-tint: #dde1f7;
+  --color-blue-deep: #1f2a8a;
+  --color-teal: #2f3fc4;
+  --color-teal-deep: #1f2a8a;
+  --color-slate: #16181d;
+  --color-score-high: #2f3fc4;
+  --color-score-mid: #2f3fc4;
+  --color-score-low: #6b6b6f;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  background: var(--color-paper);
+}
+
+body {
+  position: relative;
+  margin: 0;
+  min-height: 100vh;
+  color: var(--color-ink);
+  font-family: var(--font-inter), var(--font-sans), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  /* Transparent so the fixed backdrop (z-index -1) shows; the paper colour lives on <html>. */
+  background: transparent;
+}
+
+/* Paper grain over the whole page, fixed so it reads as the sheet, not the content. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: var(--color-blue-tint);
+  color: var(--color-blue-deep);
+}
+
+/* Numbers: condensed heavy grotesk, the poster voice of the site. */
+.display-num {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 72;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Risograph-style single-ink portrait: greyscale photo printed in ultramarine on paper. */
+.riso {
+  position: relative;
+  isolation: isolate;
+  background: #f4f5fb;
+}
+.riso img {
+  filter: grayscale(1) contrast(1.15) brightness(1.08);
+  mix-blend-mode: multiply;
+}
+.riso::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-blue);
+  mix-blend-mode: screen;
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+@layer base {
+  a {
+    color: inherit;
+    text-underline-offset: 3px;
+  }
+}
+
+.num {
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+@keyframes lift {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lift > * {
+  animation: lift 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lift > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+.lift > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lift > * {
+    animation: none;
+  }
+}
