@@ -118,6 +118,74 @@ function ownOrg(orgs: Org[], exposure: Exposure, self: string) {
 // Ranking value for picking a merged source's headline number: shares first, then newest.
 const rank = (m: NonNullable<Exposure["metric"]>) => (m.kind === "revenue_share" ? 2e4 : m.kind === "amount_usd" ? 1e4 : 0) + (m.year ?? 0);
 
+// Which organisation each claim is about: the one its links (to a relation or an exposure) point at most.
+// Claims with no link land under null (与利益无关), so the groups add up to the total.
+export function assignClaims<T extends { id: string }>(orgs: Org[], claims: T[], links: ClaimLink[]) {
+  const orgOfRelation = new Map<number, string>();
+  const orgOfExposure = new Map<number, string>();
+  for (const org of orgs) {
+    for (const r of org.relations) orgOfRelation.set(r.id, org.org_key);
+    for (const e of org.exposures) orgOfExposure.set(e.id, org.org_key);
+  }
+  const claimOrgs = new Map<string, Map<string, number>>();
+  for (const link of links) {
+    const key = link.target_kind === "relation" ? orgOfRelation.get(link.target_id) : orgOfExposure.get(link.target_id);
+    if (!key) continue;
+    const tally = claimOrgs.get(link.claim_id) ?? new Map<string, number>();
+    tally.set(key, (tally.get(key) ?? 0) + 1);
+    claimOrgs.set(link.claim_id, tally);
+  }
+  const byOrg = new Map<string | null, T[]>();
+  for (const claim of claims) {
+    const tally = claimOrgs.get(claim.id);
+    const key = tally ? [...tally].sort((x, y) => y[1] - x[1])[0][0] : null;
+    byOrg.set(key, [...(byOrg.get(key) ?? []), claim]);
+  }
+  return byOrg;
+}
+
+export type MergedSource = {
+  key: string;
+  group: SourceGroup;
+  label: string;
+  best: NonNullable<Exposure["metric"]> | null;
+  current: boolean;
+  exposures: Exposure[];
+};
+export type OwnTie = { from: string; to: string; label: string; known: boolean; exposures: Exposure[] };
+
+// One row per (group, target) for an organisation; ties to his other organisations come out separately.
+export function mergeExposures(org: Org, orgs: Org[]) {
+  const merged = new Map<string, MergedSource>();
+  const ties = new Map<string, OwnTie>();
+  for (const exposure of org.exposures) {
+    const other = ownOrg(orgs, exposure, org.org_key);
+    const m = metricOf(exposure);
+    if (other) {
+      // Money between his own companies: a customer pays the organisation; it pays suppliers and investees.
+      const [from, to] = exposure.dimension === "customer" ? [other, org.org_key] : [org.org_key, other];
+      const kind = { customer: "采购", supplier: "采购", investment: "投资", partner: "合作", region: "往来", facility: "往来" }[exposure.dimension];
+      const key = `${from}>${to}`;
+      const tie = ties.get(key) ?? { from, to, label: kind, known: false, exposures: [] };
+      tie.exposures.push(exposure);
+      if (m && !tie.known) Object.assign(tie, { label: `${kind} ${metricShort(m)}`, known: true });
+      ties.set(key, tie);
+      continue;
+    }
+    const group = GROUP_OF[exposure.dimension];
+    const label = exposure.target_zh || exposure.target;
+    const key = `${group}:${norm(label)}`;
+    const item = merged.get(key) ?? { key, group, label, best: null, current: false, exposures: [] };
+    item.exposures.push(exposure);
+    item.current ||= isCurrent(exposure);
+    if (m && (!item.best || rank(m) > rank(item.best))) item.best = m;
+    merged.set(key, item);
+  }
+  return { sources: [...merged.values()], ties: [...ties.values()] };
+}
+
+export { metricShort };
+
 function estimateOrg(org: OrgIn): Estimate | null {
   const stake = stakeFor(org);
   const fin = org.financials;
@@ -137,28 +205,7 @@ export function buildMoneyFlow(
   const current = orgsIn.filter((org) => org.relations.some(isCurrent));
   const past = orgsIn.filter((org) => !org.relations.some(isCurrent)).map(orgLabel);
 
-  // Claims per organisation, from the claim's links to a relation or an exposure.
-  const orgOfRelation = new Map<number, string>();
-  const orgOfExposure = new Map<number, string>();
-  for (const org of orgsIn) {
-    for (const r of org.relations) orgOfRelation.set(r.id, org.org_key);
-    for (const e of org.exposures) orgOfExposure.set(e.id, org.org_key);
-  }
-  const claimOrgs = new Map<string, Map<string, number>>();
-  for (const link of links) {
-    const key = link.target_kind === "relation" ? orgOfRelation.get(link.target_id) : orgOfExposure.get(link.target_id);
-    if (!key) continue;
-    const tally = claimOrgs.get(link.claim_id) ?? new Map<string, number>();
-    tally.set(key, (tally.get(key) ?? 0) + 1);
-    claimOrgs.set(link.claim_id, tally);
-  }
-  // A claim goes to the organisation it is most tied to, so the counts add up to the total.
-  const claimsByOrg = new Map<string | null, { id: string; status: string }[]>();
-  for (const claim of claims) {
-    const tally = claimOrgs.get(claim.id);
-    const key = tally ? [...tally].sort((a, b) => b[1] - a[1])[0][0] : null;
-    claimsByOrg.set(key, [...(claimsByOrg.get(key) ?? []), claim]);
-  }
+  const claimsByOrg = assignClaims(orgsIn, claims, links);
 
   const ranked = current
     .map((org) => ({ org, estimate: estimateOrg(org), stake: stakeFor(org), said: claimsByOrg.get(org.org_key)?.length ?? 0 }))
@@ -174,45 +221,31 @@ export function buildMoneyFlow(
 
   const inter = new Map<string, InterOrg>();
   const orgs: FlowOrg[] = ranked.map(({ org, estimate, stake }) => {
-    const merged = new Map<string, FlowSource & { best: NonNullable<Exposure["metric"]> | null }>();
-    for (const exposure of org.exposures) {
-      const other = ownOrg(orgsIn, exposure, org.org_key);
-      const m = metricOf(exposure);
-      if (other) {
-        if (!shown.has(other)) continue;
-        // Money between his own companies: customer pays org, org pays supplier / invests.
-        const [from, to] = exposure.dimension === "customer" ? [other, org.org_key] : [org.org_key, other];
-        const kind = { customer: "采购", supplier: "采购", investment: "投资", partner: "合作", region: "往来", facility: "往来" }[exposure.dimension];
-        const key = `${from}>${to}`;
-        const prev = inter.get(key);
-        const label = m ? `${kind} ${metricShort(m)}` : kind;
-        if (!prev || (!prev.known && m)) inter.set(key, { from: `o:${from}`, to: `o:${to}`, label, known: Boolean(m) });
-        continue;
-      }
-      const group = GROUP_OF[exposure.dimension];
-      const label = exposure.target_zh || exposure.target;
-      const id = `s:${org.org_key}:${group}:${norm(label)}`;
-      const line = `${label}：${m ? metricShort(m) : "规模未公开"}${exposure.started ? ` · ${exposure.started} 起` : ""}`;
-      const item = merged.get(id) ?? {
-        id,
-        orgId: `o:${org.org_key}`,
-        group,
-        label,
-        metric: "",
-        share: null,
-        estimate: null,
-        current: false,
-        details: [],
-        best: null,
-      };
-      item.details.push(line);
-      item.current ||= isCurrent(exposure);
-      if (m && (!item.best || rank(m) > rank(item.best))) item.best = m;
-      merged.set(id, item);
+    const { sources: mergedSources, ties } = mergeExposures(org, orgsIn);
+    for (const tie of ties) {
+      if (!shown.has(tie.from) || !shown.has(tie.to)) continue;
+      const key = `${tie.from}>${tie.to}`;
+      const prev = inter.get(key);
+      if (!prev || (!prev.known && tie.known)) inter.set(key, { from: `o:${tie.from}`, to: `o:${tie.to}`, label: tie.label, known: tie.known });
     }
+    const merged = mergedSources.map((m) => ({
+      id: `s:${org.org_key}:${m.key}`,
+      orgId: `o:${org.org_key}`,
+      group: m.group,
+      label: m.label,
+      metric: "",
+      share: null as number | null,
+      estimate: null as Estimate | null,
+      current: m.current,
+      details: m.exposures.map((e) => {
+        const em = metricOf(e);
+        return `${m.label}：${em ? metricShort(em) : "规模未公开"}${e.started ? ` · ${e.started} 起` : ""}`;
+      }),
+      best: m.best,
+    }));
 
     const revenue = org.financials?.revenue_usd ?? null;
-    const sources = [...merged.values()].map(({ best, ...item }) => {
+    const sources = merged.map(({ best, ...item }) => {
       if (best) item.metric = metricShort(best);
       if (best?.kind === "revenue_share") item.share = best.value / 100;
       else if (best?.kind === "amount_usd" && revenue && item.group !== "depends") item.share = Math.min(1, best.value / revenue);
