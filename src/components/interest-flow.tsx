@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ClaimLink, Org } from "@/lib/interests";
-import { buildMoneyFlow, GROUP_LABEL, usd, type SourceGroup } from "@/lib/money-flow";
+import { buildMoneyFlow, GROUP_LABEL, usd, type ClaimGroup, type SourceGroup } from "@/lib/money-flow";
 
 // 利益版图：钱从哪来 → 经过哪家公司 → 他 → 他说了什么.
 // Money is ultramarine, words are ink. Live ties carry slowly moving dots; ended ties are not drawn.
@@ -178,7 +178,8 @@ export function InterestFlow({
     // Column 4: what he said, grouped by the organisation it touches, stacked around the person.
     let oy = mid - outTotal / 2;
     let cy = mid - claimsTotal / 2;
-    const claimBoxes = flow.claims.map((group, index) => {
+    const claimBoxes: (ClaimGroup & { y: number; h: number })[] = [];
+    for (const [index, group] of flow.claims.entries()) {
       const width = outWidths[index];
       nodes.set(group.id, {
         tip: `${group.label}：${group.count} 句\n已兑现或部分兑现 ${group.fulfilled} · 未兑现 ${group.failed} · 其余待定或证据不足`,
@@ -195,10 +196,9 @@ export function InterestFlow({
         tip: "",
       });
       oy += width + 3;
-      const box = { ...group, y: cy, h: claimH };
+      claimBoxes.push({ ...group, y: cy, h: claimH });
       cy += claimH + 10;
-      return box;
-    });
+    }
     nodes.set("person", { tip: `${personName}\n左边流进来的是钱，右边流出去的是他公开说的话` });
 
     const height = Math.max(bottom, mid + claimsTotal / 2, personTop + barH + 26) + 8;

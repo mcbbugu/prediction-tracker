@@ -523,7 +523,7 @@ export default async function PersonPage({
           <span className="text-xs font-normal text-mute">深色线是分数，两条浅色线是 80% 区间上下沿；每次变化追加快照，不覆盖</span>
         </h2>
         <div className="mt-3">
-          <ScoreHistoryCharts domains={charts} now={Date.now()} />
+          <ScoreHistoryCharts domains={charts} now={Date.parse(`${today}T00:00:00Z`)} />
         </div>
         <h3 className="mt-5 flex items-baseline justify-between text-[13px] font-bold">
           变化原因

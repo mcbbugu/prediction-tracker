@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,8 +49,14 @@ const HINT: Record<string, string> = {
   待定: "还没到期，或这句话本身没法判定",
 };
 
+const subscribeNothing = () => () => {};
+const readSavedToken = () => sessionStorage.getItem("review-token") ?? "";
+
 export function CalibrationDesk() {
-  const [token, setToken] = useState("");
+  // The saved token is read from sessionStorage without setting state in an effect (empty on the server).
+  const savedToken = useSyncExternalStore(subscribeNothing, readSavedToken, () => "");
+  const [draftToken, setToken] = useState<string | null>(null);
+  const token = draftToken ?? savedToken;
   const [report, setReport] = useState<Report | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [labels, setLabels] = useState<string[]>([]);
@@ -59,13 +65,9 @@ export function CalibrationDesk() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem("review-token");
-    if (saved) {
-      setToken(saved);
-      void load(saved);
-    }
+    if (savedToken) void load(savedToken);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [savedToken]);
 
   async function load(nextToken = token) {
     sessionStorage.setItem("review-token", nextToken);
