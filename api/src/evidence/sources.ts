@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { extractText, getDocumentProxy } from "unpdf";
-import { sql } from "./db";
+import { sql } from "../core/db";
 
 export type Snapshot = {
   id: number;

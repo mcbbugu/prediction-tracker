@@ -1,5 +1,5 @@
 // Checks whether the configured Ark model can search the web. Run: pnpm api:probe
-import { arkConfigured, arkPost, arkSearch } from "./ark";
+import { arkConfigured, arkPost, arkSearch } from "../core/ark";
 
 const QUESTION =
   "特斯拉 Model 3 在 2023 年在中国的年交付量大约是多少？请联网搜索，回答时列出你引用的网页链接。";

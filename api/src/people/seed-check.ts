@@ -11,12 +11,12 @@
 // from its Internet Archive copy instead; when the seed's own evidence is not enough, the agent's outcome search
 // adds candidate pages, which are archived and judged the same way.
 // Nothing is deleted; every decision is logged in claim_events.
-import { sql } from "./db";
-import { logEvent, migrate } from "./migrate";
-import { recomputeScores } from "./score";
-import { ArkStopped, arkJson, arkSearch } from "./ark";
-import { excerpt, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
-import { JUDGED, judgeOnPages, outcomeQuery, type DueClaim, type PageJudgement } from "./verdict";
+import { sql } from "../core/db";
+import { logEvent, migrate } from "../core/migrate";
+import { recomputeScores } from "../scoring/score";
+import { ArkStopped, arkJson, arkSearch } from "../core/ark";
+import { excerpt, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
+import { JUDGED, judgeOnPages, outcomeQuery, type DueClaim, type PageJudgement } from "../claims/verdict";
 
 const CONCURRENCY = Number(process.env.SEED_CHECK_CONCURRENCY || 2);
 const MARK = "seed-check：种子自带的证据链接";

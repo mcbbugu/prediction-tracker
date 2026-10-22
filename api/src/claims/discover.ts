@@ -1,12 +1,12 @@
 // 按需分析：用户输入一个名字，agent 在后台找这个人带截止日的公开预测，逐条核对原话，到期的再找结果。
 // 每一步写进 job_events，前端 /jobs/[id] 轮询显示真实进度。
 // 抽到的主张一律是「待发布」提案；人物在审核通过前是 draft，不出现在公开列表里。
-import { ArkStopped, arkJson, arkSearch } from "./ark";
-import { sql } from "./db";
-import { logEvent } from "./migrate";
-import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
-import { ensurePortrait } from "./portrait";
-import { recomputeScores } from "./score";
+import { ArkStopped, arkJson, arkSearch } from "../core/ark";
+import { sql } from "../core/db";
+import { logEvent } from "../core/migrate";
+import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
+import { ensurePortrait } from "../people/portrait";
+import { recomputeScores } from "../scoring/score";
 import { applyVerdictIfAllowed, verifyClaim, type DueClaim } from "./verdict";
 
 const MAX_PAGES = 10;

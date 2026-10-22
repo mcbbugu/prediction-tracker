@@ -4,9 +4,9 @@
 //   - 按地区拆分的营收 → org_exposures（dimension = region，basis = 'sec_xbrl'，占比 = 地区营收 ÷ 总营收）。
 // XBRL 原文件整份存档进 sources（原始字节 + 哈希）；每条数据的「原句」是从中读出的那一条事实，逐行写在存档正文里。
 // SEC 要求请求头声明联系方式：api/.env 里的 SEC_USER_AGENT（「名称 邮箱」）。全站限速每秒 10 次，这里远低于此。
-import { sql } from "./db";
-import { migrate } from "./migrate";
-import { archiveDocument } from "./sources";
+import { sql } from "../core/db";
+import { migrate } from "../core/migrate";
+import { archiveDocument } from "../evidence/sources";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const dryRun = process.argv.includes("--dry-run");

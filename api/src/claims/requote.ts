@@ -4,12 +4,12 @@
 // - 是记者转述，但存档原文里有引号内的原话：换成原话（仍须逐字出现在存档原文里），事件 quote_corrected。
 // - 找不到原话：撤回公开（publication='proposed'，回到审核台），事件 quote_rejected。
 // 已复核过的主张默认跳过（--all 重新复核）。受影响的人重算领域分。
-import { arkConfigured, arkJson } from "./ark";
-import { sql } from "./db";
+import { arkConfigured, arkJson } from "../core/ark";
+import { sql } from "../core/db";
 import { hasChinese, isReportedSpeech, speakerNames, translateToChinese } from "./discover";
-import { logEvent, migrate } from "./migrate";
-import { recomputeScores } from "./score";
-import { normalize, quoteOnPage, snapshot } from "./sources";
+import { logEvent, migrate } from "../core/migrate";
+import { recomputeScores } from "../scoring/score";
+import { normalize, quoteOnPage, snapshot } from "../evidence/sources";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const onlyPerson = arg("person");

@@ -3,12 +3,12 @@
 // 方舟调用的全局限速和每日 AFP 预算在 ark.ts 里，跨进程生效。
 // --once：队列空了就退出（适合一次性清积压）；默认一直等新任务。
 // AUTO_PUBLISH=1（或 --publish）只用于本机未上线的网站，见 SPEC「核对分层」。
-import { ArkUnavailable, ArkStopped, afpUsedToday, arkConfigured, arkPreflight } from "./ark";
-import { sql } from "./db";
-import { runAnalyzeJob } from "./discover";
-import { migrate } from "./migrate";
-import { recomputeScores } from "./score";
-import { applyVerdictIfAllowed, verifyClaim, type DueClaim } from "./verdict";
+import { ArkUnavailable, ArkStopped, afpUsedToday, arkConfigured, arkPreflight } from "../core/ark";
+import { sql } from "../core/db";
+import { runAnalyzeJob } from "../claims/discover";
+import { migrate } from "../core/migrate";
+import { recomputeScores } from "../scoring/score";
+import { applyVerdictIfAllowed, verifyClaim, type DueClaim } from "../claims/verdict";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const concurrency = Math.max(1, Math.min(4, Number(arg("concurrency") ?? 1)));

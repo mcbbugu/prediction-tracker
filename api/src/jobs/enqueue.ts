@@ -7,13 +7,13 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afpUsedToday } from "./ark";
-import { sql } from "./db";
-import { migrate } from "./migrate";
+import { afpUsedToday } from "../core/ark";
+import { sql } from "../core/db";
+import { migrate } from "../core/migrate";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const mode = process.argv.slice(2).find((item) => !item.startsWith("--")) ?? "status";
-const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 async function enqueueDue() {
   const today = new Date().toISOString().slice(0, 10);

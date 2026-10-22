@@ -1,8 +1,8 @@
 // pnpm api:merge-orgs -- [--dry-run] [--apply]
 // 把 ALIASES 里同一家机构的旧 org_key 改成保留的键。默认只打印；--apply 才写库。
 // org_exposures、org_financials 撞上唯一索引的行不改、不删。claim_interests 没有 org_key，不改。
-import { sql } from "./db";
-import { migrate } from "./migrate";
+import { sql } from "../core/db";
+import { migrate } from "../core/migrate";
 import { ALIASES } from "./orgs";
 
 const apply = process.argv.includes("--apply") && !process.argv.includes("--dry-run");

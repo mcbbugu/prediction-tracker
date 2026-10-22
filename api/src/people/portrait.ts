@@ -4,9 +4,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { sql } from "./db";
+import { sql } from "../core/db";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const dir = join(root, "public/portraits");
 const UA = "xianyan-portraits/0.1 (prediction-tracker; local dev)";
 const WIDTH = 400;

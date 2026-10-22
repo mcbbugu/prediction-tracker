@@ -25,7 +25,7 @@ pnpm dev          # 网站 http://localhost:4321
 ```
 src/                 Next.js 网站和审核台
 api/src/             接口（Elysia）、评分、agent、迁移
-api/sql/init.sql     新数据库的表结构；旧库由 api/src/migrate.ts 补齐
+api/sql/init.sql     新数据库的表结构；旧库由 api/src/core/migrate.ts 补齐
 data/people/         人工整理的种子主张（真实出处，判定由人写，需审核后发布）
 public/portraits/    授权人物照片
 ```

@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { sql } from "./db";
-import { logEvent, migrate } from "./migrate";
-import { recomputeScores } from "./score";
+import { sql } from "../core/db";
+import { logEvent, migrate } from "../core/migrate";
+import { recomputeScores } from "../scoring/score";
 
 type SeedClaim = {
   id: string;
@@ -32,7 +32,7 @@ function norm(value: string) {
   return value.toLowerCase().replace(/[“”"'‘’]/g, "").replace(/\s+/g, " ").trim();
 }
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 const portraits: Record<
   string,

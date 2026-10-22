@@ -1,8 +1,8 @@
-import { arkConfigured, arkJson } from "./ark";
-import { sql } from "./db";
+import { arkConfigured, arkJson } from "../core/ark";
+import { sql } from "../core/db";
 import { latestScores, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg } from "./records";
-import { indicators } from "./indicators";
-import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, interestSplit, personProfile } from "./score";
+import { indicators } from "../scoring/indicators";
+import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, interestSplit, personProfile } from "../scoring/score";
 
 export type ConsultRequest = {
   query: string;

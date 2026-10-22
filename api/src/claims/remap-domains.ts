@@ -1,10 +1,10 @@
 // 把不在固定领域表里的分类归并到固定领域：pnpm api:remap
 // 一次模型调用给出「旧分类 → 新领域」对照，打印出来，然后更新主张并重算所有人的分数。
-import { arkConfigured, arkJson } from "./ark";
-import { sql } from "./db";
+import { arkConfigured, arkJson } from "../core/ark";
+import { sql } from "../core/db";
 import { DOMAINS } from "./discover";
-import { logEvent, migrate } from "./migrate";
-import { recomputeScores } from "./score";
+import { logEvent, migrate } from "../core/migrate";
+import { recomputeScores } from "../scoring/score";
 
 export async function remapStrayDomains(log: (line: string) => void = console.log) {
   const rows = await sql<{ category: string; n: number }[]>`

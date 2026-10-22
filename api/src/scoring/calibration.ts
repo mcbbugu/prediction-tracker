@@ -9,7 +9,7 @@
 //
 // pnpm api:calibrate -- sample [--n=120]   抽样（只加入还没抽过的提案）
 // pnpm api:calibrate -- report             打印报告
-import { sql } from "./db";
+import { sql } from "../core/db";
 
 export const STRATA = ["已兑现", "部分兑现", "未兑现", "证据不足"] as const;
 export const LABELS = [...STRATA, "待定"] as const;
@@ -184,7 +184,7 @@ export async function sampleCalibration(n: number) {
 const pct = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`);
 
 if (import.meta.main) {
-  const { migrate } = await import("./migrate");
+  const { migrate } = await import("../core/migrate");
   await migrate();
   const mode = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "report";
   if (mode === "sample") {

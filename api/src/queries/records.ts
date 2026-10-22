@@ -1,5 +1,5 @@
-import { sql } from "./db";
-import { orgKey } from "./orgs";
+import { sql } from "../core/db";
+import { orgKey } from "../interests/orgs";
 
 export type Evidence = { url: string };
 

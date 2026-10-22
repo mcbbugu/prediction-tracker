@@ -248,4 +248,4 @@ pnpm api:worker -- --publish                 # 执行队列（本机模式自动
 
 审核台 `/review`，口令是 `api/.env` 的 `REVIEW_TOKEN`。
 
-**方舟调用的限速与预算**（`api/src/ark.ts`，跨进程生效）：每次调用先在 `ark_calls` 表里预约时间槽，联网搜索全局间隔 `ARK_SEARCH_GAP_MS`（默认 2000ms），对话 `ARK_CHAT_GAP_MS`（默认 700ms）；联网搜索每次记 `ARK_SEARCH_AFP`（默认 5）AFP，北京时间每天累计超过 `AFP_DAILY_BUDGET`（默认 3000）就拒绝继续搜索，batch 和 worker 会自动停下。失败的调用不计费。
+**方舟调用的限速与预算**（`api/src/core/ark.ts`，跨进程生效）：每次调用先在 `ark_calls` 表里预约时间槽，联网搜索全局间隔 `ARK_SEARCH_GAP_MS`（默认 2000ms），对话 `ARK_CHAT_GAP_MS`（默认 700ms）；联网搜索每次记 `ARK_SEARCH_AFP`（默认 5）AFP，北京时间每天累计超过 `AFP_DAILY_BUDGET`（默认 3000）就拒绝继续搜索，batch 和 worker 会自动停下。失败的调用不计费。

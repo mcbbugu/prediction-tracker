@@ -10,14 +10,14 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ArkStopped, arkJson, arkPreflight, arkSearch } from "./ark";
-import { sql } from "./db";
-import { migrate } from "./migrate";
+import { ArkStopped, arkJson, arkPreflight, arkSearch } from "../core/ark";
+import { sql } from "../core/db";
+import { migrate } from "../core/migrate";
 import { canonicalName, orgKey, parseScale } from "./orgs";
-import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
+import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
-const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const publish = process.argv.includes("--publish") || process.env.AUTO_PUBLISH === "1";
 const linkOnly = process.argv.includes("--link-only");
 const MAX_PAGES = 7;

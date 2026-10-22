@@ -1,8 +1,8 @@
 // 到期核对（命令行）：pnpm api:verify -- --person=musk --limit=5   (or --claim=<id>)
 // 规则见 verdict.ts 顶部注释。
-import { ArkStopped, arkConfigured } from "./ark";
-import { sql } from "./db";
-import { migrate } from "./migrate";
+import { ArkStopped, arkConfigured } from "../core/ark";
+import { sql } from "../core/db";
+import { migrate } from "../core/migrate";
 import { verifyClaim, type DueClaim } from "./verdict";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");

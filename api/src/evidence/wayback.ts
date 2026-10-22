@@ -4,8 +4,8 @@
 //
 // - 设置了 IA_ACCESS_KEY / IA_SECRET_KEY（archive.org 账号的 S3 key）就走 SPN2 接口，更稳；否则走匿名的 /save/。
 // - 每分钟最多提交约 8 个；遇到 429 就停，下次接着跑。同一网址只提交一次。
-import { sql } from "./db";
-import { migrate } from "./migrate";
+import { sql } from "../core/db";
+import { migrate } from "../core/migrate";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const limit = Math.max(1, Number(arg("limit") ?? 50));

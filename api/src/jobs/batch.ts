@@ -5,14 +5,14 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ArkStopped, arkConfigured, arkPreflight } from "./ark";
-import { sql } from "./db";
-import { runAnalyzeJob } from "./discover";
-import { migrate } from "./migrate";
-import { remapStrayDomains } from "./remap-domains";
+import { ArkStopped, arkConfigured, arkPreflight } from "../core/ark";
+import { sql } from "../core/db";
+import { runAnalyzeJob } from "../claims/discover";
+import { migrate } from "../core/migrate";
+import { remapStrayDomains } from "../claims/remap-domains";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
-const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const file = arg("file") ?? "data/batches/ai-tech-100.txt";
 const limit = Number(arg("limit") ?? 1000);
 const concurrency = Math.max(1, Math.min(6, Number(arg("concurrency") ?? 1)));

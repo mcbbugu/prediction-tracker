@@ -1,4 +1,4 @@
-// node src/render.mjs <url>
+// node src/evidence/render.mjs <url>
 // Opens one page in a local headless Chromium and prints JSON to stdout: { status, finalUrl, contentType, html }.
 // Called by sources.ts as a fallback for pages that only show their text after JavaScript runs. Runs under Node
 // (Playwright is not reliable under Bun) in its own process, so a hung page can simply be killed.

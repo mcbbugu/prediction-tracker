@@ -1,15 +1,15 @@
 import { cors } from "@elysiajs/cors";
 import { Elysia, t } from "elysia";
-import { LABELS, calibrationReport, sampleCalibration } from "./calibration";
-import { indicators } from "./indicators";
-import { consultPrior } from "./consult";
-import { runAnalyzeJob } from "./discover";
-import { remapStrayDomains } from "./remap-domains";
-import { arkConfigured } from "./ark";
-import { sql } from "./db";
-import { logEvent, migrate } from "./migrate";
-import { latestScores, oneClaim, personInterestAtlas, personInterests, publishedClaims, type ScoreRow } from "./records";
-import { COMPOSITE_WEIGHTS, interestSplit, personProfile, recomputeScores } from "./score";
+import { LABELS, calibrationReport, sampleCalibration } from "./scoring/calibration";
+import { indicators } from "./scoring/indicators";
+import { consultPrior } from "./queries/consult";
+import { runAnalyzeJob } from "./claims/discover";
+import { remapStrayDomains } from "./claims/remap-domains";
+import { arkConfigured } from "./core/ark";
+import { sql } from "./core/db";
+import { logEvent, migrate } from "./core/migrate";
+import { latestScores, oneClaim, personInterestAtlas, personInterests, publishedClaims, type ScoreRow } from "./queries/records";
+import { COMPOSITE_WEIGHTS, interestSplit, personProfile, recomputeScores } from "./scoring/score";
 
 const reviewToken = process.env.REVIEW_TOKEN;
 if (!reviewToken) throw new Error("REVIEW_TOKEN is required");

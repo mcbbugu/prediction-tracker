@@ -1,4 +1,4 @@
-import { sql } from "./db";
+import { sql } from "../core/db";
 
 // v1.1 (2026-10-21): same formula; a score and its 80% interval show from the first judged claim (no 3/8 tiers).
 // v1.2 (2026-10-21): half-life 180 days → 3 years, so a record from years ago still counts.
@@ -349,7 +349,7 @@ export async function recomputeScores(
 
 // pnpm api:rescore — recompute every person's domain scores (e.g. after the interval was added).
 if (import.meta.main) {
-  const { migrate } = await import("./migrate");
+  const { migrate } = await import("../core/migrate");
   await migrate();
   console.log(`重算了 ${await recomputeAll("rescore")} 个人的领域分。`);
   await sql.end();

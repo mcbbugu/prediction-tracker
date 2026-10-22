@@ -9,12 +9,12 @@
 //   - the model extracts exposures using ONLY that saved text and copies the supporting sentence word for word;
 //   - code keeps an exposure only if the sentence is on the saved page and names the target, and keeps a number
 //     only if its text appears in that sentence. Nothing is estimated or converted.
-import { ArkStopped, arkJson, arkPreflight, arkSearch } from "./ark";
-import { sql } from "./db";
+import { ArkStopped, arkJson, arkPreflight, arkSearch } from "../core/ark";
+import { sql } from "../core/db";
 import { activeOn, cleanDate } from "./interests";
-import { migrate } from "./migrate";
+import { migrate } from "../core/migrate";
 import { parseScale } from "./orgs";
-import { excerpt, hostOf, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
+import { excerpt, hostOf, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const publish = process.argv.includes("--publish") || process.env.AUTO_PUBLISH === "1";

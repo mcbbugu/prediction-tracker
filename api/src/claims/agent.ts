@@ -1,6 +1,6 @@
-import { arkConfigured, arkJson } from "./ark";
-import { sql } from "./db";
-import { logEvent, migrate } from "./migrate";
+import { arkConfigured, arkJson } from "../core/ark";
+import { sql } from "../core/db";
+import { logEvent, migrate } from "../core/migrate";
 
 const personId = process.argv.find((arg) => arg.startsWith("--person="))?.split("=")[1] ?? "musk";
 

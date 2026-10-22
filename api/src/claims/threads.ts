@@ -4,10 +4,10 @@
 //
 // 模型只提出分组；代码只接受「同一个人、同一领域、编号都存在、一条主张只属于一串」的组。
 // 默认试运行，只打印；加 --apply 才写库（thread_source = 'agent'，人工设置的串不覆盖），写完重算分数。
-import { ArkStopped, arkJson, arkPreflight } from "./ark";
-import { sql } from "./db";
-import { logEvent, migrate } from "./migrate";
-import { recomputeScores } from "./score";
+import { ArkStopped, arkJson, arkPreflight } from "../core/ark";
+import { sql } from "../core/db";
+import { logEvent, migrate } from "../core/migrate";
+import { recomputeScores } from "../scoring/score";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const apply = process.argv.includes("--apply");

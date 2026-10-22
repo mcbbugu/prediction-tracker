@@ -8,11 +8,11 @@
 //   4. Code checks each copied sentence really is in that saved page. Sentences that are not found are discarded.
 //   5. A verdict of 已兑现/部分兑现/未兑现 with no surviving evidence becomes 证据不足.
 //   6. The result is a proposal. Only a person on /review can apply it to the public record.
-import { arkJson, arkSearch } from "./ark";
-import { maybeQueueAudit, verdictAutoPublish } from "./calibration";
-import { sql } from "./db";
-import { logEvent } from "./migrate";
-import { excerpt, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
+import { arkJson, arkSearch } from "../core/ark";
+import { maybeQueueAudit, verdictAutoPublish } from "../scoring/calibration";
+import { sql } from "../core/db";
+import { logEvent } from "../core/migrate";
+import { excerpt, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
 
 export const STATUSES = ["已兑现", "部分兑现", "未兑现", "待定", "证据不足"];
 export const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
