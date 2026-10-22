@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { ClaimHeatmap } from "@/components/claim-heatmap";
 import { Portrait } from "@/components/portrait";
 import { ScoreBadge } from "@/components/score-badge";
 import { explainChanges, type ChangeLine, type Snapshot } from "@/lib/score-changes";
@@ -581,22 +580,6 @@ export default async function PersonPage({
           </div>
         </section>
       ) : null}
-
-      {/* When the claims were made: 收录的带期限说法 by year × domain, each cell links to its claims */}
-      <section className="mt-8">
-        <h2 className="flex flex-wrap items-baseline gap-x-3 text-[15px] font-bold">
-          收录的带期限说法
-          <span className="text-xs font-normal text-mute">按说话年份 × 领域；只统计已收录的话，报道多的年份会显得更密</span>
-        </h2>
-        <div className="mt-3">
-          <ClaimHeatmap
-            claims={claims}
-            href={({ domain, year }) => listHref({ domain, year, show: null })}
-            activeYear={yearFilter}
-            activeDomain={domainFilter}
-          />
-        </div>
-      </section>
 
       {/* Claims */}
       <section id="claims" className="mt-8 scroll-mt-24">
