@@ -205,7 +205,7 @@ export default async function PersonPage({
           <Portrait person={data.person} riso className="w-[76px] shrink-0 !rounded-[12px]" />
           <div className="min-w-0">
             <p className="flex items-center gap-1 text-xs text-mute">
-              <Link href="/speakers" className="no-underline hover-fine:text-ink">
+              <Link href="/" className="no-underline hover-fine:text-ink">
                 人物
               </Link>
               <Icon name="chevron-right" size={11} />

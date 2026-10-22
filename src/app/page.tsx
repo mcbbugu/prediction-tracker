@@ -33,12 +33,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         machine: claims.filter((claim) => claim.reviewed === false).length,
       };
     })
-    .sort(
-      (a, b) =>
-        (b.lead ? stage(b.lead) : -1) - (a.lead ? stage(a.lead) : -1) ||
-        (b.lead?.value ?? 0) - (a.lead?.value ?? 0) ||
-        b.judged - a.judged,
-    );
+    // Most-judged records first: a score from one judged claim is mostly the prior and shouldn't lead the list.
+    .sort((a, b) => b.judged - a.judged || b.total - a.total || (b.lead?.value ?? -1) - (a.lead?.value ?? -1));
 
   const pages = Math.max(1, Math.ceil(cards.length / PAGE_SIZE));
   const page = Math.min(pages, Math.max(1, Number(pageParam) || 1));
