@@ -139,8 +139,12 @@ export type ConsultPayload = {
   }[];
 };
 
+// The API as the browser reaches it (NEXT_PUBLIC_API_URL), and as the Next server reaches it (API_URL,
+// e.g. a private network address in production). Both default to the local dev API.
+export const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3011";
+
 export function apiBase() {
-  return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3011";
+  return process.env.API_URL || PUBLIC_API_URL;
 }
 
 export async function getJson<T>(path: string): Promise<T> {

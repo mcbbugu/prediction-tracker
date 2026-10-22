@@ -15,10 +15,12 @@ import { sql } from "../core/db";
 import { migrate } from "../core/migrate";
 import { canonicalName, orgKey, parseScale } from "./orgs";
 import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
+import { isProduction } from "../core/env";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
-const publish = process.argv.includes("--publish") || process.env.AUTO_PUBLISH === "1";
+// --publish / AUTO_PUBLISH only work off production (core/env.ts).
+const publish = (process.argv.includes("--publish") || process.env.AUTO_PUBLISH === "1") && !isProduction;
 const linkOnly = process.argv.includes("--link-only");
 const MAX_PAGES = 7;
 const KINDS = new Set(["role", "holding", "deal"]);

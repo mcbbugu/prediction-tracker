@@ -8,6 +8,7 @@ import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot }
 import { ensurePortrait } from "../people/portrait";
 import { recomputeScores } from "../scoring/score";
 import { applyVerdictIfAllowed, verifyClaim, type DueClaim } from "./verdict";
+import { localPublishMode } from "../core/env";
 
 const MAX_PAGES = 10;
 // A fixed domain list: free-form labels ("人工智能" vs "大模型" vs "AI") split one person's record
@@ -31,7 +32,7 @@ export const DOMAINS = [
 ];
 // AUTO_PUBLISH=1 is for a local, not-yet-public site only: machine-checked claims go straight onto the
 // site, labelled 机器核对. Before going public, turn it off and calibrate (see SPEC.md 核对分层).
-const autoPublish = () => process.env.AUTO_PUBLISH === "1";
+const autoPublish = () => localPublishMode();
 const MAX_DUE_CHECKS = 3;
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 

@@ -20,6 +20,22 @@ pnpm dev          # 网站 http://localhost:4321
 
 模型密钥写在 `api/.env`：`ARK_API_KEY`、`ARK_BASE_URL`、`ARK_MODEL`。`pnpm api:agent -- --person=musk` 会去找新原话，结果同样进审核队列。
 
+## 上线清单
+
+本机能跑不等于能上线。部署前逐项确认：
+
+1. **数据库**：托管的 Postgres 16，`api/.env` 的 `DATABASE_URL` 指向它；接口启动时自动迁移。定期备份（证据存档和判定是只追加的，丢了补不回来）。
+2. **接口**（`cd api && bun run start`，常驻）：
+   - `NODE_ENV=production`：生产环境下本机模式（`AUTO_PUBLISH=1`）会让接口和 worker 拒绝启动，机器判定只有过了校准门槛才自动公开；
+   - `REVIEW_TOKEN` 至少 24 个字符；
+   - `CORS_ORIGINS` 设为网站的域名；`SITE_URL` 设为网站地址（consult / MCP 返回的链接用它）。
+3. **worker**（`cd api && bun run worker`，常驻）：到期核对和按需分析都靠它。不要加 `--publish`。
+4. **网站**（`pnpm build && pnpm start`）：`.env.local` 的 `NEXT_PUBLIC_API_URL` 填浏览器能访问到的接口地址，`API_URL` 可填内网地址。
+5. **抓取**：服务器上装本机浏览器（`cd api && node node_modules/playwright/cli.js install chromium`），没装则跳过这一级回退；`JINA_API_KEY`、`IA_ACCESS_KEY` / `IA_SECRET_KEY` 按需填写。
+6. **上线前的数据**：在 `/review/calibration` 完成盲标，校准达标前机器判定一律进审核台。
+
+完整的环境变量说明见 `api/.env.example` 和 `.env.example`。
+
 ## 目录
 
 ```

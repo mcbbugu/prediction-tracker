@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { StatusPill } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
+import { PUBLIC_API_URL } from "@/lib/api";
 
 type Proposal = {
   id: string;
@@ -53,7 +54,7 @@ type Run = {
 
 const STATUSES = ["已兑现", "部分兑现", "未兑现", "待定", "证据不足"];
 const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
-const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3011";
+const API = PUBLIC_API_URL;
 
 function host(url: string) {
   try {

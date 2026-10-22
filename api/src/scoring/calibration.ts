@@ -10,6 +10,7 @@
 // pnpm api:calibrate -- sample [--n=120]   抽样（只加入还没抽过的提案）
 // pnpm api:calibrate -- report             打印报告
 import { sql } from "../core/db";
+import { localPublishMode } from "../core/env";
 
 export const STRATA = ["已兑现", "部分兑现", "未兑现", "证据不足"] as const;
 export const LABELS = [...STRATA, "待定"] as const;
@@ -114,7 +115,7 @@ export async function calibrationReport() {
 
 // Whether an agent verdict may take effect without a person: local mode, or a passed calibration.
 export async function verdictAutoPublish() {
-  if (process.env.AUTO_PUBLISH === "1") return { allowed: true, mode: "local" as const };
+  if (localPublishMode()) return { allowed: true, mode: "local" as const };
   const report = await calibrationReport();
   return { allowed: report.gate.open, mode: "calibrated" as const };
 }

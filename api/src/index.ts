@@ -8,11 +8,13 @@ import { consultPrior } from "./queries/consult";
 import { runAnalyzeJob } from "./claims/discover";
 import { remapStrayDomains } from "./claims/remap-domains";
 import { arkConfigured } from "./core/ark";
+import { assertSafeToStart, corsOrigin } from "./core/env";
 import { sql } from "./core/db";
 import { logEvent, migrate } from "./core/migrate";
 import { latestScores, oneClaim, personInterestAtlas, personInterests, publishedClaims, type ScoreRow } from "./queries/records";
 import { COMPOSITE_WEIGHTS, interestSplit, personProfile, recomputeScores } from "./scoring/score";
 
+assertSafeToStart("api");
 const reviewToken = process.env.REVIEW_TOKEN;
 if (!reviewToken) throw new Error("REVIEW_TOKEN is required");
 
@@ -54,7 +56,7 @@ async function hasPublishedDuplicate(personId: string, quoteEn: string, deadline
 }
 
 const app = new Elysia()
-  .use(cors({ origin: true, allowedHeaders: ["Content-Type", "x-review-token"] }))
+  .use(cors({ origin: corsOrigin(), allowedHeaders: ["Content-Type", "x-review-token"] }))
   .get("/health", () => ({ ok: true }))
   // consult 第一层：只查库的先验，可按 as_of 查过去某天的记录。
   .get(

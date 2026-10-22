@@ -4,10 +4,11 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PUBLIC_API_URL } from "@/lib/api";
 
 // 校准协议的盲标台：一次一条，看不到模型的结论和理由，自己判断后点结论。
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3011";
+const API = PUBLIC_API_URL;
 
 type Part = { n: number; agree: number; rate: number | null; low: number | null; high: number | null; kappa: number | null };
 type Report = {

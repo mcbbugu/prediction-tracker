@@ -10,6 +10,7 @@ import { sql } from "../core/db";
 import { runAnalyzeJob } from "../claims/discover";
 import { migrate } from "../core/migrate";
 import { remapStrayDomains } from "../claims/remap-domains";
+import { assertSafeToStart, localPublishMode } from "../core/env";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -31,6 +32,7 @@ function parse(text: string) {
 }
 
 async function main() {
+  assertSafeToStart("batch");
   await migrate();
   if (!arkConfigured()) {
     console.log("缺少 ARK_API_KEY、ARK_BASE_URL 或 ARK_MODEL（api/.env）");
@@ -42,7 +44,7 @@ async function main() {
     return;
   }
   const people = parse(readFileSync(join(root, file), "utf8")).slice(0, limit);
-  console.log(`名单 ${people.length} 人 · ${process.env.AUTO_PUBLISH === "1" ? "结果以「机器核对」直接公开" : "结果进审核台"}`);
+  console.log(`名单 ${people.length} 人 · ${localPublishMode() ? "结果以「机器核对」直接公开" : "结果进审核台"}`);
   const started = Date.now();
   let done = 0;
   let stopped = false;

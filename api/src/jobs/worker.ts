@@ -9,6 +9,7 @@ import { runAnalyzeJob } from "../claims/discover";
 import { migrate } from "../core/migrate";
 import { recomputeScores } from "../scoring/score";
 import { applyVerdictIfAllowed, verifyClaim, type DueClaim } from "../claims/verdict";
+import { assertSafeToStart, localPublishMode } from "../core/env";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const concurrency = Math.max(1, Math.min(4, Number(arg("concurrency") ?? 1)));
@@ -166,6 +167,7 @@ async function loop() {
 }
 
 async function main() {
+  assertSafeToStart("worker");
   await migrate();
   if (!arkConfigured()) {
     console.log("缺少 ARK_API_KEY、ARK_BASE_URL 或 ARK_MODEL（api/.env）");
@@ -187,7 +189,7 @@ async function main() {
   console.log(
     `队列 ${counts.queued} 个任务 · 并发 ${concurrency} · 今日 AFP ${afp.used}/${afp.budget}` +
       (revived.length ? ` · 回收中断任务 ${revived.length} 个` : "") +
-      (process.env.AUTO_PUBLISH === "1" ? " · 本机模式自动公开" : ""),
+      (localPublishMode() ? " · 本机模式自动公开" : ""),
   );
   await Promise.all(Array.from({ length: concurrency }, () => loop()));
   if (stopping) console.log(`已停止：${stopReason}。处理好之后重新启动会接着跑。`);
