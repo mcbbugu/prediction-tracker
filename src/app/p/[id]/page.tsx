@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/icon";
+import { ActivityGrid } from "@/components/activity-grid";
 import { Portrait } from "@/components/portrait";
 import { ScoreBadge } from "@/components/score-badge";
 import { explainChanges, type ChangeLine, type Snapshot } from "@/lib/score-changes";
@@ -88,11 +89,12 @@ export default async function PersonPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ domain?: string; show?: string; year?: string }>;
+  searchParams: Promise<{ domain?: string; show?: string; year?: string; month?: string }>;
 }) {
   const { id } = await params;
-  const { domain: domainFilter, show, year: rawYear } = await searchParams;
+  const { domain: domainFilter, show, year: rawYear, month: rawMonth } = await searchParams;
   const yearFilter = rawYear && /^\d{4}$/.test(rawYear) ? rawYear : undefined;
+  const monthFilter = rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) ? rawMonth : undefined;
   const [data, history] = await Promise.all([
     getJson<{ person: Person; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators }>(`/v1/people/${id}`),
     getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history`).catch(() => ({ snapshots: [] as Snapshot[] })),
@@ -130,10 +132,11 @@ export default async function PersonPage({
     (claim) =>
       (!domainFilter || claim.category === domainFilter) &&
       (!showFilter || showFilter.test(claim, today)) &&
-      (!yearFilter || claim.published_date.startsWith(yearFilter)),
+      (!yearFilter || claim.published_date.startsWith(yearFilter)) &&
+      (!monthFilter || claim.published_date.startsWith(monthFilter)),
   );
   // Every number on this page links to the claims behind it (SPEC: 数字都能追到原文).
-  const listHref = (next: { domain?: string | null; show?: string | null; year?: string | null }) => {
+  const listHref = (next: { domain?: string | null; show?: string | null; year?: string | null; month?: string | null }) => {
     const params = new URLSearchParams();
     const d = next.domain === undefined ? domainFilter : next.domain;
     const sh = next.show === undefined ? show : next.show;
@@ -141,6 +144,8 @@ export default async function PersonPage({
     if (d) params.set("domain", d);
     if (sh) params.set("show", sh);
     if (y) params.set("year", y);
+    const mo = next.month === undefined ? monthFilter : next.month;
+    if (mo) params.set("month", mo);
     const query = params.toString();
     return `/p/${id}${query ? `?${query}` : ""}#claims`;
   };
@@ -583,12 +588,19 @@ export default async function PersonPage({
 
       {/* Claims */}
       <section id="claims" className="mt-8 scroll-mt-24">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <h2 className="flex flex-wrap items-baseline gap-x-3 text-[15px] font-bold">
           全部主张
           <span className="text-xs font-normal text-mute">先列已到期的（最近的在上），再列未到期的</span>
           {domainFilter ? (
             <Link href={listHref({ domain: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
               {domainFilter}
+              <Icon name="cancel" size={11} />
+            </Link>
+          ) : null}
+          {monthFilter ? (
+            <Link href={listHref({ month: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
+              {monthFilter.slice(0, 4)} 年 {Number(monthFilter.slice(5))} 月说的
               <Icon name="cancel" size={11} />
             </Link>
           ) : null}
@@ -605,6 +617,11 @@ export default async function PersonPage({
             </Link>
           ) : null}
         </h2>
+        <div className="flex items-end gap-2" title="按说话月份：颜色越深，那个月收录的带期限说法越多；只统计已收录的话">
+          <span className="text-[10px] leading-tight text-mute">按月份</span>
+          <ActivityGrid claims={claims} href={(month) => listHref({ month, year: null, show: null })} active={monthFilter} />
+        </div>
+        </div>
         <ul className="mt-3 overflow-hidden rounded-[14px] bg-card">
           {shown.map((claim) => {
             const p = phase(claim, today);
