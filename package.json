@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 4321",
     "lint": "eslint src",
+    "test:web": "bun test tests/web",
     "api:dev": "cd api && bun run dev",
     "api:seed": "cd api && bun run seed",
     "api:seed-check": "cd api && bun run seed-check",
