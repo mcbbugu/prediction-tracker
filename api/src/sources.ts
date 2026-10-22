@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { join } from "node:path";
 import { extractText, getDocumentProxy } from "unpdf";
 import { sql } from "./db";
 
@@ -15,7 +16,7 @@ export type Snapshot = {
 
 // How a page was reached. Every route keeps the raw bytes it got, so the text we matched quotes against
 // can always be re-derived and checked against its hash.
-export type FetchVia = "direct" | "jina";
+export type FetchVia = "direct" | "browser" | "jina";
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) prediction-tracker/0.2";
 function decode(text: string) {
@@ -49,12 +50,12 @@ export function textFromHtml(html: string) {
   return { title, text: body };
 }
 
-// ---- Fetching, with a fallback chain (SPEC 证据存档):
+// ---- Fetching, with a fallback chain (SPEC 证据存档). Each step runs only if the previous copy is weak
+// (unreachable, an error page, a bot check, or nearly empty):
 //   1. open the page ourselves (two retries on network errors);
-//   2. if that fails, is an error page, a bot check, or nearly empty, read it through Jina Reader, which renders
-//      JavaScript (set JINA_API_KEY: Jina refuses anonymous calls from networks it distrusts, e.g. many proxies).
-// PDFs fetched directly are turned into text locally (unpdf).
-// A headless-browser step can be added after 2 for sites both refuse.
+//   2. render it in a local headless Chromium (render.mjs) — free, nothing leaves this machine;
+//   3. read it through Jina Reader (set JINA_API_KEY: Jina refuses anonymous calls from networks it distrusts).
+// PDFs fetched directly are turned into text locally (unpdf). Bot checks and CAPTCHAs are never bypassed.
 
 type Fetched = { status: number; finalUrl: string; bytes: Uint8Array; contentType: string; via: FetchVia };
 
@@ -84,6 +85,31 @@ async function fetchDirect(url: string): Promise<Fetched | null> {
     }
   }
   return null;
+}
+
+// The browser's raw copy is the rendered DOM it serialised, not the network bytes; fetched_via says so.
+const RENDER = join(import.meta.dir, "render.mjs");
+const BROWSER_TIMEOUT_MS = 60_000;
+
+async function fetchBrowser(url: string): Promise<Fetched | null> {
+  try {
+    const child = Bun.spawn(["node", RENDER, url], { stdout: "pipe", stderr: "ignore" });
+    const timer = setTimeout(() => child.kill(), BROWSER_TIMEOUT_MS);
+    const [out, code] = await Promise.all([new Response(child.stdout).text(), child.exited]);
+    clearTimeout(timer);
+    const result = JSON.parse(out || "{}") as { status?: number; finalUrl?: string; contentType?: string; html?: string };
+    if (code !== 0 || !result.html) return null;
+    return {
+      status: result.status ?? 0,
+      finalUrl: result.finalUrl || url,
+      bytes: new TextEncoder().encode(result.html),
+      contentType: result.contentType || "text/html",
+      via: "browser",
+    };
+  } catch {
+    // Node or Chromium missing, or the page hung: this step is skipped.
+    return null;
+  }
 }
 
 async function fetchJina(url: string): Promise<Fetched | null> {
@@ -148,13 +174,15 @@ function weakness(fetched: Fetched | null, page: { title: string; text: string }
 export async function snapshot(url: string, maxChars = 200_000): Promise<Snapshot | null> {
   let fetched = await fetchDirect(url);
   let page = fetched ? await extract(fetched) : null;
-  if (weakness(fetched, page)) {
-    const viaJina = await fetchJina(url);
-    const jinaPage = viaJina ? await extract(viaJina) : null;
-    const directUsable = fetched && page && fetched.status < 400 ? page.text.length : 0;
-    if (viaJina && jinaPage && jinaPage.text.length >= THIN_TEXT && jinaPage.text.length > directUsable) {
-      fetched = viaJina;
-      page = jinaPage;
+  for (const next of [fetchBrowser, fetchJina]) {
+    if (!weakness(fetched, page)) break;
+    const alt = await next(url);
+    const altPage = alt ? await extract(alt) : null;
+    if (!alt || !altPage) continue;
+    // Take the alternative if it is good evidence, or if we had nothing at all (keeps the error page on record).
+    if (!weakness(alt, altPage) || !fetched) {
+      fetched = alt;
+      page = altPage;
     }
   }
   if (!fetched || !page) return null;

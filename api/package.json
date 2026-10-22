@@ -26,6 +26,7 @@
   "dependencies": {
     "@elysiajs/cors": "1.2.0",
     "elysia": "1.2.25",
+    "playwright": "^1.64.1",
     "postgres": "^3.4.9",
     "unpdf": "^1.9.1"
   },
