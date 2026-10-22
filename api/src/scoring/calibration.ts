@@ -134,7 +134,9 @@ export async function maybeQueueAudit(proposalId: number, mode: "local" | "calib
 
 // Stratified sample of proposals not yet in calibration_items; within a stratum, spread over domains.
 export async function sampleCalibration(n: number) {
-  const pool = await sql<{ id: number; claim_id: string; status: string; category: string }[]>`
+  type PoolRow = { id: number; claim_id: string; status: string; category: string };
+  // A plain array (not the query's RowList), so the sampling below can build its own lists of rows.
+  const pool: PoolRow[] = await sql<PoolRow[]>`
     SELECT v.id::int AS id, v.claim_id, v.status, c.category
     FROM verdict_proposals v
     JOIN claims c ON c.id = v.claim_id
@@ -157,14 +159,14 @@ export async function sampleCalibration(n: number) {
       if (left === 0) break;
     }
   }
-  const picked: typeof pool = [];
+  const picked: PoolRow[] = [];
   for (const s of STRATA) {
     // Round-robin over domains so one busy domain does not fill the stratum.
-    const domains = new Map<string, typeof pool>();
+    const domains = new Map<string, PoolRow[]>();
     for (const row of byStratum.get(s)!) domains.set(row.category, [...(domains.get(row.category) ?? []), row]);
     const queues = [...domains.values()];
     const want = quota.get(s)!;
-    const chosen: typeof pool = [];
+    const chosen: PoolRow[] = [];
     for (let i = 0; chosen.length < want; i = (i + 1) % queues.length) {
       const next = queues[i].shift();
       if (next) chosen.push(next);

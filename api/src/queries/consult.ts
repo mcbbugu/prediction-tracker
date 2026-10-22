@@ -1,6 +1,6 @@
 import { ArkStopped, arkConfigured, arkJson } from "../core/ark";
 import { sql } from "../core/db";
-import { latestScores, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg } from "./records";
+import { latestScores, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg, type ClaimRow } from "./records";
 import { indicators } from "../scoring/indicators";
 import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, interestSplit, personProfile } from "../scoring/score";
 
@@ -138,7 +138,7 @@ async function parseQuery(
 }
 
 // Earlier claims by the same person about the same commitment, with how they turned out.
-async function findPrecedents(claim: string, personClaims: Awaited<ReturnType<typeof publishedClaims>>) {
+async function findPrecedents(claim: string, personClaims: ClaimRow[]) {
   if (!arkConfigured() || personClaims.length === 0) return [];
   const pool = personClaims.slice(0, 120);
   try {

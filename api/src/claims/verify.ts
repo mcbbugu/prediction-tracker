@@ -13,7 +13,7 @@ const limit = Number(arg("limit") ?? 5);
 async function record(step: string, status: string, detail: Record<string, unknown>, person = personId ?? null) {
   await sql`
     INSERT INTO agent_runs (person_id, step, status, detail)
-    VALUES (${person}, ${step}, ${status}, ${sql.json(detail)})
+    VALUES (${person}, ${step}, ${status}, ${sql.json(detail as Parameters<typeof sql.json>[0])})
   `;
   console.log(`${status}\t${step}\t${JSON.stringify(detail).slice(0, 200)}`);
 }

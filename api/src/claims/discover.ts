@@ -108,7 +108,7 @@ function emitter(jobId: string) {
   return async (step: string, status: "running" | "done" | "failed" | "info", message: string, data: Record<string, unknown> = {}) => {
     await sql`
       INSERT INTO job_events (job_id, step, status, message, data)
-      VALUES (${jobId}, ${step}, ${status}, ${message}, ${sql.json(data)})
+      VALUES (${jobId}, ${step}, ${status}, ${message}, ${sql.json(data as Parameters<typeof sql.json>[0])})
     `;
     await sql`UPDATE jobs SET updated_at = now() WHERE id = ${jobId}`;
   };

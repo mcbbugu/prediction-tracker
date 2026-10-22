@@ -208,7 +208,7 @@ async function save(url: string, fetched: Fetched, page: { title: string; text: 
   const cleanTitle = page.title.replace(/[\u0000-\u001f]/g, " ").trim();
   const sha256 = createHash("sha256").update(kept).digest("hex");
   const rawSha256 = createHash("sha256").update(fetched.bytes).digest("hex");
-  const rawGz = Buffer.from(Bun.gzipSync(fetched.bytes));
+  const rawGz = Buffer.from(Bun.gzipSync(new Uint8Array(fetched.bytes)));
   const rows = await sql<{ id: number }[]>`
     INSERT INTO sources (url, final_url, http_status, title, text, sha256, raw_gz, raw_sha256, content_type, fetched_via)
     VALUES (${url}, ${fetched.finalUrl}, ${fetched.status}, ${cleanTitle}, ${kept}, ${sha256},

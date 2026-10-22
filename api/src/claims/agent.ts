@@ -22,7 +22,7 @@ const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 async function record(step: string, status: RunStatus, detail: Record<string, unknown>) {
   await sql`
     INSERT INTO agent_runs (person_id, step, status, detail)
-    VALUES (${personId}, ${step}, ${status}, ${sql.json(detail)})
+    VALUES (${personId}, ${step}, ${status}, ${sql.json(detail as Parameters<typeof sql.json>[0])})
   `;
   console.log(`${status}\t${step}`);
 }
