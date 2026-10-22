@@ -5,8 +5,8 @@ import { InterestLedger } from "@/components/interest-ledger";
 import { InterestTimeline } from "@/components/interest-timeline";
 import { Portrait } from "@/components/portrait";
 import { getJson, type Claim, type Interest, type Person, type PersonInterests } from "@/lib/api";
-import { isCurrent, loadInterests, stakeOf } from "@/lib/interests";
-import { assignClaims } from "@/lib/money-flow";
+import { isCurrent, loadInterests, orgLabel, stakeOf } from "@/lib/interests";
+import { assignClaims, buildMoneyFlow } from "@/lib/money-flow";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +22,33 @@ export default async function InterestsPage({ params }: { params: Promise<{ id: 
   );
   const exposureCount = orgs.reduce((sum, org) => sum + org.exposures.length, 0);
   const relationCount = orgs.reduce((sum, org) => sum + org.relations.length, 0);
-  const linkedClaims = new Set(flow.claim_links.map((link) => link.claim_id));
 
   const claimsByOrg = assignClaims(orgs, data.claims, flow.claim_links);
+  const split = fallback.status === "collected" ? fallback : null;
+  const unrelatedCount = claimsByOrg.get(null)?.length ?? 0;
+  const relatedCount = data.claims.length - unrelatedCount;
+  const sizedCount = orgs.reduce((sum, org) => sum + org.exposures.filter((e) => e.metric && !(e.metric.kind === "amount_usd" && e.metric.value < 10_000)).length, 0);
+
+  // 现任：the organisations he talks about most, with his first-listed current role there.
+  const said = (org: (typeof orgs)[number]) => claimsByOrg.get(org.org_key)?.length ?? 0;
+  const roles = orgs
+    .filter((org) => org.relations.some((r) => r.kind === "role" && isCurrent(r)))
+    .sort((a, b) => said(b) - said(a))
+    .slice(0, 3)
+    .map((org) => `${orgLabel(org)} ${org.relations.find((r) => r.kind === "role" && isCurrent(r))!.role.split(/[、,，]/)[0]}`);
+
+  // 钱最多从哪来：the flow's top three organisations and their two largest disclosed sources.
+  const money = buildMoneyFlow(orgs, data.claims, flow.claim_links, { maxOrgs: 3, maxSources: 8 });
+  const topMoney = money.orgs.map((org) => ({
+    label: org.label,
+    stake: org.stake,
+    from: org.sources
+      .filter((s) => s.group !== "depends" && s.metric)
+      .slice(0, 2)
+      .map((s) => `${s.label} ${s.metric.replace(/ \d{4}$/, "")}`)
+      .join("、"),
+  }));
+
 
   return (
     <div className="pt-6">
@@ -35,27 +59,60 @@ export default async function InterestsPage({ params }: { params: Promise<{ id: 
         <Icon name="chevron-right" size={11} />
         <span>利益关系</span>
       </p>
-      <section className="mt-3 flex flex-wrap items-center gap-x-8 gap-y-4 rounded-[18px] bg-card p-5">
-        <div className="flex min-w-0 flex-1 items-center gap-4">
+      <section className="mt-3 rounded-[18px] bg-card p-5 sm:p-6">
+        <div className="flex items-center gap-4">
           <Portrait person={data.person} riso className="w-[64px] shrink-0 !rounded-[12px]" />
           <div className="min-w-0">
             <h1 className="text-[26px] leading-tight font-[900] tracking-tight">{data.person.name}的利益版图</h1>
-            <p className="text-sm text-mute">公开可核查的任职、持股、交易，以及这些机构对外的地域、工厂、供应链和合作敞口</p>
+            {roles.length ? <p className="mt-0.5 text-sm text-mute">现任：{roles.join(" · ")}</p> : null}
           </div>
         </div>
-        <dl className="grid grid-cols-4 gap-x-6">
+
+        <div className="mt-6 grid gap-x-8 gap-y-5 sm:grid-cols-[1fr_1fr_1.4fr]">
           {[
-            ["机构", orgs.length],
-            ["关系", relationCount],
-            ["对外敞口", flow.layered ? exposureCount : "采集中"],
-            ["关联主张", flow.layered ? linkedClaims.size : "采集中"],
-          ].map(([label, value]) => (
-            <div key={label as string}>
-              <dd className="display-num text-[24px] leading-none font-[800]">{value}</dd>
-              <dt className="mt-1 text-[11px] whitespace-nowrap text-mute">{label}</dt>
+            { label: "关于自家公司的话", part: split?.related ?? null, count: relatedCount },
+            { label: "其他话题", part: split?.unrelated ?? null, count: unrelatedCount },
+          ].map(({ label, part, count }) => (
+            <div key={label}>
+              <p className="text-xs text-mute">{label}</p>
+              {part?.value != null ? (
+                <p className="mt-1 flex items-baseline gap-2">
+                  <span className="display-num text-[34px] leading-none font-[800]">{part.value.toFixed(0)}</span>
+                  <span className="num text-xs text-mute">
+                    兑现率 · 区间 {part.low}–{part.high}
+                  </span>
+                </p>
+              ) : (
+                <p className="mt-1 text-[22px] leading-[34px] font-[800] text-mute">{count ? "样本不足" : "—"}</p>
+              )}
+              <p className="num mt-1 text-xs text-mute">
+                {count} 句{part?.n ? ` · ${part.n} 句已判定` : count ? " · 还没有已判定的" : ""}
+              </p>
             </div>
           ))}
-        </dl>
+          <div>
+            <p className="text-xs text-mute">钱最多从哪来</p>
+            {topMoney.length ? (
+              <ul className="mt-1.5 space-y-1 text-sm">
+                {topMoney.map((item) => (
+                  <li key={item.label} className="truncate">
+                    <span className="font-semibold">{item.label}</span>
+                    {item.stake ? <span className="num ml-1.5 text-xs text-blue">持股 {item.stake}%</span> : null}
+                    {item.from ? <span className="ml-1.5 text-xs text-mute">← {item.from}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-sm text-mute">还没有采到</p>
+            )}
+          </div>
+        </div>
+
+        <p className="num mt-5 border-t border-line pt-3 text-[11px] text-mute">
+          {orgs.length} 家机构 · {relationCount} 段关系
+          {flow.layered ? ` · ${exposureCount} 项对外敞口（${sizedCount} 项有规模数字）` : " · 对外敞口采集中"}
+          {split ? "" : " · 利益相关与无关的兑现率还没有算出"}
+        </p>
       </section>
 
       <section className="mt-6 rounded-[18px] bg-card p-5">
