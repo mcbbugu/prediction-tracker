@@ -6,6 +6,7 @@
     "dev": "next dev -p 4321",
     "build": "next build",
     "start": "next start -p 4321",
+    "lint": "eslint src",
     "api:dev": "cd api && bun run dev",
     "api:seed": "cd api && bun run seed",
     "api:seed-check": "cd api && bun run seed-check",
@@ -48,6 +49,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
