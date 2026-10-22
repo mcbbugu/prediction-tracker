@@ -644,6 +644,11 @@ export default async function PersonPage({
                     {claim.quote_kind === "reported" ? (
                       <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">转述</span>
                     ) : null}
+                    {claim.disputed ? (
+                      <span title="有人提交了反证，正在复核" className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">
+                        有争议
+                      </span>
+                    ) : null}
                   </span>
                   <span className="min-w-0">
                     <span className="line-clamp-2 block text-[15px] leading-6">{claim.quote_zh}</span>

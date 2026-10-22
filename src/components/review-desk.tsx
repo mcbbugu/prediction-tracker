@@ -44,6 +44,20 @@ type Verdict = {
   rejected_evidence: { url: string; quote: string; reason: string }[];
 };
 
+type Challenge = {
+  id: number;
+  claim_id: string;
+  person_id: string;
+  person_name: string;
+  url: string;
+  note: string;
+  quote_zh: string;
+  status: string;
+  deadline: string;
+  http_status: number | null;
+  excerpt: string | null;
+};
+
 type Run = {
   id: string;
   step: string;
@@ -75,6 +89,8 @@ export function ReviewDesk() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [verdicts, setVerdicts] = useState<Verdict[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [decisionNotes, setDecisionNotes] = useState<Record<number, string>>({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [open, setOpen] = useState(false);
@@ -100,6 +116,7 @@ export function ReviewDesk() {
     setProposals(body.proposals);
     setVerdicts(body.verdicts ?? []);
     setRuns(body.runs);
+    setChallenges(body.challenges ?? []);
   }
 
   function fail(message: string) {
@@ -126,6 +143,17 @@ export function ReviewDesk() {
     const body = await response.json();
     if (!response.ok) return fail(body.error || "动作没有完成");
     setVerdicts((list) => list.filter((item) => item.id !== id));
+  }
+
+  async function decideChallenge(id: number, action: "accept" | "reject") {
+    const response = await fetch(`${API}/v1/challenges/${id}/${action}`, {
+      method: "POST",
+      headers: { "x-review-token": token, "content-type": "application/json" },
+      body: JSON.stringify({ note: decisionNotes[id] ?? "" }),
+    });
+    const body = await response.json();
+    if (!response.ok) return fail(body.error || "动作没有完成");
+    setChallenges((list) => list.filter((item) => item.id !== id));
   }
 
   async function edit(id: string, patch: { status?: string; actual_result?: string; evidence_urls?: string[] }) {
@@ -168,6 +196,48 @@ export function ReviewDesk() {
           </Button>
         </div>
         {error ? <p className="mt-3 text-sm text-mute">{error}</p> : null}
+
+        {challenges.length > 0 ? (
+          <section className="mt-8">
+            <h2 className="inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight">
+              <Icon name="flag" />
+              反证 {challenges.length}
+            </h2>
+            <p className="mt-1 text-sm text-mute">公众提交的反证。复核期间这些主张标「有争议」。接受后到主张上用判定工具改结论；驳回也要写理由。</p>
+            <ul className="mt-3 space-y-3">
+              {challenges.map((item) => (
+                <li key={item.id} className="rounded-2xl border border-line bg-card p-4 text-sm">
+                  <p className="text-xs text-mute">
+                    {item.person_name} · 现结论 {item.status} · 期限 {item.deadline}
+                  </p>
+                  <a href={`/p/${item.person_id}/${item.claim_id}`} target="_blank" rel="noreferrer" className="mt-1 block font-medium text-ink no-underline hover-fine:text-blue">
+                    「{item.quote_zh}」
+                  </a>
+                  <p className="mt-2 leading-6">{item.note}</p>
+                  <p className="mt-1 text-xs">
+                    <a href={item.url} target="_blank" rel="noreferrer" className="text-blue">
+                      {host(item.url)}
+                    </a>
+                    <span className="ml-2 text-mute">{item.http_status ? `已存档 · HTTP ${item.http_status}` : "存档失败"}</span>
+                  </p>
+                  {item.excerpt ? <p className="mt-2 line-clamp-3 rounded-lg bg-sunken px-3 py-2 text-xs leading-5 text-mute">{item.excerpt}</p> : null}
+                  <Input
+                    className="mt-3"
+                    value={decisionNotes[item.id] ?? ""}
+                    placeholder="理由（必填）"
+                    onChange={(event) => setDecisionNotes((notes) => ({ ...notes, [item.id]: event.target.value }))}
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <Button onClick={() => decideChallenge(item.id, "accept")}>接受</Button>
+                    <Button variant="secondary" onClick={() => decideChallenge(item.id, "reject")}>
+                      驳回
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         {verdicts.length > 0 ? (
           <section className="mt-8">

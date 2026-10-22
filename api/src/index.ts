@@ -5,6 +5,7 @@ import { indicators } from "./scoring/indicators";
 import { handleMcp } from "./queries/mcp";
 import { PriorError, priorAsOf } from "./queries/prior";
 import { consultPrior } from "./queries/consult";
+import { ChallengeError, decideChallenge, pendingChallenges, submitChallenge } from "./claims/challenges";
 import { runAnalyzeJob } from "./claims/discover";
 import { remapStrayDomains } from "./claims/remap-domains";
 import { arkConfigured } from "./core/ark";
@@ -258,7 +259,7 @@ const app = new Elysia()
       ORDER BY created_at DESC
       LIMIT 12
     `;
-    return { proposals, verdicts, runs };
+    return { proposals, verdicts, runs, challenges: await pendingChallenges() };
   })
   .post(
     "/v1/review/:id/:action",
@@ -452,6 +453,41 @@ const app = new Elysia()
       return { sampled: await sampleCalibration(Math.max(1, Math.min(300, body.n ?? 120))) };
     },
     { body: t.Object({ n: t.Optional(t.Number()) }) },
+  )
+  // 更正通道: public counter-evidence on a published claim; the review desk accepts or rejects it.
+  .post(
+    "/v1/claims/:claimId/challenges",
+    async ({ params, body, set }) => {
+      try {
+        return await submitChallenge({ claimId: params.claimId, url: body.url, note: body.note });
+      } catch (error) {
+        if (!(error instanceof ChallengeError)) throw error;
+        set.status = error.status;
+        return { error: error.message };
+      }
+    },
+    { params: t.Object({ claimId: t.String() }), body: t.Object({ url: t.String(), note: t.String() }) },
+  )
+  .post(
+    "/v1/challenges/:id/:action",
+    async ({ params, body, request, set }) => {
+      if (!authorized(request)) {
+        set.status = 401;
+        return { error: "审核口令不正确" };
+      }
+      if (params.action !== "accept" && params.action !== "reject") {
+        set.status = 400;
+        return { error: "未知动作" };
+      }
+      try {
+        return await decideChallenge(Number(params.id), params.action, body.note ?? "");
+      } catch (error) {
+        if (!(error instanceof ChallengeError)) throw error;
+        set.status = error.status;
+        return { error: error.message };
+      }
+    },
+    { params: t.Object({ id: t.String(), action: t.String() }), body: t.Object({ note: t.Optional(t.String()) }) },
   )
   .post(
     "/v1/verdicts/:id/:action",

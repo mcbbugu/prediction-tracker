@@ -4,6 +4,7 @@ import { StatusPill } from "@/components/status-pill";
 import { claimExposureChips, loadInterests } from "@/lib/interests";
 import { getJson, type Claim } from "@/lib/api";
 import { sourceLabel } from "@/lib/utils";
+import { ChallengeForm } from "@/components/challenge-form";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,11 @@ export default async function ClaimPage({
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <StatusPill status={claim.status} />
+        {claim.disputed ? (
+          <span title="有人提交了反证，正在复核；复核期间结论保留显示" className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] font-medium text-ink">
+            有争议 · 复核中
+          </span>
+        ) : null}
         {claim.quote_kind === "reported" ? <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">转述</span> : null}
       </div>
       <blockquote className="mt-6">
@@ -116,6 +122,9 @@ export default async function ClaimPage({
           </li>
         ))}
       </ul>
+      <div className="mt-8">
+        <ChallengeForm claimId={claim.id} />
+      </div>
       {data.thread && data.thread.length > 0 ? (
         <section className="mt-12">
           <h2 className="text-xl font-semibold tracking-tight">同一承诺的其他说法</h2>

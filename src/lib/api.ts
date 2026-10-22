@@ -24,6 +24,8 @@ export type Claim = {
   interest_note?: string | null;
   // 改期合并 (formula v1.3): restatements of one commitment share a thread.
   thread_id?: string | null;
+  // 更正通道: counter-evidence is waiting for review.
+  disputed?: boolean;
 };
 
 export type Person = {
