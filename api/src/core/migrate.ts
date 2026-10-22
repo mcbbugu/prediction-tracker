@@ -273,6 +273,8 @@ async function migrateUnlocked() {
   // never silently "still in office": ongoing (source says present) / ended / planned (end date in the future) /
   // unknown. Transaction time: created_at is when we recorded it; a correction closes the old row
   // (superseded_at, superseded_by) and adds a new one, so "what did we believe on day X" stays answerable.
+  // Latest snapshot per (person, domain): DISTINCT ON (person_id, domain) ORDER BY computed_at DESC.
+  await sql`CREATE INDEX IF NOT EXISTS score_snapshots_person_domain_idx ON score_snapshots (person_id, domain, computed_at DESC)`;
   await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS end_kind text`;
   await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS superseded_at timestamptz`;
   await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS superseded_by bigint`;

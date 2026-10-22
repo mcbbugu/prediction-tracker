@@ -30,6 +30,9 @@ export type PersonSummary = {
   name_en: string;
   title: string;
   portrait_path: string | null;
+  portrait_credit: string | null;
+  portrait_source_url: string | null;
+  portrait_license: string | null;
   // 已发布主张总数
   claims: number;
   // 已兑现 / 部分兑现 / 未兑现
@@ -79,7 +82,7 @@ export async function peopleSummary(options: { limit?: number; offset?: number; 
         GROUP BY c.person_id
       ),
       listed AS (
-        SELECT p.id, p.name, p.name_en, p.title, p.portrait_path,
+        SELECT p.id, p.name, p.name_en, p.title, p.portrait_path, p.portrait_credit, p.portrait_source_url, p.portrait_license,
                coalesce(c.claims, 0) AS claims,
                coalesce(c.judged, 0) AS judged,
                coalesce(c.pending, 0) AS pending,

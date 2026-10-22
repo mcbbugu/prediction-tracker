@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { Portrait } from "@/components/portrait";
 import { ScoreBadge, scoreCaption } from "@/components/score-badge";
-import { getJson, type HomePayload, type Score } from "@/lib/api";
+import { getJson, type Person, type Score } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
 
 // Scored domains first, then the ones with nothing judged yet; larger samples first.
 const stage = (score: Score) => (score.value != null ? 1 : 0);
@@ -15,30 +14,39 @@ function rankDomains(scores: Score[]) {
 
 const PAGE_SIZE = 20;
 
+type PeoplePage = {
+  total: number;
+  people: (Person & {
+    claims: number;
+    judged: number;
+    pending: number;
+    insufficient: number;
+    machine: number;
+    domains: Score[];
+  })[];
+};
+
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const { page: pageParam } = await searchParams;
-  const data = await getJson<HomePayload>("/v1/home");
-  const cards = data.people
-    .map((person) => {
-      const claims = data.claims.filter((claim) => claim.person_id === person.id);
-      const scores = rankDomains(data.scores.filter((score) => score.person_id === person.id));
-      return {
-        person,
-        lead: scores[0],
-        rest: scores.slice(1, 4),
-        more: Math.max(0, scores.length - 4),
-        total: claims.length,
-        judged: claims.filter((claim) => JUDGED.has(claim.status)).length,
-        pending: claims.filter((claim) => claim.status === "待定").length,
-        machine: claims.filter((claim) => claim.reviewed === false).length,
-      };
-    })
-    // Most-judged records first: a score from one judged claim is mostly the prior and shouldn't lead the list.
-    .sort((a, b) => b.judged - a.judged || b.total - a.total || (b.lead?.value ?? -1) - (a.lead?.value ?? -1));
-
-  const pages = Math.max(1, Math.ceil(cards.length / PAGE_SIZE));
-  const page = Math.min(pages, Math.max(1, Number(pageParam) || 1));
-  const shown = cards.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const requested = Math.max(1, Number(pageParam) || 1);
+  // Counts and lead domains are aggregated by the API (GET /v1/people), one page at a time, most-judged first.
+  const data = await getJson<PeoplePage>(`/v1/people?limit=${PAGE_SIZE}&offset=${(requested - 1) * PAGE_SIZE}&sort=judged`);
+  const pages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
+  const page = Math.min(pages, requested);
+  const shown = data.people.map((person) => {
+    const scores = rankDomains(person.domains);
+    return {
+      person,
+      lead: scores[0],
+      rest: scores.slice(1, 4),
+      more: 0,
+      total: person.claims,
+      judged: person.judged,
+      pending: person.pending,
+      machine: person.machine,
+    };
+  });
+  const cards = { length: data.total };
 
   return (
     <div>
