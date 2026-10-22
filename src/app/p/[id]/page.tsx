@@ -9,7 +9,7 @@ import { CopyButton } from "@/components/copy-button";
 import { ScoreHistoryCharts, type DomainHistory } from "@/components/score-history-chart";
 import { StatusPill } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
-import { apiBase, getJson, type Claim, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
+import { apiBase, getJson, type Claim, type Indicators, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -79,7 +79,7 @@ export default async function PersonPage({
   const { id } = await params;
   const { domain: domainFilter } = await searchParams;
   const [data, history] = await Promise.all([
-    getJson<{ person: Person; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests }>(`/v1/people/${id}`),
+    getJson<{ person: Person; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators }>(`/v1/people/${id}`),
     getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history`).catch(() => ({ snapshots: [] as Snapshot[] })),
   ]);
   const today = new Date().toISOString().slice(0, 10);
@@ -228,7 +228,7 @@ export default async function PersonPage({
               {!top || top.composite.used.length === 0 ? "有一条主张被判定后就会出分。" : null}
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-[14px] bg-card p-4">
               <p className="flex items-center justify-between text-xs text-mute">
                 兑现率<span>权重 {pct(top?.accuracy.weight ?? 0.7)}</span>
@@ -266,6 +266,29 @@ export default async function PersonPage({
                 </>
               )}
             </div>
+            {data.indicators ? (
+              <div className="rounded-[14px] border border-dashed border-line bg-card/60 p-4">
+                <p className="flex items-center justify-between text-xs text-mute">
+                  改期与可检验度<span>不进综合分</span>
+                </p>
+                <p className="num mt-1.5 text-sm font-bold">
+                  改期 {data.indicators.rescheduling.rescheduled}/{data.indicators.rescheduling.commitments} 个承诺
+                  {data.indicators.rescheduling.pushes ? (
+                    <span className="font-normal text-mute">
+                      {" "}
+                      · 推迟 {data.indicators.rescheduling.pushes} 次，平均 {data.indicators.rescheduling.avg_delay_months} 个月
+                    </span>
+                  ) : null}
+                </p>
+                <p className="num text-sm font-bold">
+                  可判定 {data.indicators.testability.judged}/{data.indicators.testability.resolved}
+                  <span className="font-normal text-mute"> · 作废 {data.indicators.testability.voided}（证据不足）</span>
+                </p>
+                <p className="mt-1 text-[11px] leading-4 text-mute">
+                  同一件事后来再说时期限往后推，算一次改期。到期的话里查不到结果的作废，不计分。只统计已收录的主张。
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
         {profile.length > 1 ? (

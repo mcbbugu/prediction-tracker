@@ -1,6 +1,7 @@
 import { arkConfigured, arkJson } from "./ark";
 import { sql } from "./db";
 import { latestScores, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg } from "./records";
+import { indicators } from "./indicators";
 import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, interestSplit, personProfile } from "./score";
 
 export type ConsultRequest = {
@@ -218,6 +219,8 @@ export async function consultPrior(input: ConsultRequest) {
       verified_count: domainScore?.n ?? 0,
       // 证据不足 claims in this domain: void, not scored (formula v1.3); a high count means vague or unverifiable talk.
       voided_count: domainScore?.voided ?? 0,
+      // 画像旁证 for this domain (not scored): how often this person's commitments here slipped, and how many could be judged.
+      indicators: indicators(domainClaims).by_domain[domainScore?.domain ?? ""] ?? null,
       interval_80: interval,
       // SPEC 人物画像与综合分: composite within this domain, with every part listed so it can be taken apart.
       profile:

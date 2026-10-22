@@ -147,3 +147,19 @@ export async function getJson<T>(path: string): Promise<T> {
   if (!response.ok) throw new Error(`接口 ${response.status}`);
   return response.json() as Promise<T>;
 }
+
+// 画像旁证 (not in the composite): how often commitments slipped, and how many due claims could be judged.
+export type Rescheduling = {
+  commitments: number;
+  rescheduled: number;
+  rate: number | null;
+  pushes: number;
+  avg_delay_months: number | null;
+  longest: { thread_id: string; times: number; first_said: string; first_deadline: string; last_deadline: string } | null;
+};
+export type Testability = { resolved: number; judged: number; voided: number; rate: number | null };
+export type Indicators = {
+  rescheduling: Rescheduling;
+  testability: Testability;
+  by_domain: Record<string, { rescheduling: Rescheduling; testability: Testability }>;
+};

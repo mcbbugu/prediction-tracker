@@ -1,6 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { Elysia, t } from "elysia";
 import { LABELS, calibrationReport, sampleCalibration } from "./calibration";
+import { indicators } from "./indicators";
 import { consultPrior } from "./consult";
 import { runAnalyzeJob } from "./discover";
 import { remapStrayDomains } from "./remap-domains";
@@ -149,6 +150,8 @@ const app = new Elysia()
       scores,
       profile,
       composite_weights: COMPOSITE_WEIGHTS,
+      // 画像旁证, not in the composite: rescheduling and testability.
+      indicators: indicators(claims),
       interests: {
         status: interests.collected ? "collected" : "not_collected",
         relations: interests.relations,
