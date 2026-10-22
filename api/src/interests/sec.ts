@@ -1,16 +1,20 @@
-// pnpm api:sec -- [--orgs=tesla,nvidia] [--dry-run]
+// pnpm api:sec -- [--orgs=tesla,nvidia] [--years=12] [--dry-run]
 // 美股机构的营收数据直接取自 SEC 的 XBRL（带单位、带维度），不再爬网页（SPEC 利益关系的三层数据）。
-// 有 10-K 就只用最新 10-K。还没有 10-K 的公司改用申报日最新的一份 10-Q 或 S-1，期间按原文填写、不年化。
-//   - 营收 → org_financials（推算只用约 12 个月的期间；半年报、季报只展示）；
+// 有 10-K 的公司导入最近 N 份（默认 12）。submissions 的 filings.recent 只有近千条，更早的在 filings.files 指向的分页里。
+// 每份 10-K 按自己的财年各写一行。还没有 10-K 的公司仍只用申报日最新的一份 10-Q 或 S-1，期间按原文填写、不年化。不导历史 10-Q。
+//   - 营收 → org_financials（推算只用约 12 个月的期间；半年报、季报只展示；页面按 period_end 取最新一行）；
 //   - 按地区拆分的营收 → org_exposures（dimension = region，basis = 'sec_xbrl'，占比 = 同一期间的地区营收 ÷ 总营收）。
+// 已有的 (org_key, period_end, form) 跳过。某一年解析不出就跳过那一年，继续这家公司的下一年。
 // XBRL 原文件整份存档进 sources（原始字节 + 哈希）；每条数据的「原句」是从中读出的那一条事实，逐行写在存档正文里。
-// SEC 要求请求头声明联系方式：api/.env 里的 SEC_USER_AGENT（「名称 邮箱」）。全站限速每秒 10 次，这里远低于此。
+// SEC 要求请求头声明联系方式：api/.env 里的 SEC_USER_AGENT（「名称 邮箱」）。全站限速每秒 10 次，这里逐份请求、远低于此。
 import { sql } from "../core/db";
 import { migrate } from "../core/migrate";
 import { archiveDocument } from "../evidence/sources";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const dryRun = process.argv.includes("--dry-run");
+const yearsArg = arg("years");
+const years = yearsArg == null || yearsArg === "" ? 12 : Number(yearsArg);
 const UA = process.env.SEC_USER_AGENT ?? "";
 
 // org_key → ticker, maintained by hand. Matching by company name picked wrong securities (an ETF for "spacex"),
@@ -56,6 +60,8 @@ const REVENUE = [
   "us-gaap:Revenues",
   "us-gaap:RevenueFromContractWithCustomerIncludingAssessedTax",
   "us-gaap:SalesRevenueNet",
+  // Service companies (Salesforce FY2018) file the total here when the contract-revenue concepts are absent.
+  "us-gaap:SalesRevenueServicesNet",
 ];
 const GEO_AXIS = /StatementGeographicalAxis$/;
 
@@ -72,6 +78,9 @@ const COUNTRY: Record<string, [string, string]> = {
   IN: ["India", "印度"],
   CA: ["Canada", "加拿大"],
   NL: ["Netherlands", "荷兰"],
+  NO: ["Norway", "挪威"],
+  GR: ["Greece", "希腊"],
+  VN: ["Vietnam", "越南"],
   HK: ["Hong Kong", "香港"],
   FR: ["France", "法国"],
   CH: ["Switzerland", "瑞士"],
@@ -162,31 +171,89 @@ function memberLabel(member: string, rest = false) {
   return { en, zh, country: null };
 }
 
-type Filing = { accession: string; reportDate: string; filed: string; form: "10-K" | "10-Q" | "S-1" };
+type Filing = { accession: string; reportDate: string; filed: string; form: "10-K" | "10-Q" | "S-1"; xbrl: boolean | null };
 
-// A 10-K, when the company has filed one, stays the only source: a later 10-Q must not replace the annual number.
-// Companies with no 10-K yet (a recent listing) use the 10-Q or S-1 with the latest filing date.
-async function latestFiling(cik: string): Promise<Filing | null> {
-  const subs = (await (await get(`https://data.sec.gov/submissions/CIK${cik.padStart(10, "0")}.json`)).json()) as {
-    filings: { recent: { form: string[]; accessionNumber: string[]; reportDate: string[]; filingDate: string[] } };
-  };
-  const recent = subs.filings.recent;
-  const at = (index: number, form: Filing["form"]): Filing => ({
-    accession: recent.accessionNumber[index],
-    reportDate: recent.reportDate[index],
-    filed: recent.filingDate[index],
-    form,
-  });
-  const tenK = recent.form.findIndex((form) => form === "10-K");
-  if (tenK >= 0) return at(tenK, "10-K");
-  let best = -1;
-  for (let i = 0; i < recent.form.length; i++) {
-    if (recent.form[i] !== "10-Q" && recent.form[i] !== "S-1") continue;
-    if (best < 0 || recent.filingDate[i] > recent.filingDate[best]) best = i;
+type FilingBlock = {
+  form?: string[];
+  accessionNumber?: string[];
+  reportDate?: string[];
+  filingDate?: string[];
+  isXBRL?: Array<number | string | null>;
+};
+
+function readFilings(block: FilingBlock): Filing[] {
+  const forms = block.form ?? [];
+  const rows: Filing[] = [];
+  for (let i = 0; i < forms.length; i++) {
+    const form = forms[i];
+    if (form !== "10-K" && form !== "10-Q" && form !== "S-1") continue;
+    const flag = block.isXBRL?.[i];
+    rows.push({
+      accession: block.accessionNumber?.[i] ?? "",
+      reportDate: block.reportDate?.[i] ?? "",
+      filed: block.filingDate?.[i] ?? "",
+      form,
+      xbrl: flag == null || flag === "" ? null : Number(flag) !== 0,
+    });
   }
-  if (best < 0) return null;
-  const form = recent.form[best];
-  return form === "10-Q" || form === "S-1" ? at(best, form) : null;
+  return rows;
+}
+
+const byReportDesc = (a: Filing, b: Filing) =>
+  (b.reportDate || b.filed).localeCompare(a.reportDate || a.filed) || b.filed.localeCompare(a.filed);
+
+// One row per period. A later filing of the same report date wins; a non-XBRL 10-K does not take a slot.
+function pickTenK(rows: Filing[]): Filing[] {
+  const picked: Filing[] = [];
+  const seenReport = new Set<string>();
+  for (const row of rows.filter((item) => item.form === "10-K" && item.accession && item.xbrl !== false).sort(byReportDesc)) {
+    const report = row.reportDate || row.accession;
+    if (seenReport.has(report)) continue;
+    seenReport.add(report);
+    picked.push(row);
+    if (picked.length >= years) break;
+  }
+  return picked;
+}
+
+// Recent filings are only the latest thousand. Older 10-Ks live in filings.files, newest page first.
+// A company that has filed a 10-K contributes its latest `years` of them; a later 10-Q never replaces those.
+// A company with no 10-K yet (a recent listing) still uses the single 10-Q or S-1 with the latest filing date.
+// One bad older page does not drop the filings already read.
+async function filingsToImport(cik: string): Promise<Filing[]> {
+  const subs = (await (await get(`https://data.sec.gov/submissions/CIK${cik.padStart(10, "0")}.json`)).json()) as {
+    filings: { recent: FilingBlock; files?: { name: string; filingTo?: string }[] };
+  };
+  const rows = readFilings(subs.filings.recent);
+  const pages = [...(subs.filings.files ?? [])].sort((a, b) => (b.filingTo ?? "").localeCompare(a.filingTo ?? ""));
+  for (const file of pages) {
+    if (pickTenK(rows).length >= years) break;
+    try {
+      const page = (await (await get(`https://data.sec.gov/submissions/${file.name}`)).json()) as FilingBlock & {
+        filings?: { recent?: FilingBlock };
+      };
+      const block = Array.isArray(page.form) ? page : page.filings?.recent;
+      if (!block?.form) {
+        console.log(`CIK ${cik} 分页 ${file.name}：不是申报列表，用已读到的申报继续`);
+        continue;
+      }
+      rows.push(...readFilings(block));
+    } catch (error) {
+      console.log(`CIK ${cik} 分页 ${file.name}：${error instanceof Error ? error.message.slice(0, 160) : error}，用已读到的申报继续`);
+      break;
+    }
+  }
+  const tenK = pickTenK(rows);
+  if (tenK.length) return [...tenK].sort((a, b) => (a.reportDate || a.filed).localeCompare(b.reportDate || b.filed));
+  const seen = new Set<string>();
+  const interim = rows
+    .filter((row) => {
+      if ((row.form !== "10-Q" && row.form !== "S-1") || !row.accession || seen.has(row.accession)) return false;
+      seen.add(row.accession);
+      return true;
+    })
+    .sort((a, b) => b.filed.localeCompare(a.filed) || b.reportDate.localeCompare(a.reportDate));
+  return interim[0] ? [interim[0]] : [];
 }
 
 function durations(facts: Fact[], contexts: Map<string, Context>) {
@@ -248,19 +315,45 @@ function yearToDateTotal(facts: Fact[], contexts: Map<string, Context>, reportDa
 
 async function instanceUrl(cik: string, accession: string) {
   const base = `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${accession.replace(/-/g, "")}`;
-  const index = (await (await get(`${base}/index.json`)).json()) as { directory: { item: { name: string }[] } };
-  const names = index.directory.item.map((item) => item.name);
-  const name =
-    names.find((n) => n.endsWith("_htm.xml")) ??
-    names.find((n) => n.endsWith(".xml") && !/_(cal|def|lab|pre)\.xml$|FilingSummary|MetaLinks/i.test(n));
-  return name ? `${base}/${name}` : null;
+  const index = (await (await get(`${base}/index.json`)).json()) as {
+    directory?: { item?: { name: string; size?: string }[] | { name: string; size?: string } };
+  };
+  const raw = index.directory?.item;
+  const items = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  // Inline XBRL is filed as *_htm.xml. Before that (mostly pre-2019) the instance is a standalone .xml;
+  // linkbases and FilingSummary are not it, and when several remain the instance is the large one.
+  const inline = items.find((item) => item.name.endsWith("_htm.xml"));
+  if (inline) return `${base}/${inline.name}`;
+  const instances = items.filter((item) => item.name.endsWith(".xml") && !/_(cal|def|lab|pre)\.xml$|FilingSummary|MetaLinks/i.test(item.name));
+  instances.sort((a, b) => Number(b.size ?? 0) - Number(a.size ?? 0));
+  return instances[0] ? `${base}/${instances[0].name}` : null;
 }
 
-async function importOrg(orgKeyValue: string, ticker: string, cik: string) {
-  const filing = await latestFiling(cik);
-  if (!filing) return `${ticker}：没有 10-K，也没有 10-Q 或 S-1`;
+const money = (value: number) => (value >= 1e9 ? `$${(value / 1e9).toFixed(1)}B` : `$${(value / 1e6).toFixed(1)}M`);
+
+async function importFiling(orgKeys: string[], ticker: string, cik: string, filing: Filing) {
+  const name = orgKeys.length > 1 ? `${ticker}（${orgKeys.join("、")}）` : ticker;
+  const when = filing.reportDate || filing.filed;
+  if (filing.form === "10-K" && filing.xbrl === false) return `${name} 10-K ${when}：申报没有 XBRL，跳过`;
+
+  const pending: string[] = [];
+  const skipped: string[] = [];
+  for (const orgKeyValue of orgKeys) {
+    if (dryRun) {
+      pending.push(orgKeyValue);
+      continue;
+    }
+    const [exists] = await sql<{ fiscal_year: number }[]>`
+      SELECT fiscal_year FROM org_financials
+      WHERE org_key = ${orgKeyValue} AND accession = ${filing.accession} AND form = ${filing.form}
+    `;
+    if (exists) skipped.push(`${orgKeyValue} FY${exists.fiscal_year}`);
+    else pending.push(orgKeyValue);
+  }
+  if (!pending.length) return `${name} ${filing.form} ${skipped.join("、")}：已有记录，跳过`;
+
   const url = await instanceUrl(cik, filing.accession);
-  if (!url) return `${ticker}：申报里找不到 XBRL 数据文件`;
+  if (!url) return `${name} ${filing.form} ${when}：申报里找不到 XBRL 数据文件`;
   const bytes = new Uint8Array(await (await get(url)).arrayBuffer());
   const { contexts, facts } = parseInstance(new TextDecoder().decode(bytes));
 
@@ -271,7 +364,7 @@ async function importOrg(orgKeyValue: string, ticker: string, cik: string) {
         ? fiscalYearTotal(facts, contexts) ?? yearToDateTotal(facts, contexts, filing.reportDate)
         : yearToDateTotal(facts, contexts, filing.reportDate);
   if (!totalFact) {
-    return filing.form === "10-K" ? `${ticker}：10-K 里找不到年度总营收` : `${ticker}：${filing.form} 里找不到截至报告期末的累计营收`;
+    return filing.form === "10-K" ? `${name} 10-K ${when}：找不到年度总营收` : `${name} ${filing.form} ${when}：找不到截至报告期末的累计营收`;
   }
   const period = contexts.get(totalFact.context)!;
   const fiscalYear = Number(period.end!.slice(0, 4));
@@ -304,9 +397,8 @@ async function importOrg(orgKeyValue: string, ticker: string, cik: string) {
   // "Non-US" next to individual countries means "the rest", not "everything outside the US".
   const hasOtherCountries = parts.some((p) => /^country:(?!US)/.test(p.member));
   const shares = parts.map(({ member, fact }) => ({ member, fact, share: Math.round((fact.value / totalFact.value) * 10_000) / 100, rest: hasOtherCountries }));
-  const revenueLabel = totalFact.value >= 1e9 ? `$${(totalFact.value / 1e9).toFixed(1)}B` : `$${(totalFact.value / 1e6).toFixed(1)}M`;
-  const head = filing.form === "10-K" ? `${ticker} FY${fiscalYear}` : `${ticker} ${filing.form} ${period.start}..${period.end}`;
-  const summary = `${head} 营收 ${revenueLabel} · ${shares.map((s) => `${memberLabel(s.member, s.rest).zh} ${s.share}%`).join("、") || (geo.size ? "地区数据互相重叠、凑不出总数，跳过" : "没有按地区拆分")}`;
+  const head = filing.form === "10-K" ? `${name} FY${fiscalYear}` : `${name} ${filing.form} ${period.start}..${period.end}`;
+  const summary = `${head} 营收 ${money(totalFact.value)} · ${shares.map((s) => `${memberLabel(s.member, s.rest).zh} ${s.share}%`).join("、") || (geo.size ? "地区数据互相重叠、凑不出总数，跳过" : "没有按地区拆分")}`;
   if (dryRun) return `${summary}（试运行，不写库）`;
 
   const source = await archiveDocument({
@@ -317,33 +409,68 @@ async function importOrg(orgKeyValue: string, ticker: string, cik: string) {
     title: filing.form === "10-K" ? `${ticker} 10-K FY${fiscalYear} XBRL` : `${ticker} ${filing.form} ${period.start}..${period.end} XBRL`,
     text,
   });
-  await sql`
-    INSERT INTO org_financials (org_key, fiscal_year, period_start, period_end, revenue_usd, concept, form, accession, source_url, source_id)
-    VALUES (${orgKeyValue}, ${fiscalYear}, ${period.start}, ${period.end}, ${totalFact.value}, ${totalFact.concept}, ${filing.form},
-            ${filing.accession}, ${url}, ${source.id})
-    ON CONFLICT (org_key, period_end, form) DO NOTHING
-  `;
-  let added = 0;
-  for (const { member, fact, share, rest } of shares) {
-    const label = memberLabel(member, rest);
-    const [exists] = await sql`
-      SELECT 1 FROM org_exposures
-      WHERE org_key = ${orgKeyValue} AND dimension = 'region' AND basis = 'sec_xbrl' AND target = ${label.en} AND metric_year = ${fiscalYear}
-    `;
-    if (exists) continue;
-    await sql`
-      INSERT INTO org_exposures (org_key, dimension, target, target_zh, country, metric_kind, metric_value, metric_year,
-                                 source_url, source_id, quote, publication, provenance, basis)
-      VALUES (${orgKeyValue}, 'region', ${label.en}, ${label.zh}, ${label.country}, 'revenue_share', ${share}, ${fiscalYear},
-              ${url}, ${source.id}, ${`${line(fact)}; total ${line(totalFact)}`}, 'published', 'sec', 'sec_xbrl')
-    `;
-    added += 1;
+  const addedByOrg: string[] = [];
+  for (const orgKeyValue of pending) {
+    let added = 0;
+    await sql.begin(async (tx) => {
+      added = 0;
+      await tx`
+        INSERT INTO org_financials (org_key, fiscal_year, period_start, period_end, revenue_usd, concept, form, accession, source_url, source_id)
+        VALUES (${orgKeyValue}, ${fiscalYear}, ${period.start}, ${period.end}, ${totalFact.value}, ${totalFact.concept}, ${filing.form},
+                ${filing.accession}, ${url}, ${source.id})
+        ON CONFLICT (org_key, period_end, form) DO NOTHING
+      `;
+      for (const { member, fact, share, rest } of shares) {
+        const label = memberLabel(member, rest);
+        const [exists] = await tx`
+          SELECT 1 FROM org_exposures
+          WHERE org_key = ${orgKeyValue} AND dimension = 'region' AND basis = 'sec_xbrl' AND target = ${label.en} AND metric_year = ${fiscalYear}
+        `;
+        if (exists) continue;
+        await tx`
+          INSERT INTO org_exposures (org_key, dimension, target, target_zh, country, metric_kind, metric_value, metric_year,
+                                     source_url, source_id, quote, publication, provenance, basis)
+          VALUES (${orgKeyValue}, 'region', ${label.en}, ${label.zh}, ${label.country}, 'revenue_share', ${share}, ${fiscalYear},
+                  ${url}, ${source.id}, ${`${line(fact)}; total ${line(totalFact)}`}, 'published', 'sec', 'sec_xbrl')
+        `;
+        added += 1;
+      }
+    });
+    addedByOrg.push(orgKeys.length > 1 ? `${orgKeyValue} ${added}` : String(added));
   }
-  return `${summary} · 新增地区 ${added} 条`;
+  const skippedNote = skipped.length ? ` · ${skipped.join("、")} 已有` : "";
+  return `${summary}${skippedNote} · 新增地区 ${addedByOrg.join("、")} 条`;
+}
+
+async function importCompany(orgKeys: string[], ticker: string, cik: string) {
+  const name = orgKeys.length > 1 ? `${ticker}（${orgKeys.join("、")}）` : ticker;
+  let filings: Filing[];
+  try {
+    filings = await filingsToImport(cik);
+  } catch (error) {
+    console.log(`${name}：失败 · ${error instanceof Error ? error.message.slice(0, 200) : error}`);
+    return;
+  }
+  if (!filings.length) {
+    console.log(`${name}：没有 10-K，也没有 10-Q 或 S-1`);
+    return;
+  }
+  for (const filing of filings) {
+    const when = filing.reportDate || filing.filed;
+    try {
+      console.log(await importFiling(orgKeys, ticker, cik, filing));
+    } catch (error) {
+      console.log(`${name} ${filing.form} ${when}：跳过 · ${error instanceof Error ? error.message.slice(0, 200) : error}`);
+    }
+  }
 }
 
 async function main() {
   await migrate();
+  if (!Number.isInteger(years) || years < 1) {
+    console.log("--years 需要是正整数");
+    return;
+  }
   if (!/\S+@\S+/.test(UA)) {
     console.log("请在 api/.env 设置 SEC_USER_AGENT=\"名称 联系邮箱\"（SEC 要求声明联系方式）");
     return;
@@ -358,14 +485,23 @@ async function main() {
   const targets = keys
     .map((key) => ({ key, company: TICKERS[key] ? byTicker.get(TICKERS[key]) : undefined }))
     .filter((t): t is { key: string; company: { cik_str: number; ticker: string; title: string } } => Boolean(t.company));
-  console.log(`美股机构 ${targets.length} 家：${targets.map((t) => `${t.key}=${t.company.ticker}`).join("、")}${dryRun ? " · 试运行" : ""}`);
+  const groups: { keys: string[]; ticker: string; cik: string }[] = [];
+  const byCik = new Map<string, (typeof groups)[number]>();
   for (const target of targets) {
-    try {
-      console.log(await importOrg(target.key, target.company.ticker, String(target.company.cik_str)));
-    } catch (error) {
-      console.log(`${target.company.ticker}：失败 · ${error instanceof Error ? error.message.slice(0, 160) : error}`);
+    const cik = String(target.company.cik_str);
+    const found = byCik.get(cik);
+    if (found) found.keys.push(target.key);
+    else {
+      const group = { keys: [target.key], ticker: target.company.ticker, cik };
+      byCik.set(cik, group);
+      groups.push(group);
     }
   }
+  groups.sort((a, b) => a.ticker.localeCompare(b.ticker));
+  console.log(
+    `美股机构 ${groups.length} 家：${groups.map((g) => `${g.keys.join("+")}=${g.ticker}`).join("、")} · 最近 ${years} 份 10-K${dryRun ? " · 试运行" : ""}`,
+  );
+  for (const group of groups) await importCompany(group.keys, group.ticker, group.cik);
 }
 
 main()

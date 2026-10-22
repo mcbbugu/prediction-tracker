@@ -21,6 +21,9 @@ const publish = process.argv.includes("--publish") || process.env.AUTO_PUBLISH =
 // The bulk crawl of every dimension (2026-10) produced unreliable rows (lost units, wrong categories) and is
 // frozen: those rows stay as basis = 'crawl' and show as unverified. US-listed revenue now comes from SEC
 // filings (pnpm api:sec). Linking claims to exposures still runs; a new crawl needs --crawl on purpose.
+// Candidates are the rows the person page shows: SEC figures for a dimension replace crawled rows
+// of that same organisation and dimension. Several fiscal years of one exposure are one candidate;
+// the model judges the claim, and the date check keeps the years that held that day.
 const crawl = process.argv.includes("--crawl");
 const linkOnly = process.argv.includes("--link-only") || !crawl;
 const PAGES_PER_DIMENSION = 4;
@@ -204,13 +207,43 @@ export async function linkExposures(personId: string) {
     SELECT id, category, quote_en, quote_zh, to_char(published_date, 'YYYY-MM-DD') AS published_date
     FROM claims WHERE person_id = ${personId} AND publication = 'published'
   `;
-  if (claims.length) await sql`DELETE FROM claim_exposures WHERE claim_id IN ${sql(claims.map((claim) => claim.id))}`;
-  if (!orgKeys.length || !claims.length) return 0;
-  const exposures = await sql<{ id: number; org_key: string; dimension: string; target: string; country: string | null; started: string | null; ended: string | null; metric_year: number | null }[]>`
-    SELECT id::int AS id, org_key, dimension, target, country, started, ended, metric_year
+  if (!claims.length) return 0;
+  const clearLinks = () => sql`DELETE FROM claim_exposures WHERE claim_id IN ${sql(claims.map((claim) => claim.id))}`;
+  // No relation to hang anything on: drop whatever was linked before. A failed model call must not get here,
+  // or the previous links would be gone with nothing rebuilt.
+  if (!orgKeys.length) {
+    await clearLinks();
+    return 0;
+  }
+  const exposures = await sql<
+    { id: number; org_key: string; dimension: string; target: string; country: string | null; started: string | null; ended: string | null; metric_year: number | null; basis: string }[]
+  >`
+    SELECT id::int AS id, org_key, dimension, target, country, started, ended, metric_year, basis
     FROM org_exposures WHERE org_key IN ${sql(orgKeys)} AND publication = 'published'
   `;
-  if (!exposures.length) return 0;
+  if (!exposures.length) {
+    await clearLinks();
+    return 0;
+  }
+
+  // Same rule as personInterestAtlas: a filed number hides crawled rows of that organisation and dimension.
+  const filed = new Set(exposures.filter((item) => item.basis === "sec_xbrl").map((item) => `${item.org_key}\0${item.dimension}`));
+  const visible = exposures.filter((item) => item.basis === "sec_xbrl" || !filed.has(`${item.org_key}\0${item.dimension}`));
+  if (!visible.length) {
+    await clearLinks();
+    return 0;
+  }
+
+  // Tesla China 2016 and Tesla China 2025 are one exposure. The model sees it once; the date check keeps every year that held that day.
+  const groupOf = (item: { org_key: string; dimension: string; target: string }) => `${item.org_key}\0${item.dimension}\0${item.target.toLowerCase()}`;
+  const groups = new Map<string, typeof visible>();
+  for (const item of visible) {
+    const key = groupOf(item);
+    const list = groups.get(key);
+    if (list) list.push(item);
+    else groups.set(key, [item]);
+  }
+  const candidates = [...groups.values()].map((list) => list.reduce((best, item) => ((item.metric_year ?? -1) >= (best.metric_year ?? -1) ? item : best)));
 
   // The model only says which exposures a claim is about; whether relation and exposure held that day is checked here.
   const answer = (await arkJson(
@@ -223,27 +256,36 @@ export async function linkExposures(personId: string) {
       '输出 JSON：{"links":[{"claim_id":"","exposure_id":1,"level":"direct","reason":""}]}，没有牵连的主张不用列。',
     ].join("\n"),
     JSON.stringify({
-      exposures: exposures.map((item) => ({ id: item.id, organisation: item.org_key, dimension: item.dimension, target: item.target, country: item.country })),
+      exposures: candidates.map((item) => ({ id: item.id, organisation: item.org_key, dimension: item.dimension, target: item.target, country: item.country })),
       claims: claims.map((claim) => ({ claim_id: claim.id, domain: claim.category, quote: claim.quote_en || claim.quote_zh })),
     }),
     6000,
   )) as { links?: { claim_id?: string; exposure_id?: number; level?: string; reason?: string }[] };
 
-  const byId = new Map(exposures.map((item) => [item.id, item]));
+  await clearLinks();
+  const byId = new Map(visible.map((item) => [item.id, item]));
   const byClaim = new Map(claims.map((claim) => [claim.id, claim]));
+  const seen = new Set<string>();
   let linked = 0;
   for (const link of answer.links ?? []) {
     const claim = byClaim.get(link.claim_id ?? "");
-    const exposure = byId.get(Number(link.exposure_id));
-    if (!claim || !exposure) continue;
-    const held = relations.some((item) => item.org_key === exposure.org_key && activeOn(item, claim.published_date));
-    if (!held || !exposureActiveOn(exposure, claim.published_date)) continue;
-    await sql`
-      INSERT INTO claim_exposures (claim_id, exposure_id, level, reason)
-      VALUES (${claim.id}, ${exposure.id}, ${link.level === "direct" ? "direct" : "indirect"}, ${(link.reason ?? "").trim()})
-      ON CONFLICT DO NOTHING
-    `;
-    linked += 1;
+    const chosen = byId.get(Number(link.exposure_id));
+    if (!claim || !chosen) continue;
+    const level = link.level === "direct" ? "direct" : "indirect";
+    const reason = (link.reason ?? "").trim();
+    for (const exposure of groups.get(groupOf(chosen)) ?? []) {
+      const held = relations.some((item) => item.org_key === exposure.org_key && activeOn(item, claim.published_date));
+      if (!held || !exposureActiveOn(exposure, claim.published_date)) continue;
+      const key = `${claim.id}\0${exposure.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      await sql`
+        INSERT INTO claim_exposures (claim_id, exposure_id, level, reason)
+        VALUES (${claim.id}, ${exposure.id}, ${level}, ${reason})
+        ON CONFLICT DO NOTHING
+      `;
+      linked += 1;
+    }
   }
   return linked;
 }
