@@ -248,13 +248,13 @@ export default async function PersonPage({
               {interests.status === "collected" ? (
                 <>
                   <p className="num mt-1.5 text-sm font-bold">
-                    相关 {fmtPart(interests.related)} <span className="font-normal text-mute">· {interests.related.n} 条</span>
+                    关于自家公司 {fmtPart(interests.related)} <span className="font-normal text-mute">· {interests.related.n} 句已判定</span>
                   </p>
                   <p className="num text-sm font-bold">
-                    无关 {fmtPart(interests.unrelated)} <span className="font-normal text-mute">· {interests.unrelated.n} 条</span>
+                    其他话题 {fmtPart(interests.unrelated)} <span className="font-normal text-mute">· {interests.unrelated.n} 句已判定</span>
                   </p>
                   <p className="mt-1 text-[11px] leading-4 text-mute">
-                    {flow.orgs.length} 家机构的任职、持股、商业往来。主张谈的是说话当时有关系的机构，算「相关」。
+                    {flow.orgs.length} 家机构的任职、持股、商业往来。谈的是说话当时任职或持股的机构，算「关于自家公司」。
                   </p>
                 </>
               ) : (
@@ -317,7 +317,7 @@ export default async function PersonPage({
             {flow.orgs.length} 个机构 · {flow.orgs.reduce((sum, org) => sum + org.relations.length, 0)} 段关系
             {flow.layered ? ` · ${flow.orgs.reduce((sum, org) => sum + org.exposures.length, 0)} 项对外敞口` : ""}
             {interests.status === "collected"
-              ? ` · 利益相关主张兑现率 ${fmtPart(interests.related)}，无关 ${fmtPart(interests.unrelated)}`
+              ? ` · 关于自家公司的话兑现率 ${fmtPart(interests.related)}，其他话题 ${fmtPart(interests.unrelated)}`
               : ""}
           </p>
         </section>
