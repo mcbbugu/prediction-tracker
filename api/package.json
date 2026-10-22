@@ -9,6 +9,7 @@
     "seed-check": "bun run src/seed-check.ts",
     "interests": "bun run src/interests.ts",
     "exposures": "bun run src/exposures.ts",
+    "wayback": "bun run src/wayback.ts",
     "agent": "bun run src/agent.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
@@ -25,7 +26,8 @@
   "dependencies": {
     "@elysiajs/cors": "1.2.0",
     "elysia": "1.2.25",
-    "postgres": "^3.4.9"
+    "postgres": "^3.4.9",
+    "unpdf": "^1.9.1"
   },
   "devDependencies": {
     "@types/bun": "1.2.5"

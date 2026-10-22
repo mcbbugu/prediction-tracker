@@ -183,6 +183,17 @@ async function migrateUnlocked() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS ark_calls_kind_slot_idx ON ark_calls (kind, slot_at DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS ark_calls_created_idx ON ark_calls (created_at DESC)`;
+  // Why a call failed (network / server / rate / denied / request): the circuit breaker in ark.ts reads it.
+  await sql`ALTER TABLE ark_calls ADD COLUMN IF NOT EXISTS error_kind text`;
+  // Evidence store standard: the raw bytes as fetched (gzip) and their hash, how the page was reached,
+  // and an independent Wayback Machine capture as third-party corroboration.
+  await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS raw_gz bytea`;
+  await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS raw_sha256 text`;
+  await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS content_type text`;
+  await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS fetched_via text NOT NULL DEFAULT 'direct'`;
+  await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS wayback_url text`;
+  await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS wayback_at timestamptz`;
+  await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS wayback_error text`;
   // Queue fields: one worker claims queued jobs; payload carries per-kind input (e.g. claim_id).
   await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS payload jsonb NOT NULL DEFAULT '{}'::jsonb`;
   await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0`;

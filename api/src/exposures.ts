@@ -8,7 +8,7 @@
 //   - the model extracts exposures using ONLY that saved text and copies the supporting sentence word for word;
 //   - code keeps an exposure only if the sentence is on the saved page and names the target, and keeps a number
 //     only if its text appears in that sentence. Nothing is estimated or converted.
-import { BudgetExceeded, arkJson, arkSearch } from "./ark";
+import { ArkStopped, arkJson, arkPreflight, arkSearch } from "./ark";
 import { sql } from "./db";
 import { activeOn, cleanDate } from "./interests";
 import { migrate } from "./migrate";
@@ -82,7 +82,8 @@ async function search(query: string) {
   try {
     return (await arkSearch(query)).urls;
   } catch (error) {
-    if (error instanceof BudgetExceeded) throw error;
+    // Budget, outage or access problems stop the whole run; one failed search does not.
+    if (error instanceof ArkStopped) throw error;
     console.log(`  搜索失败：${(error as Error).message.slice(0, 120)}`);
     return [];
   }
@@ -256,6 +257,11 @@ async function resolveOrgs() {
 
 async function main() {
   await migrate();
+  const preflight = await arkPreflight();
+  if (!preflight.ok) {
+    console.log(`启动预检没通过，不开始：\n  ${preflight.problems.join("\n  ")}`);
+    return;
+  }
   if (!linkOnly) {
     const orgs = await resolveOrgs();
     console.log(`外部敞口：${orgs.map((org) => org.name).join("、")} · ${publish ? "通过核对的直接公开（机器核对）" : "结果进审核台"}`);

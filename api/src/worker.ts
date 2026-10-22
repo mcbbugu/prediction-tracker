@@ -3,7 +3,7 @@
 // 方舟调用的全局限速和每日 AFP 预算在 ark.ts 里，跨进程生效。
 // --once：队列空了就退出（适合一次性清积压）；默认一直等新任务。
 // AUTO_PUBLISH=1（或 --publish）只用于本机未上线的网站，见 SPEC「核对分层」。
-import { BudgetExceeded, afpUsedToday, arkConfigured } from "./ark";
+import { ArkUnavailable, ArkStopped, afpUsedToday, arkConfigured, arkPreflight } from "./ark";
 import { sql } from "./db";
 import { runAnalyzeJob } from "./discover";
 import { migrate } from "./migrate";
@@ -23,6 +23,43 @@ type Job = { id: string; kind: string; query: string; payload: { claim_id?: stri
 
 let stopping = false;
 let stopReason = "";
+
+// Pausing instead of stopping: an Ark outage or a run of failed jobs puts the worker to sleep, and it resumes
+// by itself once a fresh preflight passes. Budget and access problems still stop it (they need a person).
+const FAILURE_STREAK = 5;
+const PAUSE_MS = 5 * 60_000;
+const MAX_PAUSE_MS = 80 * 60_000;
+let pausedUntil = 0;
+let pauses = 0;
+let checking: Promise<void> | null = null;
+let failedInARow = 0;
+const clock = (at: number) => new Date(at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Shanghai" });
+
+function pause(reason: string, until?: number) {
+  const at = until ?? Date.now() + Math.min(MAX_PAUSE_MS, PAUSE_MS * 2 ** pauses);
+  if (at <= pausedUntil) return;
+  pausedUntil = at;
+  pauses += 1;
+  console.log(`暂停到 ${clock(at)}：${reason.slice(0, 200)}`);
+}
+
+// After a pause, one preflight decides whether to resume; concurrent loops wait on the same check.
+async function recheck() {
+  checking ??= (async () => {
+    const preflight = await arkPreflight();
+    if (preflight.ok) {
+      console.log("预检通过，继续领任务");
+      pauses = 0;
+      failedInARow = 0;
+      pausedUntil = 0;
+    } else {
+      pause(`预检没通过：${preflight.problems.join("；")}`);
+    }
+  })().finally(() => {
+    checking = null;
+  });
+  await checking;
+}
 
 async function claimNext() {
   const rows = await sql<Job[]>`
@@ -75,11 +112,17 @@ async function runJob(job: Job) {
       throw new Error(`未知任务类型：${job.kind}`);
     }
     console.log(`完成 ${job.kind} · ${summary} · ${Math.round((Date.now() - t0) / 1000)}s`);
+    failedInARow = 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (error instanceof BudgetExceeded || /AccessDenied|Access denied|额度|quota/i.test(message)) {
-      // Not this job's fault: put it back and stop taking new work.
-      await sql`UPDATE jobs SET state = 'queued', attempts = attempts - 1, updated_at = now() WHERE id = ${job.id}`;
+    if (error instanceof ArkStopped || /AccessDenied|Access denied|额度|quota/i.test(message)) {
+      // Not this job's fault: put it back untouched.
+      await sql`UPDATE jobs SET state = 'queued', attempts = attempts - 1, result = '{}'::jsonb, updated_at = now() WHERE id = ${job.id}`;
+      if (error instanceof ArkUnavailable && error.trouble !== "denied") {
+        pause(message, error.retryAt?.getTime());
+        return;
+      }
+      // Budget or access: needs a person, so stop taking new work.
       stopping = true;
       stopReason = message.slice(0, 200);
       return;
@@ -95,11 +138,23 @@ async function runJob(job: Job) {
       UPDATE jobs SET state = 'failed', result = ${sql.json({ message: message.slice(0, 600) })}, updated_at = now() WHERE id = ${job.id}
     `;
     console.log(`失败 ${job.kind} · ${job.query} · ${message.slice(0, 160)}`);
+    failedInARow += 1;
+    // Several different jobs failing in a row points at something shared (network, pages, a bad prompt), not the jobs.
+    if (failedInARow >= FAILURE_STREAK) pause(`连续 ${failedInARow} 个任务失败，最近一个：${message}`);
   }
 }
 
 async function loop() {
   while (!stopping) {
+    if (pausedUntil) {
+      const wait = pausedUntil - Date.now();
+      if (wait > 0) {
+        await Bun.sleep(Math.min(wait, 60_000));
+        continue;
+      }
+      await recheck();
+      continue;
+    }
     const job = await claimNext();
     if (!job) {
       if (once) return;
@@ -114,6 +169,11 @@ async function main() {
   await migrate();
   if (!arkConfigured()) {
     console.log("缺少 ARK_API_KEY、ARK_BASE_URL 或 ARK_MODEL（api/.env）");
+    return;
+  }
+  const preflight = await arkPreflight();
+  if (!preflight.ok) {
+    console.log(`启动预检没通过，不领任务：\n  ${preflight.problems.join("\n  ")}`);
     return;
   }
   // A worker that died mid-job leaves rows stuck in 'running'; give them back to the queue.

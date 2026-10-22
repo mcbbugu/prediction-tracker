@@ -1,6 +1,6 @@
 // 到期核对（命令行）：pnpm api:verify -- --person=musk --limit=5   (or --claim=<id>)
 // 规则见 verdict.ts 顶部注释。
-import { arkConfigured } from "./ark";
+import { ArkStopped, arkConfigured } from "./ark";
 import { sql } from "./db";
 import { migrate } from "./migrate";
 import { verifyClaim, type DueClaim } from "./verdict";
@@ -56,6 +56,10 @@ async function main() {
       const outcome = await verifyClaim(claim);
       await record("到期核对", outcome.proposal_id ? "completed" : "blocked", { claim: claim.id, ...outcome }, claim.person_id);
     } catch (error) {
+      if (error instanceof ArkStopped) {
+        console.log(`停止：${error.message}`);
+        break;
+      }
       await record(
         "到期核对",
         "failed",

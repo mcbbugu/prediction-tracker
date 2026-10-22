@@ -14,7 +14,7 @@
 import { sql } from "./db";
 import { logEvent, migrate } from "./migrate";
 import { recomputeScores } from "./score";
-import { arkJson, arkSearch } from "./ark";
+import { ArkStopped, arkJson, arkSearch } from "./ark";
 import { excerpt, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
 import { JUDGED, judgeOnPages, outcomeQuery, type DueClaim, type PageJudgement } from "./verdict";
 
@@ -76,6 +76,7 @@ async function search(query: string) {
   try {
     return (await arkSearch(query)).urls;
   } catch (error) {
+    if (error instanceof ArkStopped) throw error;
     searchDown = (error as Error).message.slice(0, 160);
     return [];
   }

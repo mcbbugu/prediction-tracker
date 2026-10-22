@@ -454,7 +454,8 @@ const app = new Elysia()
       const [job] = await sql<{ id: string }[]>`
         INSERT INTO jobs (kind, query) VALUES ('analyze_person', ${query}) RETURNING id
       `;
-      void runAnalyzeJob(job.id);
+      // The job row records its own failure (including an Ark outage); nothing to do with the rejection here.
+      void runAnalyzeJob(job.id).catch(() => {});
       return { job_id: job.id, reused: false };
     },
     { body: t.Object({ query: t.String() }) },

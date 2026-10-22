@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BudgetExceeded, arkJson, arkSearch } from "./ark";
+import { ArkStopped, arkJson, arkPreflight, arkSearch } from "./ark";
 import { sql } from "./db";
 import { migrate } from "./migrate";
 import { canonicalName, orgKey, parseScale } from "./orgs";
@@ -51,7 +51,8 @@ async function search(query: string) {
   try {
     return (await arkSearch(query)).urls;
   } catch (error) {
-    if (error instanceof BudgetExceeded) throw error;
+    // Budget, outage or access problems stop the whole run; one failed search does not.
+    if (error instanceof ArkStopped) throw error;
     console.log(`  搜索失败：${(error as Error).message.slice(0, 120)}`);
     return [];
   }
@@ -295,6 +296,11 @@ async function resolvePeople() {
 
 async function main() {
   await migrate();
+  const preflight = await arkPreflight();
+  if (!preflight.ok) {
+    console.log(`启动预检没通过，不开始：\n  ${preflight.problems.join("\n  ")}`);
+    return;
+  }
   const people = await resolvePeople();
   console.log(`利益关系：${people.length} 人 · ${publish ? "通过核对的直接公开（机器核对）" : "结果进审核台"}${linkOnly ? " · 只重新标注主张" : ""}`);
   const concurrency = Math.max(1, Number(arg("concurrency") ?? 3));

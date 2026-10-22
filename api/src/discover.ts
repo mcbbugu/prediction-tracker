@@ -1,7 +1,7 @@
 // 按需分析：用户输入一个名字，agent 在后台找这个人带截止日的公开预测，逐条核对原话，到期的再找结果。
 // 每一步写进 job_events，前端 /jobs/[id] 轮询显示真实进度。
 // 抽到的主张一律是「待发布」提案；人物在审核通过前是 draft，不出现在公开列表里。
-import { arkJson, arkSearch } from "./ark";
+import { ArkStopped, arkJson, arkSearch } from "./ark";
 import { sql } from "./db";
 import { logEvent } from "./migrate";
 import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
@@ -201,6 +201,7 @@ async function gatherPages(identity: Identity, emit: ReturnType<typeof emitter>)
       const result = await arkSearch(query);
       urls.push(...result.urls);
     } catch (error) {
+      if (error instanceof ArkStopped) throw error;
       await emit("搜索公开发言", "info", `一次搜索失败：${error instanceof Error ? error.message.slice(0, 120) : error}`);
     }
   }
@@ -406,6 +407,7 @@ export async function runAnalyzeJob(jobId: string) {
           verdicts.push({ claim: claim.id, status: outcome.status });
           if (autoPublish() && outcome.proposal_id) await applyVerdictAutomatically(outcome.proposal_id);
         } catch (error) {
+          if (error instanceof ArkStopped) throw error;
           await emit("到期核对", "failed", `一条核对失败：${error instanceof Error ? error.message.slice(0, 120) : error}`, { claim: claim.id });
         }
       }
@@ -441,5 +443,7 @@ export async function runAnalyzeJob(jobId: string) {
       UPDATE jobs SET state = ${stop?.state ?? "failed"}, result = ${sql.json({ message })}, updated_at = now()
       WHERE id = ${jobId}
     `;
+    // Not this person's fault (outage, budget, access): let the worker put the job back and pause.
+    if (error instanceof ArkStopped) throw error;
   }
 }

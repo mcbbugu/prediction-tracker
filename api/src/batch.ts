@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { arkConfigured } from "./ark";
+import { ArkStopped, arkConfigured, arkPreflight } from "./ark";
 import { sql } from "./db";
 import { runAnalyzeJob } from "./discover";
 import { migrate } from "./migrate";
@@ -36,6 +36,11 @@ async function main() {
     console.log("缺少 ARK_API_KEY、ARK_BASE_URL 或 ARK_MODEL（api/.env）");
     return;
   }
+  const preflight = await arkPreflight();
+  if (!preflight.ok) {
+    console.log(`启动预检没通过，不开始：\n  ${preflight.problems.join("\n  ")}`);
+    return;
+  }
   const people = parse(readFileSync(join(root, file), "utf8")).slice(0, limit);
   console.log(`名单 ${people.length} 人 · ${process.env.AUTO_PUBLISH === "1" ? "结果以「机器核对」直接公开" : "结果进审核台"}`);
   const started = Date.now();
@@ -64,7 +69,15 @@ async function main() {
       INSERT INTO jobs (kind, query, runner) VALUES ('analyze_person', ${person.query}, 'batch') RETURNING id
     `;
     const t0 = Date.now();
-    await runAnalyzeJob(job.id);
+    try {
+      await runAnalyzeJob(job.id);
+    } catch (error) {
+      // Outage, budget or access: every remaining person would fail the same way, so stop here.
+      if (!(error instanceof ArkStopped)) throw error;
+      console.log(`${tag} 停止：${error.message}`);
+      stopped = true;
+      return;
+    }
     const [result] = await sql<{ state: string; result: { claims_found?: number; due_checked?: number; message?: string } }[]>`
       SELECT state, result FROM jobs WHERE id = ${job.id}
     `;

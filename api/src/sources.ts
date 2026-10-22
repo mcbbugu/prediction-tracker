@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { extractText, getDocumentProxy } from "unpdf";
 import { sql } from "./db";
 
 export type Snapshot = {
@@ -9,10 +10,14 @@ export type Snapshot = {
   title: string;
   text: string;
   sha256: string;
+  fetched_via: FetchVia;
 };
 
-const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) prediction-tracker/0.2";
+// How a page was reached. Every route keeps the raw bytes it got, so the text we matched quotes against
+// can always be re-derived and checked against its hash.
+export type FetchVia = "direct" | "jina";
 
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) prediction-tracker/0.2";
 function decode(text: string) {
   return text
     .replace(/&nbsp;/g, " ")
@@ -44,39 +49,137 @@ export function textFromHtml(html: string) {
   return { title, text: body };
 }
 
-// Opens the page ourselves and keeps a dated copy with a content hash (L1 evidence store).
-// Annual reports run past 200k characters; callers that need the whole filing can raise the cap.
-export async function snapshot(url: string, maxChars = 200_000): Promise<Snapshot | null> {
-  let response: Response;
+// ---- Fetching, with a fallback chain (SPEC 证据存档):
+//   1. open the page ourselves (two retries on network errors);
+//   2. if that fails, is an error page, a bot check, or nearly empty, read it through Jina Reader, which renders
+//      JavaScript (set JINA_API_KEY: Jina refuses anonymous calls from networks it distrusts, e.g. many proxies).
+// PDFs fetched directly are turned into text locally (unpdf).
+// A headless-browser step can be added after 2 for sites both refuse.
+
+type Fetched = { status: number; finalUrl: string; bytes: Uint8Array; contentType: string; via: FetchVia };
+
+const MAX_RAW_BYTES = 20_000_000;
+const THIN_TEXT = 400;
+const BOT_CHECK =
+  /enable javascript|javascript is (disabled|required)|just a moment\.\.\.|attention required!? \| cloudflare|cf-browser-verification|verify you are (a )?human|are you a robot|captcha/i;
+
+async function fetchBytes(url: string, init: RequestInit, timeoutMs: number) {
+  const response = await fetch(url, { ...init, redirect: "follow", signal: AbortSignal.timeout(timeoutMs) });
+  const buffer = new Uint8Array(await response.arrayBuffer());
+  return { response, bytes: buffer.length > MAX_RAW_BYTES ? buffer.slice(0, MAX_RAW_BYTES) : buffer };
+}
+
+async function fetchDirect(url: string): Promise<Fetched | null> {
+  for (const delay of [0, 2000, 5000]) {
+    if (delay) await Bun.sleep(delay);
+    try {
+      const { response, bytes } = await fetchBytes(
+        url,
+        { headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5" } },
+        20_000,
+      );
+      return { status: response.status, finalUrl: response.url || url, bytes, contentType: response.headers.get("content-type") || "", via: "direct" };
+    } catch {
+      // Network error or timeout: try again, then give up on this route.
+    }
+  }
+  return null;
+}
+
+async function fetchJina(url: string): Promise<Fetched | null> {
+  const headers: Record<string, string> = { Accept: "text/plain", "X-Return-Format": "markdown" };
+  if (process.env.JINA_API_KEY) headers.Authorization = `Bearer ${process.env.JINA_API_KEY}`;
   try {
-    response = await fetch(url, {
-      headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5" },
-      signal: AbortSignal.timeout(20000),
-      redirect: "follow",
-    });
+    const { response, bytes } = await fetchBytes(`https://r.jina.ai/${url}`, { headers }, 60_000);
+    if (!response.ok) return null;
+    return { status: response.status, finalUrl: url, bytes, contentType: "text/markdown; via=jina", via: "jina" };
   } catch {
     return null;
   }
-  const raw = await response.text().catch(() => "");
-  const type = response.headers.get("content-type") || "";
-  const { title, text } = type.includes("html") || raw.trimStart().startsWith("<") ? textFromHtml(raw) : { title: "", text: raw };
+}
+
+// Jina returns "Title: …\nURL Source: …\nMarkdown Content:\n…"; links are reduced to their text so a quote
+// that runs through a hyperlink still matches word for word.
+function textFromJina(raw: string) {
+  const title = raw.match(/^Title:\s*(.*)$/m)?.[1]?.trim() ?? "";
+  const body = (raw.split(/^Markdown Content:\s*$/m)[1] ?? raw)
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+  return { title, text: body };
+}
+
+const isPdf = (fetched: Fetched) =>
+  /pdf/i.test(fetched.contentType) || new TextDecoder().decode(fetched.bytes.slice(0, 5)) === "%PDF-";
+
+// PDFs (filings, transcripts, papers) are read locally; the raw bytes stay archived either way.
+async function textFromPdf(bytes: Uint8Array) {
+  try {
+    const pdf = await getDocumentProxy(new Uint8Array(bytes));
+    const { text } = await extractText(pdf, { mergePages: true });
+    const title = ((await pdf.getMetadata().catch(() => null))?.info as { Title?: string } | undefined)?.Title ?? "";
+    return { title, text: String(text).replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").trim() };
+  } catch {
+    return { title: "", text: "" };
+  }
+}
+
+async function extract(fetched: Fetched) {
+  if (fetched.via === "direct" && isPdf(fetched)) return textFromPdf(fetched.bytes);
+  const raw = new TextDecoder("utf-8", { fatal: false }).decode(fetched.bytes);
+  if (fetched.via === "jina") return textFromJina(raw);
+  return fetched.contentType.includes("html") || raw.trimStart().startsWith("<") ? textFromHtml(raw) : { title: "", text: raw };
+}
+
+// Why the direct copy is not good enough as evidence, or "" if it is.
+function weakness(fetched: Fetched | null, page: { title: string; text: string } | null) {
+  if (!fetched || !page) return "打不开";
+  if (fetched.status >= 400) return `HTTP ${fetched.status}`;
+  if (BOT_CHECK.test(`${page.title}\n${page.text.slice(0, 3000)}`) && page.text.length < 5000) return "验证页";
+  if (page.text.length < THIN_TEXT) return "正文太短";
+  return "";
+}
+
+// Opens the page and keeps a dated copy: raw bytes (gzip) with their hash, the extracted text with its hash,
+// and how it was reached (L1 evidence store). Annual reports run past 200k characters; callers that need
+// the whole filing can raise the cap. Returns null when no route yields usable text.
+export async function snapshot(url: string, maxChars = 200_000): Promise<Snapshot | null> {
+  let fetched = await fetchDirect(url);
+  let page = fetched ? await extract(fetched) : null;
+  if (weakness(fetched, page)) {
+    const viaJina = await fetchJina(url);
+    const jinaPage = viaJina ? await extract(viaJina) : null;
+    const directUsable = fetched && page && fetched.status < 400 ? page.text.length : 0;
+    if (viaJina && jinaPage && jinaPage.text.length >= THIN_TEXT && jinaPage.text.length > directUsable) {
+      fetched = viaJina;
+      page = jinaPage;
+    }
+  }
+  if (!fetched || !page) return null;
+
   // Postgres text cannot hold NUL bytes; some pages (and PDFs served as text) contain them.
-  const kept = text.replace(/\u0000/g, "").replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/g, " ").slice(0, maxChars);
-  const cleanTitle = title.replace(/[\u0000-\u001f]/g, " ").trim();
+  const kept = page.text.replace(/\u0000/g, "").replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/g, " ").slice(0, maxChars);
+  const cleanTitle = page.title.replace(/[\u0000-\u001f]/g, " ").trim();
   const sha256 = createHash("sha256").update(kept).digest("hex");
+  const rawSha256 = createHash("sha256").update(fetched.bytes).digest("hex");
+  const rawGz = Buffer.from(Bun.gzipSync(fetched.bytes));
   const rows = await sql<{ id: number }[]>`
-    INSERT INTO sources (url, final_url, http_status, title, text, sha256)
-    VALUES (${url}, ${response.url || url}, ${response.status}, ${cleanTitle}, ${kept}, ${sha256})
+    INSERT INTO sources (url, final_url, http_status, title, text, sha256, raw_gz, raw_sha256, content_type, fetched_via)
+    VALUES (${url}, ${fetched.finalUrl}, ${fetched.status}, ${cleanTitle}, ${kept}, ${sha256},
+            ${rawGz}, ${rawSha256}, ${fetched.contentType.slice(0, 200)}, ${fetched.via})
     RETURNING id
   `;
   return {
     id: Number(rows[0].id),
     url,
-    final_url: response.url || url,
-    http_status: response.status,
+    final_url: fetched.finalUrl,
+    http_status: fetched.status,
     title: cleanTitle,
     text: kept,
     sha256,
+    fetched_via: fetched.via,
   };
 }
 
@@ -117,8 +220,9 @@ export function quoteOnPage(quote: string, pageText: string) {
   return true;
 }
 
+// archive.today and its mirrors are not evidence: in 2026 they were found altering archived pages.
 export const SKIP_HOST =
-  /(^|\.)(volces\.com|volcengine\.com|google\.[a-z.]+|bing\.com|baidu\.com|sogou\.com|so\.com|youtube\.com|x\.com|twitter\.com|facebook\.com|instagram\.com|tiktok\.com|douyin\.com)$/i;
+  /(^|\.)(volces\.com|volcengine\.com|google\.[a-z.]+|bing\.com|baidu\.com|sogou\.com|so\.com|youtube\.com|x\.com|twitter\.com|facebook\.com|instagram\.com|tiktok\.com|douyin\.com|archive\.(today|ph|is|li|vn|md|fo))$/i;
 
 export function hostOf(url: string) {
   try {
