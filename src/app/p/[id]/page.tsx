@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/icon";
+import { ClaimHeatmap } from "@/components/claim-heatmap";
 import { Portrait } from "@/components/portrait";
 import { ScoreBadge } from "@/components/score-badge";
 import { explainChanges, type ChangeLine, type Snapshot } from "@/lib/score-changes";
@@ -88,10 +89,11 @@ export default async function PersonPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ domain?: string; show?: string }>;
+  searchParams: Promise<{ domain?: string; show?: string; year?: string }>;
 }) {
   const { id } = await params;
-  const { domain: domainFilter, show } = await searchParams;
+  const { domain: domainFilter, show, year: rawYear } = await searchParams;
+  const yearFilter = rawYear && /^\d{4}$/.test(rawYear) ? rawYear : undefined;
   const [data, history] = await Promise.all([
     getJson<{ person: Person; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators }>(`/v1/people/${id}`),
     getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history`).catch(() => ({ snapshots: [] as Snapshot[] })),
@@ -126,15 +128,20 @@ export default async function PersonPage({
   // Past deadlines first (most recent at the top: these carry the record), then the future, soonest first.
   const showFilter = show && SHOW[show] ? SHOW[show] : null;
   const scoped = claims.filter(
-    (claim) => (!domainFilter || claim.category === domainFilter) && (!showFilter || showFilter.test(claim, today)),
+    (claim) =>
+      (!domainFilter || claim.category === domainFilter) &&
+      (!showFilter || showFilter.test(claim, today)) &&
+      (!yearFilter || claim.published_date.startsWith(yearFilter)),
   );
   // Every number on this page links to the claims behind it (SPEC: 数字都能追到原文).
-  const listHref = (next: { domain?: string | null; show?: string | null }) => {
+  const listHref = (next: { domain?: string | null; show?: string | null; year?: string | null }) => {
     const params = new URLSearchParams();
     const d = next.domain === undefined ? domainFilter : next.domain;
     const sh = next.show === undefined ? show : next.show;
+    const y = next.year === undefined ? yearFilter : next.year;
     if (d) params.set("domain", d);
     if (sh) params.set("show", sh);
+    if (y) params.set("year", y);
     const query = params.toString();
     return `/p/${id}${query ? `?${query}` : ""}#claims`;
   };
@@ -575,6 +582,22 @@ export default async function PersonPage({
         </section>
       ) : null}
 
+      {/* When the claims were made: 收录的带期限说法 by year × domain, each cell links to its claims */}
+      <section className="mt-8">
+        <h2 className="flex flex-wrap items-baseline gap-x-3 text-[15px] font-bold">
+          收录的带期限说法
+          <span className="text-xs font-normal text-mute">按说话年份 × 领域；只统计已收录的话，报道多的年份会显得更密</span>
+        </h2>
+        <div className="mt-3">
+          <ClaimHeatmap
+            claims={claims}
+            href={({ domain, year }) => listHref({ domain, year, show: null })}
+            activeYear={yearFilter}
+            activeDomain={domainFilter}
+          />
+        </div>
+      </section>
+
       {/* Claims */}
       <section id="claims" className="mt-8 scroll-mt-24">
         <h2 className="flex flex-wrap items-baseline gap-x-3 text-[15px] font-bold">
@@ -583,6 +606,12 @@ export default async function PersonPage({
           {domainFilter ? (
             <Link href={listHref({ domain: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
               {domainFilter}
+              <Icon name="cancel" size={11} />
+            </Link>
+          ) : null}
+          {yearFilter ? (
+            <Link href={listHref({ year: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
+              {yearFilter} 年说的
               <Icon name="cancel" size={11} />
             </Link>
           ) : null}
