@@ -12,6 +12,7 @@ import { arkConfigured } from "./core/ark";
 import { assertSafeToStart, corsOrigin } from "./core/env";
 import { sql } from "./core/db";
 import { logEvent, migrate } from "./core/migrate";
+import { PEOPLE_LIMIT_DEFAULT, PEOPLE_LIMIT_MAX, peopleSummary } from "./queries/people";
 import { latestScores, oneClaim, personInterestAtlas, personInterests, publishedClaims, type ScoreRow } from "./queries/records";
 import { COMPOSITE_WEIGHTS, interestSplit, personProfile, recomputeScores } from "./scoring/score";
 
@@ -143,6 +144,18 @@ const app = new Elysia()
     `;
     return { people, claims, scores: scores.filter((score) => score.confidence !== "已移除"), today: new Date().toISOString().slice(0, 10) };
   })
+  // 首页列表：一页人物的计数和领先领域，在 SQL 里聚合好（/v1/home 是把全量发给前端自己算）。
+  .get(
+    "/v1/people",
+    async ({ query }) => peopleSummary({ limit: query.limit, offset: query.offset, sort: query.sort }),
+    {
+      query: t.Object({
+        limit: t.Optional(t.Numeric({ minimum: 1, maximum: PEOPLE_LIMIT_MAX, default: PEOPLE_LIMIT_DEFAULT })),
+        offset: t.Optional(t.Numeric({ minimum: 0, default: 0 })),
+        sort: t.Optional(t.Union([t.Literal("judged"), t.Literal("claims"), t.Literal("name")], { default: "judged" })),
+      }),
+    },
+  )
   .get("/v1/people/:id", async ({ params, set }) => {
     const people = await sql<
       {
