@@ -3,6 +3,8 @@ import { Icon } from "@/components/icon";
 import { Portrait } from "@/components/portrait";
 import { ScoreBadge } from "@/components/score-badge";
 import { explainChanges, type ChangeLine, type Snapshot } from "@/lib/score-changes";
+import { InterestFlow } from "@/components/interest-flow";
+import { claimExposureChips, loadInterests } from "@/lib/interests";
 import { CopyButton } from "@/components/copy-button";
 import { ScoreHistoryCharts, type DomainHistory } from "@/components/score-history-chart";
 import { StatusPill } from "@/components/status-pill";
@@ -143,15 +145,9 @@ export default async function PersonPage({
   const fmtPart = (part: { value: number | null; low: number | null; high: number | null }) =>
     part.value != null ? `${part.value.toFixed(1)}（${part.low}–${part.high}）` : "样本不足";
 
-  // 利益关系 grouped by organisation: 「特斯拉：CEO 2008 至今 · 持股约 20.3%」.
+  // 利益关系: the layered payload when the API has it, otherwise layer 1 from this payload.
   const interests = data.interests ?? { status: "not_collected" as const, relations: [] as Interest[] };
-  const span = (item: Interest) =>
-    item.started ? `${item.started}–${item.ended === "present" ? "至今" : (item.ended ?? "")}` : item.ended === "present" ? "至今" : "";
-  const orgs = [...interests.relations.reduce((map, item) => {
-    const key = item.counterparty;
-    map.set(key, [...(map.get(key) ?? []), item]);
-    return map;
-  }, new Map<string, Interest[]>())];
+  const flow = await loadInterests(id, interests.relations);
 
   const stats = [
     { label: "公开主张", value: claims.length },
@@ -258,7 +254,7 @@ export default async function PersonPage({
                     无关 {fmtPart(interests.unrelated)} <span className="font-normal text-mute">· {interests.unrelated.n} 条</span>
                   </p>
                   <p className="mt-1 text-[11px] leading-4 text-mute">
-                    {orgs.length} 家机构的任职、持股、商业往来。主张谈的是说话当时有关系的机构，算「相关」。
+                    {flow.orgs.length} 家机构的任职、持股、商业往来。主张谈的是说话当时有关系的机构，算「相关」。
                   </p>
                 </>
               ) : (
@@ -304,35 +300,26 @@ export default async function PersonPage({
         ) : null}
       </section>
 
-      {/* Interests: roles, holdings, business ties, each with dates and an archived source (SPEC 利益关系) */}
-      {orgs.length > 0 ? (
+      {/* 利益版图: where this person's money and stakes sit (SPEC 利益关系的展示) */}
+      {flow.orgs.length > 0 ? (
         <section className="mt-8">
           <h2 className="flex items-baseline justify-between text-[15px] font-bold">
-            利益关系
-            <span className="text-xs font-normal text-mute">公开可核查的任职、持股、商业往来 · 不进综合分</span>
+            利益版图
+            <Link href={`/p/${id}/interests`} className="inline-flex items-center gap-1 text-xs font-normal text-blue no-underline">
+              查看全貌
+              <Icon name="arrow-right" size={12} />
+            </Link>
           </h2>
-          <ul className="mt-3 overflow-hidden rounded-[14px] bg-card">
-            {orgs.map(([org, items]) => (
-              <li key={org} className="grid gap-x-4 gap-y-1 border-b border-line px-4 py-3 last:border-0 md:grid-cols-[160px_1fr]">
-                <span className="text-sm font-medium">
-                  {items[0].counterparty_zh || org}
-                  {items[0].counterparty_zh && items[0].counterparty_zh !== org ? <span className="ml-1 text-xs font-normal text-mute">{org}</span> : null}
-                </span>
-                <span className="flex flex-col gap-1">
-                  {items.map((item) => (
-                    <span key={item.id} className="text-xs leading-5">
-                      <span className="font-medium">{item.role || (item.kind === "role" ? "任职" : item.kind === "holding" ? "持股" : "商业往来")}</span>
-                      {span(item) ? <span className="num ml-1.5 text-mute">{span(item)}</span> : null}
-                      <a href={item.source_url} target="_blank" rel="noreferrer" title={item.quote} className="ml-1.5 text-mute">
-                        {host(item.source_url)}
-                      </a>
-                      <span className="text-mute">{item.reviewed ? " · 人工复核" : " · 机器核对"}</span>
-                    </span>
-                  ))}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <Link href={`/p/${id}/interests`} className="mt-3 block rounded-[14px] bg-card px-4 pt-4 pb-3 no-underline">
+            <InterestFlow personName={data.person.name} orgs={flow.orgs} claims={data.claims.map(({ id, status }) => ({ id, status }))} claimLinks={flow.claim_links} compact maxOrgs={4} maxSources={3} />
+          </Link>
+          <p className="mt-2 px-1 text-[11px] text-mute">
+            {flow.orgs.length} 个机构 · {flow.orgs.reduce((sum, org) => sum + org.relations.length, 0)} 段关系
+            {flow.layered ? ` · ${flow.orgs.reduce((sum, org) => sum + org.exposures.length, 0)} 项对外敞口` : ""}
+            {interests.status === "collected"
+              ? ` · 利益相关主张兑现率 ${fmtPart(interests.related)}，无关 ${fmtPart(interests.unrelated)}`
+              : ""}
+          </p>
         </section>
       ) : null}
 
@@ -496,6 +483,7 @@ export default async function PersonPage({
         <ul className="mt-3 overflow-hidden rounded-[14px] bg-card">
           {shown.map((claim) => {
             const p = phase(claim, today);
+            const chips = claimExposureChips(flow, claim.id);
             return (
               <li key={claim.id} className="border-b border-line last:border-0">
                 <Link
@@ -511,10 +499,22 @@ export default async function PersonPage({
                     ) : (
                       <StatusPill status={p === "upcoming" ? "未到期" : claim.status} />
                     )}
+                    {claim.quote_kind === "reported" ? (
+                      <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">转述</span>
+                    ) : null}
                   </span>
                   <span className="min-w-0">
                     <span className="line-clamp-2 block text-[15px] leading-6">{claim.quote_zh}</span>
                     {claim.interest_note ? <span className="mt-0.5 block text-xs text-mute">{claim.interest_note}</span> : null}
+                    {chips.length > 0 ? (
+                      <span className="mt-1 flex flex-wrap gap-1">
+                        {chips.map((chip) => (
+                          <span key={chip.key} title={chip.reason} className="rounded bg-sunken px-1.5 py-0.5 text-[11px] text-ink/80">
+                            {chip.label}
+                          </span>
+                        ))}
+                      </span>
+                    ) : null}
                     {JUDGED.has(claim.status) && claim.actual_result ? (
                       <span className="mt-0.5 line-clamp-1 block text-xs text-mute">
                         <span className="font-medium text-ink/70">结果：</span>

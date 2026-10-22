@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { StatusPill } from "@/components/status-pill";
+import { claimExposureChips, loadInterests } from "@/lib/interests";
 import { getJson, type Claim } from "@/lib/api";
 import { sourceLabel } from "@/lib/utils";
 
@@ -14,6 +15,8 @@ export default async function ClaimPage({
   const { id, claimId } = await params;
   const data = await getJson<{ claim: Claim; related: Claim[] }>(`/v1/people/${id}/claims/${claimId}`);
   const claim = data.claim;
+  const flow = await loadInterests(id, []);
+  const chips = claimExposureChips(flow, claim.id);
 
   return (
     <article className="mx-auto max-w-[720px] pt-6">
@@ -28,8 +31,9 @@ export default async function ClaimPage({
           {claim.category}
         </span>
       </p>
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <StatusPill status={claim.status} />
+        {claim.quote_kind === "reported" ? <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">转述</span> : null}
       </div>
       <blockquote className="mt-6">
         <p className="font-semibold tracking-tight text-3xl leading-snug">“{claim.quote_zh}”</p>
@@ -47,6 +51,21 @@ export default async function ClaimPage({
           <Icon name="open" size={14} />
         </a>
       </p>
+      {claim.interest_note || chips.length > 0 ? (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold">说这句话时的利益</h2>
+          {claim.interest_note ? <p className="mt-1 text-sm text-mute">{claim.interest_note}</p> : null}
+          {chips.length > 0 ? (
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {chips.map((chip) => (
+                <li key={chip.key} title={chip.reason} className="rounded-full bg-sunken px-2.5 py-1 text-xs">
+                  {chip.level === "direct" ? "直接" : "间接"} · {chip.label}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
       <p className="mt-8 leading-8">{claim.actual_result || "尚未核对。"}</p>
       <div className="mt-6 flex flex-wrap gap-3 text-sm">
         {claim.evidence.map((item) => (

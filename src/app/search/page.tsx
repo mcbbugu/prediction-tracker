@@ -76,6 +76,15 @@ export default async function SearchPage({
                     </span>
                   </span>
                   <span className="mt-3 block text-sm leading-6 text-mute">{item.directive}</span>
+                  {item.exposures && item.exposures.length > 0 ? (
+                    <span className="mt-2 flex flex-wrap gap-1">
+                      {item.exposures.slice(0, 4).map((exposure) => (
+                        <span key={`${exposure.organisation}-${exposure.target}`} className="rounded bg-sunken px-1.5 py-0.5 text-[11px] text-ink/80">
+                          {exposure.target_zh || exposure.target}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
                 </Link>
               ))}
             </div>

@@ -18,6 +18,8 @@ export type Claim = {
   evidence: Evidence[];
   provenance?: string;
   reviewed?: boolean;
+  // direct = 本人原话, reported = 可靠来源明确归于本人的转述.
+  quote_kind?: "direct" | "reported" | string;
   // SPEC 利益关系: neutral note such as「说话时任特斯拉 CEO」, null when the claim does not touch the speaker's interests.
   interest_note?: string | null;
 };
@@ -104,6 +106,16 @@ export type ConsultEvaluation = {
   };
   directive: string;
   all_domains: Score[];
+  exposures?: {
+    organisation: string;
+    dimension: string;
+    target: string;
+    target_zh: string;
+    metric: { kind: string; value: number; year: number | null } | null;
+    level: "direct" | "indirect";
+    reason: string;
+    source_url: string;
+  }[];
 };
 
 export type ConsultPayload = {
