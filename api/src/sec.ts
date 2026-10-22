@@ -44,6 +44,7 @@ const TICKERS: Record<string, string> = {
   cisco: "CSCO",
   uber: "UBER",
   adobe: "ADBE",
+  paypal: "PYPL",
 };
 
 // Total revenue concepts, most specific first.
