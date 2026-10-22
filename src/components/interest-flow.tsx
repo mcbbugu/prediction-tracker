@@ -66,7 +66,7 @@ export function InterestFlow({
     const gap = compact ? 12 : 18;
     const nodes = new Map<string, { tip: string }>();
     const edges: Edge[] = [];
-    const sourceRows: { id: string; y: number; group: SourceGroup; label: string; metric: string; live: boolean }[] = [];
+    const sourceRows: { id: string; y: number; group: SourceGroup; label: string; metric: string; live: boolean; verified: boolean }[] = [];
     const moreRows: { key: string; y: number; text: string }[] = [];
     const orgBoxes: { id: string; y: number; h: number; label: string; sub: string; est: string }[] = [];
 
@@ -84,7 +84,7 @@ export function InterestFlow({
       });
       org.sources.forEach((source, index) => {
         const sy = y + rowH * (index + 0.5) + (rows - org.sources.length - (org.hidden ? 1 : 0)) * rowH * 0.5;
-        sourceRows.push({ id: source.id, y: sy, group: source.group, label: source.label, metric: source.metric, live: source.current });
+        sourceRows.push({ id: source.id, y: sy, group: source.group, label: source.label, metric: source.metric, live: source.current, verified: source.verified });
         nodes.set(source.id, {
           tip: [
             `${GROUP_LABEL[source.group]} · ${source.label}`,
@@ -287,7 +287,7 @@ export function InterestFlow({
             <rect x={0} y={row.y - 11} width={SRC_X + 8} height={22} fill="transparent" />
             <Glyph group={row.group} x={SRC_X} y={row.y} />
             <text x={SRC_X - 10} y={row.y} dy="0.35em" textAnchor="end" className="text-[12px]">
-              {row.metric ? <tspan className="fill-mute text-[11px]">{row.metric}　</tspan> : null}
+              {row.metric ? <tspan className={`fill-mute text-[11px] ${row.verified ? "" : "italic opacity-70"}`}>{row.metric}　</tspan> : null}
               <tspan className={row.group === "depends" ? "fill-mute" : "fill-ink font-medium"}>{row.label.length > 14 ? `${row.label.slice(0, 13)}…` : row.label}</tspan>
             </text>
           </g>
@@ -359,7 +359,7 @@ export function InterestFlow({
             {GROUP_LABEL[group]}
           </span>
         ))}
-        <span>群青是钱，黑色是他的话；虚线表示规模未公开；光点表示仍在进行</span>
+        <span>群青是钱，黑色是他的话；虚线表示规模未公开；光点表示仍在进行；斜体数字来自网页抓取，未经核验</span>
       </div>
       {!compact ? (
         <p className="mt-1 text-[11px] text-mute">

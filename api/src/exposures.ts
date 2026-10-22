@@ -1,4 +1,5 @@
-// pnpm api:exposures -- [--orgs=tesla,spacex] [--people=musk] [--publish] [--link-only]
+// pnpm api:exposures -- [--people=musk] [--crawl --orgs=tesla,spacex] [--publish]
+// 默认只给主张挂敞口；全量爬取已冻结，要加 --crawl 才跑。
 // 利益关系第二、三层（SPEC「利益关系的三层数据」）：
 //   2. 机构 ↔ 外部敞口：地域营收、生产场地、供应商、客户、合作、投资，每条带规模、时间和存档出处。
 //   3. 主张 ↔ 敞口：按说话当天有效的关系和敞口，给主张挂上相关敞口（direct / indirect + 一句原因）。
@@ -17,7 +18,11 @@ import { excerpt, hostOf, normalize, quoteOnPage, snapshot, usableLinks, type Sn
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const publish = process.argv.includes("--publish") || process.env.AUTO_PUBLISH === "1";
-const linkOnly = process.argv.includes("--link-only");
+// The bulk crawl of every dimension (2026-10) produced unreliable rows (lost units, wrong categories) and is
+// frozen: those rows stay as basis = 'crawl' and show as unverified. US-listed revenue now comes from SEC
+// filings (pnpm api:sec). Linking claims to exposures still runs; a new crawl needs --crawl on purpose.
+const crawl = process.argv.includes("--crawl");
+const linkOnly = process.argv.includes("--link-only") || !crawl;
 const PAGES_PER_DIMENSION = 4;
 // A 10-K is several hundred thousand characters; the geographic revenue note sits near the end.
 const FILING_CHARS = 3_000_000;
@@ -257,11 +262,12 @@ async function resolveOrgs() {
 
 async function main() {
   await migrate();
-  const preflight = await arkPreflight();
+  const preflight = await arkPreflight({ search: crawl });
   if (!preflight.ok) {
     console.log(`启动预检没通过，不开始：\n  ${preflight.problems.join("\n  ")}`);
     return;
   }
+  if (!crawl) console.log("全量爬取已冻结（美股营收改用 pnpm api:sec）；只给主张挂敞口。确需重新爬取请加 --crawl。");
   if (!linkOnly) {
     const orgs = await resolveOrgs();
     console.log(`外部敞口：${orgs.map((org) => org.name).join("、")} · ${publish ? "通过核对的直接公开（机器核对）" : "结果进审核台"}`);

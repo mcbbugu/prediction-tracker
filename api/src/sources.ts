@@ -186,7 +186,23 @@ export async function snapshot(url: string, maxChars = 200_000): Promise<Snapsho
     }
   }
   if (!fetched || !page) return null;
+  return save(url, fetched, page, maxChars);
+}
 
+// A document we fetched some other way (e.g. a filing over the SEC API), stored to the same standard.
+export async function archiveDocument(input: {
+  url: string;
+  bytes: Uint8Array;
+  contentType: string;
+  status: number;
+  title: string;
+  text: string;
+}) {
+  const fetched: Fetched = { status: input.status, finalUrl: input.url, bytes: input.bytes, contentType: input.contentType, via: "direct" };
+  return save(input.url, fetched, { title: input.title, text: input.text }, Number.MAX_SAFE_INTEGER);
+}
+
+async function save(url: string, fetched: Fetched, page: { title: string; text: string }, maxChars: number): Promise<Snapshot> {
   // Postgres text cannot hold NUL bytes; some pages (and PDFs served as text) contain them.
   const kept = page.text.replace(/\u0000/g, "").replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/g, " ").slice(0, maxChars);
   const cleanTitle = page.title.replace(/[\u0000-\u001f]/g, " ").trim();

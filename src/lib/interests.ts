@@ -29,9 +29,21 @@ export type Exposure = {
   source_url: string;
   quote: string;
   reviewed: boolean;
+  // sec_xbrl = read from a 10-K's XBRL; crawl = the frozen 2026-10 web crawl, shown as unverified.
+  basis?: "sec_xbrl" | "crawl";
 };
 
-export type Org = { org_key: string; name: string; name_zh: string; relations: Relation[]; exposures: Exposure[] };
+// Latest annual revenue from filings (SPEC 推算规则).
+export type Financials = { revenue_usd: number; year: number | null; source_url: string };
+
+export type Org = {
+  org_key: string;
+  name: string;
+  name_zh: string;
+  relations: Relation[];
+  exposures: Exposure[];
+  financials?: Financials | null;
+};
 
 export type ClaimLink = {
   claim_id: string;

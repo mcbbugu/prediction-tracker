@@ -100,6 +100,7 @@
    - `partner` 合作：合资、战略合作、政府或机构合同（只当商业客户看）；
    - `investment` 投资：机构对外投资，以及机构背后的主要投资方。
    每条带 `metric`（`revenue_share` / `production_share` / `amount_usd` / `stake_pct`，加年份），没有数字就不填；起止时间；出处同样存档，依据原句逐字核对。来源优先：年报和监管披露（如 10-K 的地域营收、Properties、关键供应商、关联交易）、公司官网和新闻稿、可靠媒体。
+   - 数据口径（2026-10-22 确认）：美股机构的年营收和地区营收直接取自 SEC 10-K 的 XBRL（带单位和分类维度，`pnpm api:sec`），XBRL 原文件整份存档；地区之间互相重叠时，取加起来等于总营收、拆得最细的一组。有 SEC 数据的维度不再显示网页抓取的同类条目。2026-10 那轮网页全量抓取已冻结（`basis = crawl`），保留但标「未验证」；以后不再全量爬取，非上市公司的敞口改为按主张需要单独采集。
 3. **主张 ↔ 敞口**：按说话当天有效的关系和敞口，判断一条主张涉及哪些（直接 / 间接），写一句原因。
 
 机构名要统一（Tesla = Tesla, Inc.；X = Twitter），同一机构只保留一个 `org_key`。政治边界：在某国建厂、营收、税收或土地协议属于商业敞口，可以收；政治立场和政治捐款不收。
@@ -221,6 +222,7 @@ pnpm api:seed        # 迁移 + 人物 + 种子主张（进审核队列）
 pnpm api:dev         # 接口 3011
 pnpm dev             # 网站 4321
 pnpm api:probe       # 检查联网搜索
+pnpm api:sec                     # 美股机构年营收和地区营收（SEC XBRL，需 SEC_USER_AGENT）
 pnpm api:wayback -- --limit=50   # 把存档过的网页提交到 Wayback Machine（可选 IA_ACCESS_KEY / IA_SECRET_KEY）
 pnpm api:verify -- --person=musk --limit=3   # 到期核对
 pnpm api:batch -- --publish                  # 批量分析名单里的人（本机模式，旧入口，单进程直接跑）

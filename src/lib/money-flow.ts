@@ -1,4 +1,4 @@
-import { isCurrent, orgLabel, stakeOf, type ClaimLink, type Exposure, type Org } from "@/lib/interests";
+import { isCurrent, orgLabel, stakeOf, type ClaimLink, type Exposure, type Financials, type Org } from "@/lib/interests";
 
 // SPEC 利益关系的展示（2026-10-22 改版）：钱从哪来 → 经过哪家公司 → 他 → 他说了什么。
 // This module only shapes the data; the component lays it out and animates it.
@@ -21,9 +21,8 @@ const GROUP_OF: Record<Exposure["dimension"], SourceGroup> = {
   facility: "depends",
 };
 
-// Organisation-level revenue (SPEC 推算规则). Not served by the API yet; read when it is.
-export type Financials = { revenue_usd: number; year: number | null; source_url: string };
-type OrgIn = Org & { financials?: Financials | null };
+export type { Financials };
+type OrgIn = Org;
 
 export type FlowSource = {
   id: string;
@@ -34,6 +33,7 @@ export type FlowSource = {
   share: number | null; // fraction of the organisation's revenue, when disclosed
   estimate: Estimate | null;
   current: boolean;
+  verified: boolean; // every disclosure behind it comes from a filing (not the frozen web crawl)
   details: string[]; // one line per merged disclosure, for the tooltip
 };
 
@@ -150,6 +150,7 @@ export type MergedSource = {
   label: string;
   best: NonNullable<Exposure["metric"]> | null;
   current: boolean;
+  verified: boolean;
   exposures: Exposure[];
 };
 export type OwnTie = { from: string; to: string; label: string; known: boolean; exposures: Exposure[] };
@@ -175,8 +176,9 @@ export function mergeExposures(org: Org, orgs: Org[]) {
     const group = GROUP_OF[exposure.dimension];
     const label = exposure.target_zh || exposure.target;
     const key = `${group}:${norm(label)}`;
-    const item = merged.get(key) ?? { key, group, label, best: null, current: false, exposures: [] };
+    const item = merged.get(key) ?? { key, group, label, best: null, current: false, verified: true, exposures: [] };
     item.exposures.push(exposure);
+    item.verified &&= exposure.basis === "sec_xbrl";
     item.current ||= isCurrent(exposure);
     if (m && (!item.best || rank(m) > rank(item.best))) item.best = m;
     merged.set(key, item);
@@ -237,9 +239,11 @@ export function buildMoneyFlow(
       share: null as number | null,
       estimate: null as Estimate | null,
       current: m.current,
+      verified: m.verified,
       details: m.exposures.map((e) => {
         const em = metricOf(e);
-        return `${m.label}：${em ? metricShort(em) : "规模未公开"}${e.started ? ` · ${e.started} 起` : ""}`;
+        const basis = e.basis === "sec_xbrl" ? " · SEC 年报" : " · 网页抓取，未验证";
+        return `${m.label}：${em ? metricShort(em) : "规模未公开"}${e.started ? ` · ${e.started} 起` : ""}${basis}`;
       }),
       best: m.best,
     }));

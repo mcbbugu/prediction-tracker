@@ -165,9 +165,21 @@ export type AtlasExposure = {
   source_url: string;
   quote: string;
   reviewed: boolean;
+  // 'sec_xbrl' = read from a filing's XBRL; 'crawl' = the frozen 2026-10 web crawl, shown as unverified.
+  basis: "sec_xbrl" | "crawl";
 };
 
-export type AtlasOrg = { org_key: string; name: string; name_zh: string; relations: AtlasRelation[]; exposures: AtlasExposure[] };
+// Latest annual revenue from filings (SPEC 推算规则).
+export type AtlasFinancials = { revenue_usd: number; year: number; source_url: string };
+
+export type AtlasOrg = {
+  org_key: string;
+  name: string;
+  name_zh: string;
+  relations: AtlasRelation[];
+  exposures: AtlasExposure[];
+  financials: AtlasFinancials | null;
+};
 
 export type AtlasLink = {
   claim_id: string;
@@ -207,7 +219,7 @@ export async function personInterestAtlas(personId: string) {
   const orgs = new Map<string, AtlasOrg>();
   for (const row of rows) {
     const key = row.org_key || orgKey(row.counterparty);
-    const org = orgs.get(key) ?? { org_key: key, name: row.counterparty, name_zh: row.counterparty_zh, relations: [], exposures: [] };
+    const org = orgs.get(key) ?? { org_key: key, name: row.counterparty, name_zh: row.counterparty_zh, relations: [], exposures: [], financials: null };
     if (row.counterparty.length > org.name.length) org.name = row.counterparty;
     if (row.counterparty_zh && !org.name_zh) org.name_zh = row.counterparty_zh;
     org.relations.push({
@@ -243,11 +255,12 @@ export async function personInterestAtlas(personId: string) {
         source_url: string;
         quote: string;
         reviewed: boolean;
+        basis: string;
       }[]
     >`
       SELECT id::int AS id, org_key, dimension, target, target_zh, country,
              metric_kind, metric_value::float8 AS metric_value, metric_year,
-             started, ended, source_url, quote, (reviewed_at IS NOT NULL) AS reviewed
+             started, ended, source_url, quote, (reviewed_at IS NOT NULL) AS reviewed, basis
       FROM org_exposures
       WHERE org_key IN ${sql(keys)} AND publication = 'published'
       ORDER BY dimension, target
@@ -268,7 +281,24 @@ export async function personInterestAtlas(personId: string) {
         source_url: item.source_url,
         quote: item.quote,
         reviewed: item.reviewed,
+        basis: item.basis === "sec_xbrl" ? "sec_xbrl" : "crawl",
       });
+    }
+    // A filed number replaces crawled rows of the same dimension (the crawl lost units and mixed up categories).
+    for (const org of orgs.values()) {
+      const filed = new Set(org.exposures.filter((e) => e.basis === "sec_xbrl").map((e) => e.dimension));
+      if (filed.size) org.exposures = org.exposures.filter((e) => e.basis === "sec_xbrl" || !filed.has(e.dimension));
+    }
+
+    const financials = await sql<{ org_key: string; revenue_usd: number; fiscal_year: number; source_url: string }[]>`
+      SELECT DISTINCT ON (org_key) org_key, revenue_usd::float8 AS revenue_usd, fiscal_year, source_url
+      FROM org_financials
+      WHERE org_key IN ${sql(keys)}
+      ORDER BY org_key, period_end DESC
+    `;
+    for (const row of financials) {
+      const org = orgs.get(row.org_key);
+      if (org) org.financials = { revenue_usd: row.revenue_usd, year: row.fiscal_year, source_url: row.source_url };
     }
   }
 

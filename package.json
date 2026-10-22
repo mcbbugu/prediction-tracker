@@ -12,6 +12,7 @@
     "api:interests": "cd api && bun run interests",
     "api:exposures": "cd api && bun run exposures",
     "api:wayback": "cd api && bun run wayback",
+    "api:sec": "cd api && bun run sec",
     "api:agent": "cd api && bun run agent",
     "api:docker": "cd api && docker compose up -d",
     "api:verify": "cd api && bun run verify",

@@ -59,6 +59,7 @@ function pickExposures(atlas: Awaited<ReturnType<typeof personInterestAtlas>> | 
     level: "direct" | "indirect";
     reason: string;
     source_url: string;
+    basis: AtlasOrg["exposures"][number]["basis"];
   }[] = [];
   const push = (org: AtlasOrg, exposure: AtlasOrg["exposures"][number], level: "direct" | "indirect", reason: string) => {
     if (seen.has(exposure.id) || out.length >= 8) return;
@@ -74,6 +75,7 @@ function pickExposures(atlas: Awaited<ReturnType<typeof personInterestAtlas>> | 
       level,
       reason,
       source_url: exposure.source_url,
+      basis: exposure.basis,
     });
   };
   for (const link of atlas.claim_links) {

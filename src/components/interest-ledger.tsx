@@ -87,7 +87,7 @@ export function InterestLedger({
   return (
     <div className="space-y-3">
       <p className="px-1 text-[11px] text-mute">
-        每条关系后面的数字是出处，悬停看原句，点开看存档页；蓝底的经过人工复核，其余是机器逐字核对。同一目标的多条披露合并成一行，显示最新、最具体的那个数。
+        每条关系后面的数字是出处，悬停看原句，点开看存档页；蓝底的经过人工复核，其余是机器逐字核对。同一目标的多条披露合并成一行，显示最新、最具体的那个数。美股公司的地区营收取自 SEC 年报（10-K 的 XBRL 数据）；标「未验证」的是早先网页抓取的结果，可能有单位或分类错误。
       </p>
 
       {full.map((org) => {
@@ -137,7 +137,15 @@ export function InterestLedger({
                       <span className={`min-w-0 truncate font-medium ${s.current ? "" : "text-mute"}`} title={s.label}>
                         {s.label}
                       </span>
-                      <span className={`num shrink-0 ${s.best ? "text-blue" : "text-mute"}`}>{s.best ? metricShort(s.best) : "规模未公开"}</span>
+                      <span className={`num shrink-0 ${s.best ? (s.verified ? "text-blue" : "text-mute italic") : "text-mute"}`}>
+                        {s.best ? metricShort(s.best) : "规模未公开"}
+                      </span>
+                      <span
+                        title={s.verified ? "取自 SEC 10-K 的 XBRL 数据，带单位和分类" : "2026-10 网页抓取的结果，未经核验，可能有单位或分类错误"}
+                        className={`shrink-0 rounded px-1 text-[10px] leading-4 ${s.verified ? "bg-blue-tint text-blue-deep" : "bg-sunken text-mute"}`}
+                      >
+                        {s.verified ? "SEC 年报" : "未验证"}
+                      </span>
                       <span className="shrink-0">
                         <Sources items={s.exposures} />
                       </span>

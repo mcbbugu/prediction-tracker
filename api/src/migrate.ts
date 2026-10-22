@@ -153,10 +153,6 @@ async function migrateUnlocked() {
     )
   `;
   await sql`
-    CREATE UNIQUE INDEX IF NOT EXISTS org_exposures_unique_idx
-    ON org_exposures (org_key, dimension, lower(target), coalesce(metric_kind, ''), coalesce(metric_year, 0))
-  `;
-  await sql`
     CREATE TABLE IF NOT EXISTS claim_exposures (
       claim_id text NOT NULL,
       exposure_id bigint NOT NULL,
@@ -194,6 +190,33 @@ async function migrateUnlocked() {
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS wayback_url text`;
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS wayback_at timestamptz`;
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS wayback_error text`;
+  // Where an exposure came from. 'crawl' = the bulk web crawl of 2026-10 (frozen, shown as unverified);
+  // 'sec_xbrl' = parsed from a 10-K's XBRL with units and dimensions, which replaces crawled rows of the same kind.
+  await sql`ALTER TABLE org_exposures ADD COLUMN IF NOT EXISTS basis text NOT NULL DEFAULT 'crawl'`;
+  // One row per source basis: a filed number and an earlier crawled one for the same thing can both be kept.
+  await sql`DROP INDEX IF EXISTS org_exposures_unique_idx`;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS org_exposures_unique_basis_idx
+    ON org_exposures (org_key, dimension, lower(target), coalesce(metric_kind, ''), coalesce(metric_year, 0), basis)
+  `;
+  // Organisation-level annual revenue (SPEC 推算规则), from filings.
+  await sql`
+    CREATE TABLE IF NOT EXISTS org_financials (
+      id bigserial PRIMARY KEY,
+      org_key text NOT NULL,
+      fiscal_year integer NOT NULL,
+      period_start date NOT NULL,
+      period_end date NOT NULL,
+      revenue_usd numeric NOT NULL,
+      concept text NOT NULL,
+      form text NOT NULL,
+      accession text NOT NULL,
+      source_url text NOT NULL,
+      source_id bigint,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (org_key, period_end, form)
+    )
+  `;
   // Queue fields: one worker claims queued jobs; payload carries per-kind input (e.g. claim_id).
   await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS payload jsonb NOT NULL DEFAULT '{}'::jsonb`;
   await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0`;
