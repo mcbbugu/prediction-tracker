@@ -211,6 +211,10 @@ export async function consultPrior(input: ConsultRequest) {
     matchedPeopleIds = [input.person_id];
   } else if (parsed?.person_id) {
     matchedPeopleIds = [parsed.person_id];
+  } else if (parsed) {
+    // The model read the sentence and found no speaker in our catalogue: don't let keyword overlap
+    // ("AI", "app") pin it on someone else.
+    matchedPeopleIds = [];
   } else if (!rawQuery) {
     matchedPeopleIds = people.map((person) => person.id);
   } else {

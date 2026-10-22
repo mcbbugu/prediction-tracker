@@ -1,0 +1,152 @@
+[
+  {
+    "query": "据报道，埃隆·马斯克称特斯拉会在明年把一款起售价更低的电动车交到普通买家手里。",
+    "expect_person": "musk",
+    "expect_domain": "电动车与电池"
+  },
+  {
+    "query": "Elon Musk said Starship would carry a crew around the Moon by 2028.",
+    "expect_person": "musk",
+    "expect_domain": "航天"
+  },
+  {
+    "query": "黄仁勋在采访中表示，三年内通用人形机器人会走进工厂，干现在由人完成的搬运。",
+    "expect_person": "huang",
+    "expect_domain": "机器人"
+  },
+  {
+    "query": "Jensen Huang said NVIDIA would ship its next generation of AI accelerators by 2027.",
+    "expect_person": "huang",
+    "expect_domain": "AI 芯片与算力"
+  },
+  {
+    "query": "据报道，山姆·奥特曼说，OpenAI 会在明年放出一个能独立完成初级科研的模型。",
+    "expect_person": "altman",
+    "expect_domain": "AI 模型与 AGI"
+  },
+  {
+    "query": "Demis Hassabis said a single model would match leading human scientists on new research problems by 2028.",
+    "expect_person": "demis-hassabis",
+    "expect_domain": "AI 模型与 AGI"
+  },
+  {
+    "query": "桑达尔·皮查伊在采访中表示，谷歌的数据中心会在明年底前做到全天候使用无碳能源。",
+    "expect_person": "sundar-pichai",
+    "expect_domain": "能源"
+  },
+  {
+    "query": "Satya Nadella said Azure would host the majority of new enterprise AI workloads by 2027.",
+    "expect_person": "satya-nadella",
+    "expect_domain": "云与企业软件"
+  },
+  {
+    "query": "据报道，安迪·贾西称，亚马逊云会在明年成为多数新企业软件上线时的默认平台。",
+    "expect_person": "andy-jassy",
+    "expect_domain": "云与企业软件"
+  },
+  {
+    "query": "Jeff Bezos said Amazon's operating margin would hold above its recent level through 2028.",
+    "expect_person": "jeff-bezos",
+    "expect_domain": "公司经营与财务"
+  },
+  {
+    "query": "达里奥·阿莫迪在采访中表示，三年内标普 500 的年化回报会明显高于过去十年的平均水平。",
+    "expect_person": "dario-amodei",
+    "expect_domain": "宏观经济与市场"
+  },
+  {
+    "query": "Yann LeCun said today's large language models would still lack human-level reasoning within three years.",
+    "expect_person": "yann-lecun",
+    "expect_domain": "AI 模型与 AGI"
+  },
+  {
+    "query": "据报道，马克·扎克伯格说，到 2028 年 Facebook 和 Instagram 的日活跃用户还会比现在高出一大截。",
+    "expect_person": "mark-zuckerberg",
+    "expect_domain": "互联网平台"
+  },
+  {
+    "query": "Jim Keller said Tenstorrent's chips would beat mainstream GPUs on performance per watt by 2028.",
+    "expect_person": "jim-keller",
+    "expect_domain": "AI 芯片与算力"
+  },
+  {
+    "query": "孙正义在采访中表示，软银会在三年内把人形机器人部署到自己的物流仓库里。",
+    "expect_person": "masayoshi-son",
+    "expect_domain": "机器人"
+  },
+  {
+    "query": "Larry Ellison said Oracle Cloud would train a large share of enterprise AI models by 2027.",
+    "expect_person": "larry-ellison",
+    "expect_domain": "云与企业软件"
+  },
+  {
+    "query": "据报道，苏姿丰称 AMD 的下一款人工智能加速芯片会在明年进入大规模量产。",
+    "expect_person": "lisa-su",
+    "expect_domain": "AI 芯片与算力"
+  },
+  {
+    "query": "Jeff Dean said general-purpose robots would take over warehouse picking within three years.",
+    "expect_person": "jeff-dean",
+    "expect_domain": "机器人"
+  },
+  {
+    "query": "杰弗里·辛顿在采访中表示，三年内医院会用人工智能系统代替放射科医生出具大部分影像报告。",
+    "expect_person": "geoffrey-hinton",
+    "expect_domain": "生物科技与医疗"
+  },
+  {
+    "query": "Mira Murati said her new lab would release a frontier model competitive with the leading labs by 2028.",
+    "expect_person": "mira-murati",
+    "expect_domain": "AI 模型与 AGI"
+  },
+  {
+    "query": "加里·马库斯称，到 2028 年，没有安全员的自动驾驶出租车仍不会在普通城市道路上普及。",
+    "expect_person": "gary-marcus",
+    "expect_domain": "自动驾驶"
+  },
+  {
+    "query": "Pat Gelsinger said Intel's foundry would manufacture advanced AI accelerators for outside customers by 2027.",
+    "expect_person": "pat-gelsinger",
+    "expect_domain": "AI 芯片与算力"
+  },
+  {
+    "query": "约书亚·本吉奥在采访中表示，明年以前不会出现能自主做科研的通用人工智能。",
+    "expect_person": "yoshua-bengio",
+    "expect_domain": "AI 模型与 AGI"
+  },
+  {
+    "query": "Andrej Karpathy said AI tutors would teach most introductory programming courses within three years.",
+    "expect_person": "andrej-karpathy",
+    "expect_domain": "AI 模型与 AGI"
+  },
+  {
+    "query": "据报道，雷军在采访中表示，小米汽车会在明年进入欧洲五个以上的国家。",
+    "expect_person": null,
+    "expect_domain": "电动车与电池"
+  },
+  {
+    "query": "Reid Hoffman said AI agents would take over a large share of first-round recruiting interviews by 2028.",
+    "expect_person": null,
+    "expect_domain": "AI 模型与 AGI"
+  },
+  {
+    "query": "据报道，马化腾在采访中表示，微信的月活跃用户会在明年再创新高。",
+    "expect_person": null,
+    "expect_domain": "互联网平台"
+  },
+  {
+    "query": "Brian Chesky said Airbnb would handle most guest trip planning inside its own app by 2028.",
+    "expect_person": null,
+    "expect_domain": "互联网平台"
+  },
+  {
+    "query": "据报道，有教育研究者认为，三年内生成式模型会批改大部分中学作文。",
+    "expect_person": null,
+    "expect_domain": "AI 模型与 AGI"
+  },
+  {
+    "query": "An unsigned industry note said most new business software purchases would be cloud subscriptions by 2027.",
+    "expect_person": null,
+    "expect_domain": "云与企业软件"
+  }
+]
