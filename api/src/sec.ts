@@ -26,7 +26,6 @@ const TICKERS: Record<string, string> = {
   google: "GOOGL",
   meta: "META",
   amd: "AMD",
-  "advanced-micro-devices": "AMD",
   amazon: "AMZN",
   apple: "AAPL",
   intel: "INTC",

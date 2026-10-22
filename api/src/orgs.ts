@@ -2,7 +2,7 @@
 // Relations (layer 1) and exposures (layer 2) meet on this key.
 
 // Renames and well-known aliases. Add here when two names turn out to be the same organisation.
-const ALIASES: Record<string, string> = {
+export const ALIASES: Record<string, string> = {
   twitter: "x",
   "x corp": "x",
   "x holdings": "x",
@@ -14,6 +14,20 @@ const ALIASES: Record<string, string> = {
   "x ai": "xai",
   "google deepmind": "deepmind",
   "deepmind technologies": "deepmind",
+  "advanced micro devices": "amd",
+  "greylock partners": "greylock",
+  landingai: "landing-ai",
+  "helion energy": "helion",
+  "inflection ai": "inflection",
+  "fred hutchinson cancer research center": "fred-hutchinson-cancer-center",
+  "openai lp": "openai",
+  "mistral ai": "mistral",
+  // En dash, as in the stored name "Mila – Quebec Artificial Intelligence Institute".
+  "mila \u2013 quebec artificial intelligence institute": "mila",
+  "vector institute for artificial intelligence": "vector-institute",
+  loizero: "lawzero",
+  "deepmind paris": "deepmind",
+  "at&t labs-research": "at-t-labs",
 };
 
 export function canonicalName(name: string) {

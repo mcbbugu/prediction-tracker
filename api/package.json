@@ -20,6 +20,7 @@
     "probe": "bun run src/probe-search.ts",
     "batch": "bun run src/batch.ts",
     "remap": "bun run src/remap-domains.ts",
+    "merge-orgs": "bun run src/merge-orgs.ts",
     "rescore": "bun run src/score.ts",
     "requote": "bun run src/requote.ts",
     "portraits": "bun run src/portrait.ts",
