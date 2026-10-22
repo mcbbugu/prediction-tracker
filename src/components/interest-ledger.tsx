@@ -20,6 +20,18 @@ function span(item: { started: string | null; ended: string | null }) {
   return item.started ? `${item.started} – ${end}` : end;
 }
 
+// SEC filing vs the frozen web crawl. Same mark on grouped rows and inter-company ties.
+function BasisMark({ verified }: { verified: boolean }) {
+  return (
+    <span
+      title={verified ? "取自 SEC 10-K 的 XBRL 数据，带单位和分类" : "2026-10 网页抓取的结果，未经核验，可能有单位或分类错误"}
+      className={`shrink-0 rounded px-1 text-[10px] leading-4 ${verified ? "bg-blue-tint text-blue-deep" : "bg-sunken text-mute"}`}
+    >
+      {verified ? "SEC 年报" : "未验证"}
+    </span>
+  );
+}
+
 // Numbered links to every archived source behind a row; the quote shows on hover.
 function Sources({ items }: { items: { source_url: string; quote: string; reviewed: boolean }[] }) {
   const seen = new Map<string, (typeof items)[number]>();
@@ -120,6 +132,9 @@ export function InterestLedger({
                     {index ? "；" : ""}
                     {labelOf.get(tie.from)} → {labelOf.get(tie.to)}
                     <span className={`num ml-1 ${tie.known ? "text-blue" : "text-mute"}`}>{tie.label}</span>
+                    <span className="ml-1 inline-flex align-baseline">
+                      <BasisMark verified={tie.exposures.length > 0 && tie.exposures.every((e) => e.basis === "sec_xbrl")} />
+                    </span>
                     <Sources items={tie.exposures} />
                   </span>
                 ))}
@@ -140,12 +155,7 @@ export function InterestLedger({
                       <span className={`num shrink-0 ${s.best ? (s.verified ? "text-blue" : "text-mute italic") : "text-mute"}`}>
                         {s.best ? metricShort(s.best) : "规模未公开"}
                       </span>
-                      <span
-                        title={s.verified ? "取自 SEC 10-K 的 XBRL 数据，带单位和分类" : "2026-10 网页抓取的结果，未经核验，可能有单位或分类错误"}
-                        className={`shrink-0 rounded px-1 text-[10px] leading-4 ${s.verified ? "bg-blue-tint text-blue-deep" : "bg-sunken text-mute"}`}
-                      >
-                        {s.verified ? "SEC 年报" : "未验证"}
-                      </span>
+                      <BasisMark verified={s.verified} />
                       <span className="shrink-0">
                         <Sources items={s.exposures} />
                       </span>
