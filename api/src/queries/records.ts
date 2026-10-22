@@ -174,7 +174,15 @@ export type AtlasExposure = {
 };
 
 // Latest annual revenue from filings (SPEC 推算规则).
-export type AtlasFinancials = { revenue_usd: number; year: number; source_url: string };
+// period_start/period_end/form say what the number covers: only a ~12-month period is used for 推算.
+export type AtlasFinancials = {
+  revenue_usd: number;
+  year: number;
+  source_url: string;
+  form: string;
+  period_start: string;
+  period_end: string;
+};
 
 export type AtlasOrg = {
   org_key: string;
@@ -294,15 +302,27 @@ export async function personInterestAtlas(personId: string) {
       if (filed.size) org.exposures = org.exposures.filter((e) => e.basis === "sec_xbrl" || !filed.has(e.dimension));
     }
 
-    const financials = await sql<{ org_key: string; revenue_usd: number; fiscal_year: number; source_url: string }[]>`
-      SELECT DISTINCT ON (org_key) org_key, revenue_usd::float8 AS revenue_usd, fiscal_year, source_url
+    // Latest filing; a full-year one wins over a newer partial period only when they end on the same date.
+    const financials = await sql<
+      { org_key: string; revenue_usd: number; fiscal_year: number; source_url: string; form: string; period_start: string; period_end: string }[]
+    >`
+      SELECT DISTINCT ON (org_key) org_key, revenue_usd::float8 AS revenue_usd, fiscal_year, source_url, form,
+             to_char(period_start, 'YYYY-MM-DD') AS period_start, to_char(period_end, 'YYYY-MM-DD') AS period_end
       FROM org_financials
       WHERE org_key IN ${sql(keys)}
-      ORDER BY org_key, period_end DESC
+      ORDER BY org_key, period_end DESC, (period_end - period_start) DESC
     `;
     for (const row of financials) {
       const org = orgs.get(row.org_key);
-      if (org) org.financials = { revenue_usd: row.revenue_usd, year: row.fiscal_year, source_url: row.source_url };
+      if (org)
+        org.financials = {
+          revenue_usd: row.revenue_usd,
+          year: row.fiscal_year,
+          source_url: row.source_url,
+          form: row.form,
+          period_start: row.period_start,
+          period_end: row.period_end,
+        };
     }
   }
 

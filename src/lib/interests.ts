@@ -34,7 +34,31 @@ export type Exposure = {
 };
 
 // Latest annual revenue from filings (SPEC 推算规则).
-export type Financials = { revenue_usd: number; year: number | null; source_url: string };
+// form / period say what the number covers; only a ~12-month period feeds 推算 (see money-flow).
+export type Financials = {
+  revenue_usd: number;
+  year: number | null;
+  source_url: string;
+  form?: string;
+  period_start?: string;
+  period_end?: string;
+};
+
+// How many months a filing's revenue covers (12 when unknown, as for older annual-only rows).
+export function periodMonths(f: Financials) {
+  if (!f.period_start || !f.period_end) return 12;
+  return Math.round((Date.parse(f.period_end) - Date.parse(f.period_start)) / (30.44 * 86_400_000));
+}
+
+// "FY2025" for a full year, "2026 上半年" / "2026 前三季度" / "2026 Q1" for partial periods.
+export function periodLabel(f: Financials) {
+  const months = periodMonths(f);
+  const year = f.period_end?.slice(0, 4) ?? String(f.year ?? "");
+  if (months >= 11) return f.year ? `FY${f.year}` : year;
+  if (months >= 8) return `${year} 前三季度`;
+  if (months >= 5) return `${year} 上半年`;
+  return `${year} 单季`;
+}
 
 export type Org = {
   org_key: string;

@@ -1,4 +1,4 @@
-import { isCurrent, orgLabel, stakeOf, type ClaimLink, type Exposure, type Financials, type Org } from "@/lib/interests";
+import { isCurrent, orgLabel, periodMonths, stakeOf, type ClaimLink, type Exposure, type Financials, type Org } from "@/lib/interests";
 
 // SPEC 利益关系的展示（2026-10-22 改版）：钱从哪来 → 经过哪家公司 → 他 → 他说了什么。
 // This module only shapes the data; the component lays it out and animates it.
@@ -189,9 +189,12 @@ export function mergeExposures(org: Org, orgs: Org[]) {
 
 export { metricShort };
 
+// SPEC 推算规则: only a full year's revenue is multiplied out; a half-year figure is shown but not annualised.
+const annual = (fin: Financials | null | undefined) => (fin && periodMonths(fin) >= 11 ? fin : null);
+
 function estimateOrg(org: OrgIn): Estimate | null {
   const stake = stakeFor(org);
-  const fin = org.financials;
+  const fin = annual(org.financials);
   if (stake == null || !fin) return null;
   return {
     usd: (stake / 100) * fin.revenue_usd,
@@ -250,7 +253,7 @@ export function buildMoneyFlow(
       best: m.best,
     }));
 
-    const revenue = org.financials?.revenue_usd ?? null;
+    const revenue = annual(org.financials)?.revenue_usd ?? null;
     const sources = merged.map(({ best, ...item }) => {
       if (best) item.metric = metricShort(best);
       if (best?.kind === "revenue_share") item.share = best.value / 100;
@@ -297,5 +300,5 @@ export function buildMoneyFlow(
 
   const drawn = orgs.filter((org) => org.sources.length || org.stake != null || org.estimate || claimsByOrg.get(org.id.slice(2))?.length || [...inter.values()].some((t) => t.from === org.id || t.to === org.id));
   const minor = orgs.filter((org) => !drawn.includes(org)).map((org) => (org.sub ? `${org.label}（${org.sub}）` : org.label));
-  return { orgs: drawn, minor, inter: [...inter.values()], claims: claimGroups, past, hasRevenue: orgsIn.some((o) => o.financials) };
+  return { orgs: drawn, minor, inter: [...inter.values()], claims: claimGroups, past, hasRevenue: orgsIn.some((o) => annual(o.financials)) };
 }

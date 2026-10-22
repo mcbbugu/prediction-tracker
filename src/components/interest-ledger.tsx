@@ -1,4 +1,4 @@
-import { KIND_LABEL, isCurrent, orgLabel, type ClaimLink, type Exposure, type Org, type Relation } from "@/lib/interests";
+import { KIND_LABEL, isCurrent, orgLabel, periodLabel, type ClaimLink, type Exposure, type Org, type Relation } from "@/lib/interests";
 import { GROUP_LABEL, mergeExposures, metricShort, type MergedSource, type SourceGroup } from "@/lib/money-flow";
 
 // 全部关系：和上面的流向图用同一套合并和分类。
@@ -125,12 +125,12 @@ export function InterestLedger({
             </ul>
             {org.financials ? (
               <p className="mt-2 text-xs">
-                <span className="mr-1.5 text-[11px] text-mute">年营收</span>
+                <span className="mr-1.5 text-[11px] text-mute">营收</span>
                 <span className="num font-medium">
-                  {org.financials.year ? `FY${org.financials.year} ` : ""}${(org.financials.revenue_usd / 1e9).toFixed(1)}B
+                  {periodLabel(org.financials)} ${(org.financials.revenue_usd / 1e9).toFixed(1)}B
                 </span>
                 <a href={org.financials.source_url} target="_blank" rel="noreferrer" className="ml-1.5 text-[11px] text-blue">
-                  SEC 10-K 数据
+                  SEC {org.financials.form ?? "10-K"} 数据
                 </a>
               </p>
             ) : null}
