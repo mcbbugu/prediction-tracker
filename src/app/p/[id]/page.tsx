@@ -10,7 +10,7 @@ import { CopyButton } from "@/components/copy-button";
 import { ScoreHistoryCharts, type DomainHistory } from "@/components/score-history-chart";
 import { StatusPill } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
-import { apiBase, getJson, type Claim, type Indicators, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
+import { PUBLIC_API_URL, getJson, type Claim, type Indicators, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -173,9 +173,12 @@ export default async function PersonPage({
         .reverse(),
     }))
     .filter((row) => row.points.length > 0);
-  const curl = `curl -X POST ${apiBase()}/v1/consult \\
-  -H 'content-type: application/json' \\
-  -d '{"person_id":"${id}","domain":"${lead?.domain ?? domains[0]?.score.domain ?? ""}","query":"${data.person.name}说明年……"}'`;
+  // For callers: the database-only prior (as_of optional), the sentence-level consult, and the MCP server.
+  const leadDomain = lead?.domain ?? domains[0]?.score.domain ?? "";
+  const curl = `curl "${PUBLIC_API_URL}/v1/prior?person=${id}&domain=${encodeURIComponent(leadDomain)}&as_of=${today}"`;
+  const consultCurl = `curl -X POST ${PUBLIC_API_URL}/v1/consult -H 'content-type: application/json' \\
+  -d '{"query":"${data.person.name}说明年……"}'`;
+  const mcpConfig = `{ "mcpServers": { "prior": { "url": "${PUBLIC_API_URL}/mcp" } } }`;
 
   // Profile rows: composites with a score first; larger samples first.
   const cstage = (row: ProfileRow) => (row.composite.value != null ? 1 : 0);
@@ -687,13 +690,22 @@ export default async function PersonPage({
       {/* For agents */}
       <section className="mt-8">
         <h2 className="text-[15px] font-bold">给 AI 调用</h2>
-        <p className="mt-1 text-xs text-mute">采信{data.person.name}的一句新说法之前，先取这个人在该领域的先验。</p>
-        <div className="relative mt-3">
-          <pre className="overflow-x-auto rounded-[14px] bg-ink p-4 pr-20 text-[12px] leading-5 text-white/90">
-            <code>{curl}</code>
-          </pre>
-          <CopyButton text={curl} className="absolute top-3 right-3" />
-        </div>
+        <p className="mt-1 text-xs text-mute">采信{data.person.name}的一句新说法之前，先取这个人在该领域的先验。三种方式返回同一套数字和出处。</p>
+        {[
+          { label: "取先验（只查库，as_of 可查过去某天的记录）", code: curl },
+          { label: "给一句话（自动识别人物和领域，并找出他以前说过的同一件事）", code: consultCurl },
+          { label: "MCP（工具 get_prior），加进 AI 客户端的配置", code: mcpConfig },
+        ].map((item) => (
+          <div key={item.label} className="mt-3">
+            <p className="mb-1 text-[11px] text-mute">{item.label}</p>
+            <div className="relative">
+              <pre className="overflow-x-auto rounded-[14px] bg-ink p-4 pr-20 text-[12px] leading-5 text-white/90">
+                <code>{item.code}</code>
+              </pre>
+              <CopyButton text={item.code} className="absolute top-3 right-3" />
+            </div>
+          </div>
+        ))}
         {lead ? (
           <p className="mt-2 text-xs text-mute">
             当前返回：{lead.domain} 先验 <b className="num text-ink">{((lead.value ?? 0) / 100).toFixed(3)}</b>，80% 区间 {lead.low}–{lead.high}，基于 {lead.n} 条。
