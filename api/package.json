@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
+    "test": "bun --env-file=.env test tests",
     "seed": "bun run src/people/seed.ts",
     "seed-check": "bun run src/people/seed-check.ts",
     "interests": "bun run src/interests/interests.ts",
