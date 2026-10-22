@@ -15,3 +15,5 @@
 | `tools/` | 一次性的检查工具（联网搜索探针） |
 
 脚本入口都在 `api/package.json` 的 scripts 里（`pnpm api:<name>`）。读仓库根目录下 `data/` 的脚本用 `join(dirname(fileURLToPath(import.meta.url)), "../../..")` 定位根目录；挪动文件时注意层级。
+
+`queries/prior.ts` 是 consult 第一层（只查库的先验，`GET /v1/prior`）；`queries/mcp.ts` 把它包成 MCP 工具 `get_prior`（`POST /mcp`）。

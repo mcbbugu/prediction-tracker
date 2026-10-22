@@ -2,6 +2,8 @@ import { cors } from "@elysiajs/cors";
 import { Elysia, t } from "elysia";
 import { LABELS, calibrationReport, sampleCalibration } from "./scoring/calibration";
 import { indicators } from "./scoring/indicators";
+import { handleMcp } from "./queries/mcp";
+import { PriorError, priorAsOf } from "./queries/prior";
 import { consultPrior } from "./queries/consult";
 import { runAnalyzeJob } from "./claims/discover";
 import { remapStrayDomains } from "./claims/remap-domains";
@@ -54,6 +56,33 @@ async function hasPublishedDuplicate(personId: string, quoteEn: string, deadline
 const app = new Elysia()
   .use(cors({ origin: true, allowedHeaders: ["Content-Type", "x-review-token"] }))
   .get("/health", () => ({ ok: true }))
+  // consult 第一层：只查库的先验，可按 as_of 查过去某天的记录。
+  .get(
+    "/v1/prior",
+    async ({ query, set }) => {
+      try {
+        return await priorAsOf({ person: query.person, domain: query.domain, as_of: query.as_of });
+      } catch (error) {
+        if (!(error instanceof PriorError)) throw error;
+        set.status = error.status;
+        return { error: error.message, candidates: error.candidates };
+      }
+    },
+    { query: t.Object({ person: t.String(), domain: t.Optional(t.String()), as_of: t.Optional(t.String()) }) },
+  )
+  // MCP (2026-07-28, stateless): one read-only tool, get_prior.
+  .post("/mcp", async ({ body, set }) => {
+    const response = await handleMcp((body ?? {}) as Parameters<typeof handleMcp>[0]);
+    if (response === null) {
+      set.status = 202;
+      return "";
+    }
+    return response;
+  })
+  .get("/mcp", ({ set }) => {
+    set.status = 405;
+    return { error: "这是无状态 MCP 服务，只接受 POST（JSON-RPC）" };
+  })
   .get(
     "/v1/consult",
     async ({ query }) => {
