@@ -134,12 +134,13 @@ const OUTAGE_BACKOFF_SECONDS = [5, 15, 30];
 export type ErrorKind = "network" | "server" | "rate" | "denied" | "request";
 
 export function classifyArkError(message: string): ErrorKind {
+  // Server-side failures first: "Gateway Timeout" (504) is Ark's side, not our network, even though it says timeout.
+  if (/InternalServiceError|InternalServerError|ServiceUnavailable|Bad Gateway|Gateway Timeout|HTTP 50[0234]/i.test(message)) return "server";
   if (/NETWORK:|URLError|timed out|timeout|Connection(Refused|Reset|Aborted)?Error|RemoteDisconnected|IncompleteRead|Name or service not known|nodename nor servname|Temporary failure in name resolution|Network is unreachable/i.test(message)) {
     return "network";
   }
   if (RETRYABLE.test(message)) return "rate";
   if (/AccessDenied|Access denied|Unauthorized|AuthenticationError|InvalidApiKey|InvalidAccessKey|AccountOverdue|欠费|余额不足|quota/i.test(message)) return "denied";
-  if (/InternalServiceError|InternalServerError|ServiceUnavailable|Bad Gateway|Gateway Timeout|HTTP 50[0234]/i.test(message)) return "server";
   return "request";
 }
 
