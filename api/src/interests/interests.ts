@@ -130,11 +130,11 @@ async function collect(person: Person) {
       }
       const ended = (item.ended ?? "").trim().toLowerCase() === "present" ? "present" : cleanDate(item.ended);
       const rows = await sql`
-        INSERT INTO interests (person_id, kind, counterparty, counterparty_zh, role, started, ended, source_url, source_id, quote, publication,
+        INSERT INTO interests (person_id, kind, counterparty, counterparty_zh, role, started, ended, end_kind, source_url, source_id, quote, publication,
                                org_key, stake_pct, amount_usd)
         VALUES (
           ${person.id}, ${kind}, ${counterparty}, ${(item.counterparty_zh ?? "").trim()}, ${(item.role ?? "").trim()},
-          ${cleanDate(item.started)}, ${ended}, ${page.final_url}, ${page.id}, ${quote}, ${publish ? "published" : "proposed"},
+          ${cleanDate(item.started)}, ${ended}, ${endKind(ended)}, ${page.final_url}, ${page.id}, ${quote}, ${publish ? "published" : "proposed"},
           ${orgKey(counterparty)}, ${parseScale(item.stake_text, quote, "pct")}, ${parseScale(item.amount_text, quote, "usd")}
         )
         ON CONFLICT (person_id, kind, lower(counterparty), lower(role)) DO NOTHING
@@ -151,7 +151,7 @@ async function collect(person: Person) {
 export async function consolidate(personId: string) {
   const rows = await sql<{ id: number; kind: string; counterparty: string; org_key: string | null; role: string; started: string | null; ended: string | null; source_url: string }[]>`
     SELECT id::int AS id, kind, counterparty, org_key, role, started, ended, source_url
-    FROM interests WHERE person_id = ${personId} AND publication IN ('published', 'proposed')
+    FROM interests WHERE person_id = ${personId} AND publication IN ('published', 'proposed') AND superseded_at IS NULL
   `;
   if (rows.length < 2) return 0;
   const answer = (await arkJson(
@@ -179,7 +179,7 @@ export async function consolidate(personId: string) {
 export async function backfill(personId: string) {
   const rows = await sql<{ id: number; counterparty: string; quote: string; org_key: string | null; stake_pct: string | null; amount_usd: string | null }[]>`
     SELECT id::int AS id, counterparty, quote, org_key, stake_pct, amount_usd
-    FROM interests WHERE person_id = ${personId} AND publication IN ('published', 'proposed')
+    FROM interests WHERE person_id = ${personId} AND publication IN ('published', 'proposed') AND superseded_at IS NULL
   `;
   for (const row of rows) {
     if (row.org_key !== orgKey(row.counterparty)) await sql`UPDATE interests SET org_key = ${orgKey(row.counterparty)} WHERE id = ${row.id}`;
@@ -210,6 +210,14 @@ export async function backfill(personId: string) {
 }
 
 // "said" is YYYY-MM-DD; a relation date may be YYYY or YYYY-MM, so compare at its precision.
+// 利益关系双时态: what a stored end date says about the tie. No end date is "unknown", not "ongoing".
+export type EndKind = "ongoing" | "ended" | "planned" | "unknown";
+export function endKind(ended: string | null | undefined, today = new Date().toISOString().slice(0, 10)): EndKind {
+  if (!ended) return "unknown";
+  if (ended === "present") return "ongoing";
+  return ended > today ? "planned" : "ended";
+}
+
 export function activeOn(interest: { started: string | null; ended: string | null }, said: string) {
   if (!interest.started || said.slice(0, interest.started.length) < interest.started) return false;
   if (interest.ended === "present") return true;
@@ -220,7 +228,7 @@ export function activeOn(interest: { started: string | null; ended: string | nul
 export async function linkClaims(personId: string) {
   const interests = await sql<{ id: number; kind: string; counterparty: string; counterparty_zh: string; role: string; started: string | null; ended: string | null }[]>`
     SELECT id, kind, counterparty, counterparty_zh, role, started, ended
-    FROM interests WHERE person_id = ${personId} AND publication = 'published'
+    FROM interests WHERE person_id = ${personId} AND publication = 'published' AND superseded_at IS NULL
   `;
   const claims = await sql<{ id: string; category: string; quote_en: string; quote_zh: string; published_date: string }[]>`
     SELECT id, category, quote_en, quote_zh, to_char(published_date, 'YYYY-MM-DD') AS published_date

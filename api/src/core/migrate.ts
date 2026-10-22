@@ -269,6 +269,22 @@ async function migrateUnlocked() {
     )
   `;
   await sql`CREATE INDEX IF NOT EXISTS calibration_items_open_idx ON calibration_items (purpose, labeled_at)`;
+  // 利益关系双时态 (2026-10-22). Valid time: started/ended plus end_kind, so a missing end date is "unknown",
+  // never silently "still in office": ongoing (source says present) / ended / planned (end date in the future) /
+  // unknown. Transaction time: created_at is when we recorded it; a correction closes the old row
+  // (superseded_at, superseded_by) and adds a new one, so "what did we believe on day X" stays answerable.
+  await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS end_kind text`;
+  await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS superseded_at timestamptz`;
+  await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS superseded_by bigint`;
+  await sql`
+    UPDATE interests SET end_kind = CASE
+      WHEN ended = 'present' THEN 'ongoing'
+      WHEN ended IS NULL OR ended = '' THEN 'unknown'
+      WHEN ended > to_char(now(), 'YYYY-MM-DD') THEN 'planned'
+      ELSE 'ended'
+    END
+    WHERE end_kind IS NULL
+  `;
 }
 
 export async function logEvent(event: {

@@ -113,10 +113,10 @@ export function interestNote(item: Pick<InterestRow, "kind" | "counterparty" | "
 
 export async function personInterests(personId: string) {
   const relations = await sql<InterestRow[]>`
-    SELECT id::int AS id, kind, counterparty, counterparty_zh, role, started, ended, source_url, quote,
-           (reviewed_at IS NOT NULL) AS reviewed
+    SELECT id::int AS id, kind, counterparty, counterparty_zh, role, started, ended, coalesce(end_kind, 'unknown') AS end_kind,
+           source_url, quote, (reviewed_at IS NOT NULL) AS reviewed
     FROM interests
-    WHERE person_id = ${personId} AND publication = 'published'
+    WHERE person_id = ${personId} AND publication = 'published' AND superseded_at IS NULL
     ORDER BY CASE kind WHEN 'role' THEN 0 WHEN 'holding' THEN 1 ELSE 2 END, counterparty, started NULLS LAST
   `;
   const links = await sql<{ claim_id: string; interest_id: number }[]>`
@@ -152,6 +152,7 @@ export type AtlasRelation = {
   amount_usd: number | null;
   started: string | null;
   ended: string | null;
+  end_kind: "ongoing" | "ended" | "planned" | "unknown";
   source_url: string;
   quote: string;
   reviewed: boolean;
@@ -218,13 +219,14 @@ export async function personInterestAtlas(personId: string) {
       source_url: string;
       quote: string;
       reviewed: boolean;
+      end_kind: string;
     }[]
   >`
     SELECT id::int AS id, kind, counterparty, counterparty_zh, org_key, role,
            stake_pct::float8 AS stake_pct, amount_usd::float8 AS amount_usd,
-           started, ended, source_url, quote, (reviewed_at IS NOT NULL) AS reviewed
+           started, ended, coalesce(end_kind, 'unknown') AS end_kind, source_url, quote, (reviewed_at IS NOT NULL) AS reviewed
     FROM interests
-    WHERE person_id = ${personId} AND publication = 'published'
+    WHERE person_id = ${personId} AND publication = 'published' AND superseded_at IS NULL
     ORDER BY CASE kind WHEN 'role' THEN 0 WHEN 'holding' THEN 1 ELSE 2 END, counterparty, started NULLS LAST
   `;
 
@@ -242,6 +244,7 @@ export async function personInterestAtlas(personId: string) {
       amount_usd: row.amount_usd,
       started: row.started,
       ended: row.ended,
+      end_kind: (["ongoing", "ended", "planned"].includes(row.end_kind) ? row.end_kind : "unknown") as AtlasRelation["end_kind"],
       source_url: row.source_url,
       quote: row.quote,
       reviewed: row.reviewed,

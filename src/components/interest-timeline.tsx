@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { KIND_LABEL, isCurrent, orgLabel, type Org, type Relation } from "@/lib/interests";
+import { KIND_LABEL, isCurrent, spanText, orgLabel, type Org, type Relation } from "@/lib/interests";
 
 // 时间线：每家机构一行，横条是他在那里的任职和持股，圆点是他说过的话。
 // 读法：一句话落在哪一行、落在横条的哪一段，就是他说这句话时在那家机构的身份。
@@ -11,10 +11,7 @@ function when(value: string | null) {
   return m ? Number(m[1]) + (m[2] ? (Number(m[2]) - 1) / 12 : 0) : null;
 }
 
-function span(item: { started: string | null; ended: string | null }) {
-  const end = isCurrent(item) ? "至今" : (item.ended ?? "");
-  return item.started ? `${item.started} – ${end}` : end;
-}
+const span = spanText;
 
 const DONE = new Set(["已兑现", "部分兑现"]);
 
@@ -89,7 +86,9 @@ export function InterestTimeline({
 
   const bar = (r: Relation) => {
     const a = when(r.started)!;
-    const b = isCurrent(r) ? today : (when(r.ended) ?? a + 1 / 12);
+    // Unknown end and not current: a faded one-year stub, since we don't know how long it lasted.
+    const unknownEnd = r.end_kind === "unknown" && !isCurrent(r);
+    const b = isCurrent(r) ? today : (when(r.ended) ?? (unknownEnd ? a + 1 : a + 1 / 12));
     const title = `${KIND_LABEL[r.kind]} · ${r.role} · ${span(r)}`;
     if (r.kind === "deal") {
       return <span key={r.id} title={title} className="absolute top-[22px] size-[7px] -translate-x-1/2 rotate-45 bg-blue" style={{ left: pos(a) }} />;
@@ -98,7 +97,7 @@ export function InterestTimeline({
       <span
         key={r.id}
         title={title}
-        className={`absolute rounded-full ${r.kind === "role" ? "top-[9px] h-[7px] bg-blue" : "top-[20px] h-[5px] bg-blue/35"}`}
+        className={`absolute rounded-full ${r.kind === "role" ? "top-[9px] h-[7px] bg-blue" : "top-[20px] h-[5px] bg-blue/35"} ${unknownEnd ? "opacity-35" : ""}`}
         style={{ left: pos(a), width: width(a, b) }}
       />
     );

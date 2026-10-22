@@ -1,4 +1,4 @@
-import { KIND_LABEL, isCurrent, orgLabel, periodLabel, type ClaimLink, type Exposure, type Org, type Relation } from "@/lib/interests";
+import { KIND_LABEL, isCurrent, spanText, orgLabel, periodLabel, type ClaimLink, type Exposure, type Org, type Relation } from "@/lib/interests";
 import { GROUP_LABEL, mergeExposures, metricShort, type MergedSource, type SourceGroup } from "@/lib/money-flow";
 
 // 全部关系：和上面的流向图用同一套合并和分类。
@@ -15,10 +15,7 @@ function host(url: string) {
   }
 }
 
-function span(item: { started: string | null; ended: string | null }) {
-  const end = isCurrent(item) ? "至今" : (item.ended ?? "");
-  return item.started ? `${item.started} – ${end}` : end;
-}
+const span = spanText;
 
 // SEC filing vs the frozen web crawl. Same mark on grouped rows and inter-company ties.
 function BasisMark({ verified }: { verified: boolean }) {

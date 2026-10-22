@@ -197,6 +197,7 @@ export async function linkExposures(personId: string) {
   const relations = await sql<{ org_key: string; started: string | null; ended: string | null }[]>`
     SELECT org_key, started, ended FROM interests
     WHERE person_id = ${personId} AND publication = 'published' AND kind IN ('role', 'holding') AND org_key IS NOT NULL
+      AND superseded_at IS NULL
   `;
   const orgKeys = [...new Set(relations.map((item) => item.org_key))];
   const claims = await sql<{ id: string; category: string; quote_en: string; quote_zh: string; published_date: string }[]>`

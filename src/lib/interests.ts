@@ -15,6 +15,10 @@ export type Relation = {
   source_url: string;
   quote: string;
   reviewed: boolean;
+  // 利益关系双时态: ongoing / ended / planned / unknown (no end date recorded).
+  end_kind?: "ongoing" | "ended" | "planned" | "unknown";
+  // Derived on load (see settleCurrent): whether to treat this tie as current.
+  current?: boolean;
 };
 
 export type Exposure = {
@@ -116,10 +120,24 @@ function fromRelations(relations: Interest[]): InterestsPayload {
   return { status: relations.length ? "collected" : "not_collected", orgs: [...byOrg.values()], claim_links: [], layered: false };
 }
 
+// A tie with no recorded end date is current only if the person still holds a confirmed tie at the same
+// organisation (e.g. Huang's 3.6% Nvidia stake while he is CEO); otherwise it is treated as past
+// (Huang's early AMD job, Musk's Zip2). Confirmed ones follow end_kind.
+function settleCurrent(orgs: Org[]) {
+  for (const org of orgs) {
+    const confirmed = org.relations.some((r) => r.end_kind === "ongoing" || r.end_kind === "planned");
+    for (const r of org.relations) {
+      if (!r.end_kind) continue;
+      r.current = r.end_kind === "ongoing" || r.end_kind === "planned" || (r.end_kind === "unknown" && confirmed);
+    }
+  }
+  return orgs;
+}
+
 export async function loadInterests(personId: string, fallback: Interest[]): Promise<InterestsPayload> {
   try {
     const data = await getJson<Omit<InterestsPayload, "layered">>(`/v1/people/${personId}/interests`);
-    if (Array.isArray(data.orgs)) return { ...data, claim_links: data.claim_links ?? [], layered: true };
+    if (Array.isArray(data.orgs)) return { ...data, orgs: settleCurrent(data.orgs), claim_links: data.claim_links ?? [], layered: true };
   } catch {
     // Endpoint not deployed yet: fall through to layer 1 only.
   }
@@ -132,8 +150,22 @@ export function stakeOf(org: Org) {
   return stakes.length ? Math.max(...stakes) : null;
 }
 
-export function isCurrent(item: { ended: string | null }) {
+export function isCurrent(item: { ended: string | null; current?: boolean }) {
+  if (typeof item.current === "boolean") return item.current;
   return !item.ended || item.ended === "present";
+}
+
+// "2004 – 至今", "1983 – 1985", "1993 – 结束时间未知".
+export function spanText(item: { started: string | null; ended: string | null; end_kind?: string; current?: boolean }) {
+  const end =
+    item.end_kind === "unknown" && !item.current
+      ? "结束时间未知"
+      : isCurrent(item)
+        ? item.end_kind === "unknown"
+          ? "至今（未记录结束）"
+          : "至今"
+        : (item.ended ?? "");
+  return item.started ? `${item.started} – ${end}` : end;
 }
 
 export function orgLabel(org: Org) {
