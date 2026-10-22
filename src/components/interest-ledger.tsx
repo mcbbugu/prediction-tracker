@@ -107,7 +107,7 @@ export function InterestLedger({
         const stake = org.relations.find((r) => r.kind === "holding" && isCurrent(r))?.role.match(/(\d+(?:\.\d+)?)\s*%/)?.[1];
         const count = said(org);
         return (
-          <article key={org.org_key} className="rounded-[14px] bg-card p-4 sm:p-5">
+          <article key={org.org_key} id={`org-${org.org_key}`} className="scroll-mt-24 rounded-[14px] bg-card p-4 sm:p-5">
             <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h3 className="text-[17px] font-bold">
                 {orgLabel(org)}
@@ -123,6 +123,17 @@ export function InterestLedger({
                 <RelationLine key={r.id} r={r} />
               ))}
             </ul>
+            {org.financials ? (
+              <p className="mt-2 text-xs">
+                <span className="mr-1.5 text-[11px] text-mute">年营收</span>
+                <span className="num font-medium">
+                  {org.financials.year ? `FY${org.financials.year} ` : ""}${(org.financials.revenue_usd / 1e9).toFixed(1)}B
+                </span>
+                <a href={org.financials.source_url} target="_blank" rel="noreferrer" className="ml-1.5 text-[11px] text-blue">
+                  SEC 10-K 数据
+                </a>
+              </p>
+            ) : null}
 
             {ties.length ? (
               <p className="mt-3 text-xs leading-5">
@@ -195,7 +206,7 @@ export function InterestLedger({
       {small.length ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {small.map((org) => (
-            <article key={org.org_key} className="rounded-[14px] bg-card p-4">
+            <article key={org.org_key} id={`org-${org.org_key}`} className="scroll-mt-24 rounded-[14px] bg-card p-4">
               <h3 className="font-bold">
                 {orgLabel(org)}
                 {org.name_zh && org.name_zh !== org.name ? <span className="ml-1.5 text-xs font-normal text-mute">{org.name}</span> : null}
@@ -216,7 +227,7 @@ export function InterestLedger({
           <h3 className="text-xs font-semibold text-mute">已结束的关系</h3>
           <ul className="mt-2 divide-y divide-line">
             {past.map((org) => (
-              <li key={org.org_key} className="grid gap-x-4 py-1.5 sm:grid-cols-[140px_1fr]">
+              <li key={org.org_key} id={`org-${org.org_key}`} className="grid scroll-mt-24 gap-x-4 py-1.5 sm:grid-cols-[140px_1fr]">
                 <span className="truncate text-xs font-medium">{orgLabel(org)}</span>
                 <ul>
                   {org.relations.map((r) => (

@@ -65,6 +65,20 @@ function phase(claim: Claim, today: string) {
   return claim.deadline < today ? "overdue" : "upcoming";
 }
 
+// ?show= filters behind the clickable numbers.
+const SHOW: Record<string, { label: string; test: (claim: Claim, today: string) => boolean }> = {
+  judged: { label: "已判定", test: (c) => JUDGED.has(c.status) },
+  overdue: { label: "已过期待核对", test: (c, today) => phase(c, today) === "overdue" },
+  upcoming: { label: "未到期", test: (c, today) => phase(c, today) === "upcoming" },
+  unclear: { label: "证据不足（作废）", test: (c) => c.status === "证据不足" },
+  fulfilled: { label: "已兑现", test: (c) => c.status === "已兑现" },
+  partial: { label: "部分兑现", test: (c) => c.status === "部分兑现" },
+  missed: { label: "未兑现", test: (c) => c.status === "未兑现" },
+  rescheduled: { label: "改期串", test: (c) => Boolean(c.thread_id) },
+  machine: { label: "机器核对", test: (c) => c.reviewed === false },
+  manual: { label: "人工复核", test: (c) => c.reviewed !== false },
+};
+
 function yearSpan(claim: Claim) {
   return `${claim.published_date.slice(0, 7)} → ${claim.deadline.slice(0, 7)}`;
 }
@@ -74,10 +88,10 @@ export default async function PersonPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ domain?: string }>;
+  searchParams: Promise<{ domain?: string; show?: string }>;
 }) {
   const { id } = await params;
-  const { domain: domainFilter } = await searchParams;
+  const { domain: domainFilter, show } = await searchParams;
   const [data, history] = await Promise.all([
     getJson<{ person: Person; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators }>(`/v1/people/${id}`),
     getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history`).catch(() => ({ snapshots: [] as Snapshot[] })),
@@ -110,7 +124,20 @@ export default async function PersonPage({
     });
 
   // Past deadlines first (most recent at the top: these carry the record), then the future, soonest first.
-  const scoped = domainFilter ? claims.filter((claim) => claim.category === domainFilter) : claims;
+  const showFilter = show && SHOW[show] ? SHOW[show] : null;
+  const scoped = claims.filter(
+    (claim) => (!domainFilter || claim.category === domainFilter) && (!showFilter || showFilter.test(claim, today)),
+  );
+  // Every number on this page links to the claims behind it (SPEC: 数字都能追到原文).
+  const listHref = (next: { domain?: string | null; show?: string | null }) => {
+    const params = new URLSearchParams();
+    const d = next.domain === undefined ? domainFilter : next.domain;
+    const sh = next.show === undefined ? show : next.show;
+    if (d) params.set("domain", d);
+    if (sh) params.set("show", sh);
+    const query = params.toString();
+    return `/p/${id}${query ? `?${query}` : ""}#claims`;
+  };
   const shown = [
     ...scoped.filter((claim) => claim.deadline < today).sort((a, b) => b.deadline.localeCompare(a.deadline)),
     ...scoped.filter((claim) => claim.deadline >= today).sort((a, b) => a.deadline.localeCompare(b.deadline)),
@@ -152,11 +179,11 @@ export default async function PersonPage({
   const flow = await loadInterests(id, interests.relations);
 
   const stats = [
-    { label: "公开主张", value: claims.length },
-    { label: "已判定", value: claims.filter((claim) => JUDGED.has(claim.status)).length },
-    { label: "已过期待核对", value: count(claims, "overdue"), hint: "截止日已过，还没找到结果" },
-    { label: "未到期", value: count(claims, "upcoming") },
-    { label: "证据不足", value: count(claims, "unclear") },
+    { label: "公开主张", value: claims.length, show: null },
+    { label: "已判定", value: claims.filter((claim) => JUDGED.has(claim.status)).length, show: "judged" },
+    { label: "已过期待核对", value: count(claims, "overdue"), hint: "截止日已过，还没找到结果", show: "overdue" },
+    { label: "未到期", value: count(claims, "upcoming"), show: "upcoming" },
+    { label: "证据不足", value: count(claims, "unclear"), show: "unclear" },
   ];
 
   return (
@@ -178,20 +205,49 @@ export default async function PersonPage({
           </div>
         </div>
         <dl className="grid grid-cols-5 gap-x-5 gap-y-1">
-          {stats.map((stat) => (
-            <div key={stat.label} title={stat.hint}>
-              <dd className={cn("display-num text-[26px] leading-none font-[800]", stat.value === 0 && "text-mute/50")}>
-                {stat.value}
-              </dd>
-              <dt className="mt-1 text-[11px] whitespace-nowrap text-mute">{stat.label}</dt>
-            </div>
-          ))}
+          {stats.map((stat) => {
+            const href = `/p/${id}${stat.show ? `?show=${stat.show}` : ""}#claims`;
+            return (
+              <div key={stat.label} title={stat.hint ?? `看${stat.label}的主张`}>
+                <dd className={cn("display-num text-[26px] leading-none font-[800]", stat.value === 0 && "text-mute/50")}>
+                  <Link href={href} className="text-inherit no-underline hover-fine:text-blue">
+                    {stat.value}
+                  </Link>
+                </dd>
+                <dt className="mt-1 text-[11px] whitespace-nowrap text-mute">
+                  <Link href={href} className="text-mute no-underline hover-fine:text-blue">
+                    {stat.label}
+                  </Link>
+                </dt>
+              </div>
+            );
+          })}
         </dl>
       </section>
       <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 px-1 text-[11px] text-mute">
-        <span>核对层级：机器核对 {machine} · 人工复核 {claims.length - machine}</span>
+        <span>
+          核对层级：
+          <Link href={`/p/${id}?show=machine#claims`} className="text-mute hover-fine:text-blue">
+            机器核对 {machine}
+          </Link>
+          {" · "}
+          <Link href={`/p/${id}?show=manual#claims`} className="text-mute hover-fine:text-blue">
+            人工复核 {claims.length - machine}
+          </Link>
+        </span>
         {lastChange ? <span>分数最近变化 {lastChange}</span> : null}
-        {data.person.portrait_credit ? <span>头像 {data.person.portrait_credit}</span> : null}
+        {data.person.portrait_credit ? (
+          <span>
+            头像{" "}
+            {data.person.portrait_source_url ? (
+              <a href={data.person.portrait_source_url} target="_blank" rel="noreferrer" className="text-mute hover-fine:text-blue">
+                {data.person.portrait_credit}
+              </a>
+            ) : (
+              data.person.portrait_credit
+            )}
+          </span>
+        ) : null}
       </p>
 
       {/* Profile: the composite per domain, always taken apart into its parts (SPEC 人物画像与综合分) */}
@@ -272,7 +328,9 @@ export default async function PersonPage({
                   改期与可检验度<span>不进综合分</span>
                 </p>
                 <p className="num mt-1.5 text-sm font-bold">
-                  改期 {data.indicators.rescheduling.rescheduled}/{data.indicators.rescheduling.commitments} 个承诺
+                  <Link href={`/p/${id}?show=rescheduled#claims`} className="text-ink no-underline hover-fine:text-blue">
+                    改期 {data.indicators.rescheduling.rescheduled}/{data.indicators.rescheduling.commitments} 个承诺
+                  </Link>
                   {data.indicators.rescheduling.pushes ? (
                     <span className="font-normal text-mute">
                       {" "}
@@ -282,7 +340,10 @@ export default async function PersonPage({
                 </p>
                 <p className="num text-sm font-bold">
                   可判定 {data.indicators.testability.judged}/{data.indicators.testability.resolved}
-                  <span className="font-normal text-mute"> · 作废 {data.indicators.testability.voided}（证据不足）</span>
+                  <Link href={`/p/${id}?show=unclear#claims`} className="font-normal text-mute no-underline hover-fine:text-blue">
+                    {" "}
+                    · 作废 {data.indicators.testability.voided}（证据不足）
+                  </Link>
                 </p>
                 <p className="mt-1 text-[11px] leading-4 text-mute">
                   同一件事后来再说时期限往后推，算一次改期。到期的话里查不到结果的作废，不计分。只统计已收录的主张。
@@ -405,9 +466,28 @@ export default async function PersonPage({
                             <span className="bg-ink/25" style={{ width: `${(100 * row.missed) / judged}%` }} />
                           </span>
                           <span className="num text-[11px] whitespace-nowrap text-mute">
-                            兑现 {row.fulfilled} · 部分 {row.partial} · 未 {row.missed}
-                            {row.voided ? <span title="期限已过但查不到能判定结果的资料：作废，不计分"> · 作废 {row.voided}</span> : null}
-                            {row.threads ? <span title="同一承诺反复改期再说，连成一串，整串 k 条合计按 √k 条计分"> · 改期串 {row.threads}</span> : null}
+                            {(
+                              [
+                                ["fulfilled", "兑现", row.fulfilled, ""],
+                                ["partial", "部分", row.partial, ""],
+                                ["missed", "未", row.missed, ""],
+                                ["unclear", "作废", row.voided, "期限已过但查不到能判定结果的资料：作废，不计分"],
+                                ["rescheduled", "改期串", row.threads, "同一承诺反复改期再说，连成一串，整串 k 条合计按 √k 条计分"],
+                              ] as const
+                            )
+                              .filter(([key, , n]) => n > 0 || ["fulfilled", "partial", "missed"].includes(key))
+                              .map(([key, label, n, hint], i) => (
+                                <span key={key}>
+                                  {i ? " · " : ""}
+                                  <Link
+                                    href={listHref({ domain: row.score.domain, show: key })}
+                                    title={hint || `看这个领域里${label}的主张`}
+                                    className="text-mute no-underline hover-fine:text-blue"
+                                  >
+                                    {label} {n}
+                                  </Link>
+                                </span>
+                              ))}
                           </span>
                         </span>
                       ) : (
@@ -501,8 +581,14 @@ export default async function PersonPage({
           全部主张
           <span className="text-xs font-normal text-mute">先列已到期的（最近的在上），再列未到期的</span>
           {domainFilter ? (
-            <Link href={`/p/${id}#claims`} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
+            <Link href={listHref({ domain: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
               {domainFilter}
+              <Icon name="cancel" size={11} />
+            </Link>
+          ) : null}
+          {showFilter ? (
+            <Link href={listHref({ show: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
+              {showFilter.label} · {shown.length} 条
               <Icon name="cancel" size={11} />
             </Link>
           ) : null}

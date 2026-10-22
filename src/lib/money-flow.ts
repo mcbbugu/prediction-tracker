@@ -34,6 +34,7 @@ export type FlowSource = {
   estimate: Estimate | null;
   current: boolean;
   verified: boolean; // every disclosure behind it comes from a filing (not the frozen web crawl)
+  href: string; // where to check it: the filing if there is one, else the first archived source
   details: string[]; // one line per merged disclosure, for the tooltip
 };
 
@@ -240,6 +241,7 @@ export function buildMoneyFlow(
       estimate: null as Estimate | null,
       current: m.current,
       verified: m.verified,
+      href: (m.exposures.find((e) => e.basis === "sec_xbrl") ?? m.exposures[0]).source_url,
       details: m.exposures.map((e) => {
         const em = metricOf(e);
         const basis = e.basis === "sec_xbrl" ? " · SEC 年报" : " · 网页抓取，未验证";

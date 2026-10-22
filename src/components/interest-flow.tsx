@@ -34,6 +34,16 @@ function curve(x1: number, y1: number, x2: number, y2: number) {
   return `M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`;
 }
 
+// SVG link wrapper: only the full chart links out (the compact one sits inside a page link).
+function Linked({ href, external, children }: { href: string | null; external?: boolean; children: React.ReactNode }) {
+  if (!href) return <>{children}</>;
+  return (
+    <a href={href} {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>
+      {children}
+    </a>
+  );
+}
+
 function Glyph({ group, x, y }: { group: SourceGroup; x: number; y: number }) {
   if (group === "market") return <circle cx={x} cy={y} r={3.6} className="fill-blue" />;
   if (group === "contract") return <rect x={x - 3.2} y={y - 3.2} width={6.4} height={6.4} className="fill-blue" />;
@@ -66,7 +76,7 @@ export function InterestFlow({
     const gap = compact ? 12 : 18;
     const nodes = new Map<string, { tip: string }>();
     const edges: Edge[] = [];
-    const sourceRows: { id: string; y: number; group: SourceGroup; label: string; metric: string; live: boolean; verified: boolean }[] = [];
+    const sourceRows: { id: string; y: number; group: SourceGroup; label: string; metric: string; live: boolean; verified: boolean; href: string }[] = [];
     const moreRows: { key: string; y: number; text: string }[] = [];
     const orgBoxes: { id: string; y: number; h: number; label: string; sub: string; est: string }[] = [];
 
@@ -84,7 +94,7 @@ export function InterestFlow({
       });
       org.sources.forEach((source, index) => {
         const sy = y + rowH * (index + 0.5) + (rows - org.sources.length - (org.hidden ? 1 : 0)) * rowH * 0.5;
-        sourceRows.push({ id: source.id, y: sy, group: source.group, label: source.label, metric: source.metric, live: source.current, verified: source.verified });
+        sourceRows.push({ id: source.id, y: sy, group: source.group, label: source.label, metric: source.metric, live: source.current, verified: source.verified, href: source.href });
         nodes.set(source.id, {
           tip: [
             `${GROUP_LABEL[source.group]} · ${source.label}`,
@@ -283,7 +293,8 @@ export function InterestFlow({
 
         {/* Column 1: where the money comes from (and, hollow, what he depends on). */}
         {layout.sourceRows.map((row) => (
-          <g key={row.id} className="mf-node cursor-default" style={{ opacity: isOn(row.id) ? 1 : 0.25 }} {...hover(row.id)}>
+          <Linked key={row.id} href={compact ? null : row.href} external>
+          <g className={`mf-node ${compact ? "cursor-default" : "cursor-pointer"}`} style={{ opacity: isOn(row.id) ? 1 : 0.25 }} {...hover(row.id)}>
             <rect x={0} y={row.y - 11} width={SRC_X + 8} height={22} fill="transparent" />
             <Glyph group={row.group} x={SRC_X} y={row.y} />
             <text x={SRC_X - 10} y={row.y} dy="0.35em" textAnchor="end" className="text-[12px]">
@@ -291,6 +302,7 @@ export function InterestFlow({
               <tspan className={row.group === "depends" ? "fill-mute" : "fill-ink font-medium"}>{row.label.length > 14 ? `${row.label.slice(0, 13)}…` : row.label}</tspan>
             </text>
           </g>
+          </Linked>
         ))}
         {layout.moreRows.map((row) => (
           <text key={row.key} x={SRC_X - 10} y={row.y} dy="0.35em" textAnchor="end" className="fill-mute text-[11px]">
@@ -300,7 +312,8 @@ export function InterestFlow({
 
         {/* Column 2: his companies. */}
         {layout.orgBoxes.map((box) => (
-          <g key={box.id} className="mf-node cursor-default" style={{ opacity: isOn(box.id) ? 1 : 0.3 }} {...hover(box.id)}>
+          <Linked key={box.id} href={compact ? null : `#org-${box.id.slice(2)}`}>
+          <g className={`mf-node ${compact ? "cursor-default" : "cursor-pointer"}`} style={{ opacity: isOn(box.id) ? 1 : 0.3 }} {...hover(box.id)}>
             <rect x={ORG_X} y={box.y} width={ORG_W} height={box.h} rx={8} className="fill-sunken" />
             <rect x={ORG_X} y={box.y} width={3} height={box.h} className="fill-blue" />
             <text x={ORG_X + 14} y={box.y + 20} className="fill-ink text-[14px] font-semibold">
@@ -315,6 +328,7 @@ export function InterestFlow({
               </text>
             ) : null}
           </g>
+          </Linked>
         ))}
 
         {/* Column 3: him. */}
@@ -329,7 +343,8 @@ export function InterestFlow({
         {layout.claimBoxes.map((box) => {
           const quiet = box.id === "c:unrelated";
           return (
-            <g key={box.id} className="mf-node cursor-default" style={{ opacity: isOn(box.id) ? 1 : 0.3 }} {...hover(box.id)}>
+            <Linked key={box.id} href={compact ? null : "#timeline"}>
+            <g className={`mf-node ${compact ? "cursor-default" : "cursor-pointer"}`} style={{ opacity: isOn(box.id) ? 1 : 0.3 }} {...hover(box.id)}>
               <rect x={CLAIM_X} y={box.y} width={CLAIM_W} height={box.h} rx={8} className={quiet ? "fill-sunken" : "fill-ink"} />
               <text x={CLAIM_X + 12} y={box.y + box.h / 2 - 7} dy="0.35em" className={`text-[13px] font-semibold ${quiet ? "fill-mute" : "fill-white"}`}>
                 {box.label}
@@ -342,6 +357,7 @@ export function InterestFlow({
                 <tspan className="text-[11px] font-normal"> 句</tspan>
               </text>
             </g>
+            </Linked>
           );
         })}
       </svg>

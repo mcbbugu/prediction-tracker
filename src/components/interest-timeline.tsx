@@ -151,7 +151,9 @@ export function InterestTimeline({
         {rows.map((row) => (
           <div key={row.key} className="contents">
             <div className="flex min-w-0 flex-col justify-center border-t border-line py-1.5">
-              <span className={`truncate text-xs font-medium ${row.current ? "" : "text-mute"}`}>{row.label}</span>
+              <a href={`#org-${row.key}`} className={`truncate text-xs font-medium no-underline hover-fine:text-blue ${row.current ? "text-ink" : "text-mute"}`}>
+                {row.label}
+              </a>
               {row.claims.length ? <span className="text-[10px] text-mute">{row.claims.length} 句相关</span> : null}
             </div>
             <div className="relative h-[34px] border-t border-line">

@@ -112,6 +112,7 @@ export type ConsultEvaluation = {
   directive: string;
   all_domains: Score[];
   exposures?: {
+    org_key?: string;
     organisation: string;
     dimension: string;
     target: string;

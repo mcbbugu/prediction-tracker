@@ -7,13 +7,36 @@ import { sourceLabel } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+type Archive = { url: string; fetched_at: string; sha256: string; wayback_url: string | null; fetched_via: string };
+
+// Our archived copy (date + hash) and the Wayback capture, next to every external link.
+function ArchiveNote({ archive }: { archive?: Archive }) {
+  if (!archive) return null;
+  return (
+    <span className="text-[11px] text-mute" title={`抓取途径 ${archive.fetched_via} · 正文 sha256 ${archive.sha256}`}>
+      {archive.fetched_at} 已存档
+      {archive.wayback_url ? (
+        <>
+          {" · "}
+          <a href={archive.wayback_url} target="_blank" rel="noreferrer" className="text-mute hover-fine:text-blue">
+            Wayback 快照
+          </a>
+        </>
+      ) : null}
+    </span>
+  );
+}
+
 export default async function ClaimPage({
   params,
 }: {
   params: Promise<{ id: string; claimId: string }>;
 }) {
   const { id, claimId } = await params;
-  const data = await getJson<{ claim: Claim; related: Claim[] }>(`/v1/people/${id}/claims/${claimId}`);
+  const data = await getJson<{ claim: Claim; related: Claim[]; thread?: Claim[]; archives?: Record<string, Archive> }>(
+    `/v1/people/${id}/claims/${claimId}`,
+  );
+  const archives = data.archives ?? {};
   const claim = data.claim;
   const flow = await loadInterests(id, []);
   const chips = claimExposureChips(flow, claim.id);
@@ -26,10 +49,13 @@ export default async function ClaimPage({
           {claim.person_name}
         </Link>
         <Icon name="chevron-right" size={12} />
-        <span className="inline-flex items-center gap-1">
+        <Link
+          href={`/p/${id}?domain=${encodeURIComponent(claim.category)}#claims`}
+          className="inline-flex items-center gap-1 no-underline hover-fine:text-ink"
+        >
           <Icon name="tag" size={14} />
           {claim.category}
-        </span>
+        </Link>
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <StatusPill status={claim.status} />
@@ -46,20 +72,32 @@ export default async function ClaimPage({
         </span>
         <Icon name="arrow-right" size={12} />
         <span>{claim.deadline} 截止</span>
-        <a href={claim.source_url} className="inline-flex items-center gap-1">
+        <a href={claim.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">
           {sourceLabel(claim.source_url)}
           <Icon name="open" size={14} />
         </a>
+        <ArchiveNote archive={archives[claim.source_url]} />
       </p>
       {claim.interest_note || chips.length > 0 ? (
         <section className="mt-8">
-          <h2 className="text-sm font-semibold">说这句话时的利益</h2>
+          <h2 className="flex items-baseline justify-between text-sm font-semibold">
+            说这句话时的利益
+            <Link href={`/p/${id}/interests`} className="text-xs font-normal text-blue no-underline">
+              看利益版图
+            </Link>
+          </h2>
           {claim.interest_note ? <p className="mt-1 text-sm text-mute">{claim.interest_note}</p> : null}
           {chips.length > 0 ? (
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {chips.map((chip) => (
-                <li key={chip.key} title={chip.reason} className="rounded-full bg-sunken px-2.5 py-1 text-xs">
-                  {chip.level === "direct" ? "直接" : "间接"} · {chip.label}
+                <li key={chip.key}>
+                  <Link
+                    href={`/p/${id}/interests`}
+                    title={chip.reason}
+                    className="block rounded-full bg-sunken px-2.5 py-1 text-xs text-ink no-underline hover-fine:text-blue"
+                  >
+                    {chip.level === "direct" ? "直接" : "间接"} · {chip.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -67,20 +105,43 @@ export default async function ClaimPage({
         </section>
       ) : null}
       <p className="mt-8 leading-8">{claim.actual_result || "尚未核对。"}</p>
-      <div className="mt-6 flex flex-wrap gap-3 text-sm">
+      <ul className="mt-6 flex flex-col gap-2 text-sm">
         {claim.evidence.map((item) => (
-          <a key={item.url} href={item.url} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 no-underline">
-            {sourceLabel(item.url)}
-            <Icon name="open" size={14} className="text-mute" />
-          </a>
+          <li key={item.url} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 no-underline">
+              {sourceLabel(item.url)}
+              <Icon name="open" size={14} className="text-mute" />
+            </a>
+            <ArchiveNote archive={archives[item.url]} />
+          </li>
         ))}
-      </div>
+      </ul>
+      {data.thread && data.thread.length > 0 ? (
+        <section className="mt-12">
+          <h2 className="text-xl font-semibold tracking-tight">同一承诺的其他说法</h2>
+          <p className="mt-1 text-sm text-mute">这件事在不同时间被反复说过，连成一串；整串 {data.thread.length + 1} 条合计按 √{data.thread.length + 1} 条计分。</p>
+          {data.thread.map((item) => (
+            <Link key={item.id} href={`/p/${id}/${item.id}`} className="block border-b border-line py-4 no-underline">
+              <span className="flex flex-wrap items-center gap-2 text-xs text-mute">
+                <StatusPill status={item.status} />
+                <span className="num">
+                  {item.published_date} 说 · 期限 {item.deadline}
+                </span>
+              </span>
+              <p className="mt-2">{item.quote_zh}</p>
+            </Link>
+          ))}
+        </section>
+      ) : null}
       {data.related.length > 0 ? (
         <section className="mt-12">
           <h2 className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight">
             <Icon name="grid" size={18} className="text-mute" />
             同一领域
           </h2>
+          <Link href={`/p/${id}?domain=${encodeURIComponent(claim.category)}#claims`} className="mt-1 block text-sm text-blue no-underline">
+            看这个领域的全部主张
+          </Link>
           {data.related.map((item) => (
             <Link key={item.id} href={`/p/${id}/${item.id}`} className="block border-b border-line py-4 no-underline">
               <StatusPill status={item.status} />

@@ -59,33 +59,36 @@ export default async function SearchPage({
             </h2>
             <div className="mt-4 space-y-3">
               {data.evaluations.map((item) => (
-                <Link
-                  key={`${item.person_id}-${item.domain}`}
-                  href={`/p/${item.person_id}`}
-                  className="block rounded-3xl border border-line bg-card p-5 no-underline"
-                >
-                  <span className="text-sm text-mute">
-                    {item.person_name} · {item.domain}
-                  </span>
-                  <span className="mt-1 flex items-baseline justify-between">
-                    <ScoreNum value={item.score} className="text-5xl" />
-                    <span className="text-xs text-mute">
-                      {item.score != null
-                        ? `P ${item.prior_weight?.toFixed(3)} · n=${item.verified_count}${item.interval_80 ? ` · 80% 区间 ${item.interval_80.low}–${item.interval_80.high}` : ""}`
-                        : "还没有已判定的主张"}
+                <div key={`${item.person_id}-${item.domain}`} className="rounded-3xl border border-line bg-card p-5">
+                  <Link href={`/p/${item.person_id}?domain=${encodeURIComponent(item.domain)}#claims`} className="block no-underline">
+                    <span className="text-sm text-mute">
+                      {item.person_name} · {item.domain}
                     </span>
-                  </span>
-                  <span className="mt-3 block text-sm leading-6 text-mute">{item.directive}</span>
+                    <span className="mt-1 flex items-baseline justify-between">
+                      <ScoreNum value={item.score} className="text-5xl" />
+                      <span className="text-xs text-mute">
+                        {item.score != null
+                          ? `P ${item.prior_weight?.toFixed(3)} · n=${item.verified_count}${item.interval_80 ? ` · 80% 区间 ${item.interval_80.low}–${item.interval_80.high}` : ""}`
+                          : "还没有已判定的主张"}
+                      </span>
+                    </span>
+                    <span className="mt-3 block text-sm leading-6 text-mute">{item.directive}</span>
+                  </Link>
                   {item.exposures && item.exposures.length > 0 ? (
                     <span className="mt-2 flex flex-wrap gap-1">
                       {item.exposures.slice(0, 4).map((exposure) => (
-                        <span key={`${exposure.organisation}-${exposure.target}`} className="rounded bg-sunken px-1.5 py-0.5 text-[11px] text-ink/80">
+                        <Link
+                          key={`${exposure.organisation}-${exposure.target}`}
+                          href={`/p/${item.person_id}/interests${exposure.org_key ? `#org-${exposure.org_key}` : ""}`}
+                          title={exposure.reason || exposure.organisation}
+                          className="rounded bg-sunken px-1.5 py-0.5 text-[11px] text-ink/80 no-underline hover-fine:text-blue"
+                        >
                           {exposure.target_zh || exposure.target}
-                        </span>
+                        </Link>
                       ))}
                     </span>
                   ) : null}
-                </Link>
+                </div>
               ))}
             </div>
           </section>

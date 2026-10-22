@@ -40,6 +40,7 @@ export default async function InterestsPage({ params }: { params: Promise<{ id: 
   // 钱最多从哪来：the flow's top three organisations and their two largest disclosed sources.
   const money = buildMoneyFlow(orgs, data.claims, flow.claim_links, { maxOrgs: 3, maxSources: 8 });
   const topMoney = money.orgs.map((org) => ({
+    key: org.id.slice(2),
     label: org.label,
     stake: org.stake,
     from: org.sources
@@ -96,7 +97,9 @@ export default async function InterestsPage({ params }: { params: Promise<{ id: 
               <ul className="mt-1.5 space-y-1 text-sm">
                 {topMoney.map((item) => (
                   <li key={item.label} className="truncate">
-                    <span className="font-semibold">{item.label}</span>
+                    <a href={`#org-${item.key}`} className="font-semibold text-ink no-underline hover-fine:text-blue">
+                      {item.label}
+                    </a>
                     {item.stake ? <span className="num ml-1.5 text-xs text-blue">持股 {item.stake}%</span> : null}
                     {item.from ? <span className="ml-1.5 text-xs text-mute">← {item.from}</span> : null}
                   </li>
@@ -119,7 +122,7 @@ export default async function InterestsPage({ params }: { params: Promise<{ id: 
         <InterestFlow personName={data.person.name} orgs={orgs} claims={data.claims.map(({ id, status }) => ({ id, status }))} claimLinks={flow.claim_links} maxOrgs={12} maxSources={8} />
       </section>
 
-      <section className="mt-8">
+      <section id="timeline" className="mt-8 scroll-mt-24">
         <h2 className="text-[15px] font-bold">时间线</h2>
         <p className="mt-0.5 text-xs text-mute">他说每句话的时候，在哪家机构任职、持股</p>
         <div className="mt-3">

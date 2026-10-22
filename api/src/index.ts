@@ -174,10 +174,27 @@ const app = new Elysia()
       return { error: "未找到该条目" };
     }
     const interests = await personInterests(params.id);
-    const related = (await publishedClaims(params.id)).filter(
-      (item) => item.category === claim.category && item.id !== claim.id
-    );
-    return { claim: { ...claim, interest_note: interests.claim_notes[claim.id] ?? null }, related: related.slice(0, 4) };
+    const all = await publishedClaims(params.id);
+    const related = all.filter((item) => item.category === claim.category && item.id !== claim.id && item.thread_id !== claim.thread_id);
+    // 改期合并: the other times this commitment was made, oldest first.
+    const thread = claim.thread_id
+      ? all.filter((item) => item.thread_id === claim.thread_id && item.id !== claim.id).sort((a, b) => a.published_date.localeCompare(b.published_date))
+      : [];
+    // Our own archived copies of the source and evidence pages, with the Wayback capture when there is one,
+    // so a reader can still check the quote after the original page changes or disappears.
+    const urls = [claim.source_url, ...claim.evidence.map((item) => item.url)].filter(Boolean);
+    const archives = await sql<{ url: string; fetched_at: string; sha256: string; wayback_url: string | null; fetched_via: string }[]>`
+      SELECT DISTINCT ON (url) url, to_char(fetched_at, 'YYYY-MM-DD') AS fetched_at, sha256, wayback_url, fetched_via
+      FROM sources
+      WHERE url IN ${sql(urls)}
+      ORDER BY url, (wayback_url IS NOT NULL) DESC, fetched_at DESC
+    `;
+    return {
+      claim: { ...claim, interest_note: interests.claim_notes[claim.id] ?? null },
+      related: related.slice(0, 4),
+      thread,
+      archives: Object.fromEntries(archives.map((row) => [row.url, row])),
+    };
   })
   .get("/v1/review", async ({ request, set }) => {
     if (!authorized(request)) {
