@@ -1,4 +1,4 @@
-import { arkConfigured, arkJson } from "../core/ark";
+import { ArkStopped, arkConfigured, arkJson } from "../core/ark";
 import { sql } from "../core/db";
 import { latestScores, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg } from "./records";
 import { indicators } from "../scoring/indicators";
@@ -100,6 +100,81 @@ function halfLifeWeight(deadline: string, now = new Date()): number {
   return Number(Math.pow(2, -days / HALF_LIFE_DAYS).toFixed(3));
 }
 
+
+// ---- consult 第二层（SPEC P8）：用模型把一句话解析成人物、领域、期限、说法，再找他以前说过的同类的话。
+// 模型只能从库里已有的人物 id、领域、主张 id 里选；代码逐一核对，对不上就当没选。解析失败退回关键词匹配。
+export type ParsedQuery = { person_id: string | null; domain: string | null; deadline: string | null; claim: string | null };
+const SITE = (process.env.SITE_URL || "http://localhost:4321").replace(/\/$/, "");
+
+async function parseQuery(
+  query: string,
+  people: { id: string; name: string; name_en: string; title: string }[],
+  domains: string[],
+): Promise<ParsedQuery | null> {
+  if (!arkConfigured()) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const out = (await arkJson(
+      [
+        "把用户给的一句话解析成四项，只输出 JSON：",
+        "- person_id：说这句话的人，只能从 people 里选一个 id；句子里看不出是谁、或不在名单里，就填 null。",
+        "- domain：这句话属于哪个领域，只能从 domains 里选一个最贴切的；都不贴切就填 null。",
+        `- deadline：句子里的期限，换算成 YYYY-MM-DD（今天是 ${today}；「明年」= 明年 12-31，「年底」= 今年 12-31，「三年内」= 今天加三年）；没有期限填 null。`,
+        "- claim：去掉说话人之后，这句话预测或承诺的事，用一句中文。",
+        '{"person_id":null,"domain":null,"deadline":null,"claim":null}',
+      ].join("\n"),
+      JSON.stringify({ query, people: people.map(({ id, name, name_en, title }) => ({ id, name, name_en, title })), domains }),
+      500,
+    )) as Partial<ParsedQuery>;
+    const person_id = people.some((p) => p.id === out.person_id) ? String(out.person_id) : null;
+    const domain = domains.includes(String(out.domain)) ? String(out.domain) : null;
+    const deadline = /^\d{4}-\d{2}-\d{2}$/.test(String(out.deadline)) ? String(out.deadline) : null;
+    const claim = typeof out.claim === "string" && out.claim.trim() ? out.claim.trim().slice(0, 300) : null;
+    return { person_id, domain, deadline, claim };
+  } catch (error) {
+    if (error instanceof ArkStopped) return null;
+    return null;
+  }
+}
+
+// Earlier claims by the same person about the same commitment, with how they turned out.
+async function findPrecedents(claim: string, personClaims: Awaited<ReturnType<typeof publishedClaims>>) {
+  if (!arkConfigured() || personClaims.length === 0) return [];
+  const pool = personClaims.slice(0, 120);
+  try {
+    const out = (await arkJson(
+      [
+        "下面是一个人过去公开说过的、带期限的话（claims），以及他的一句新说法（new_claim）。",
+        "找出过去说的、和新说法是同一件事（同一个目标、同一个产品或同一个结果）的那几条，最多 5 条；只是话题相近不算。没有就返回空数组。",
+        'why 用一句中文说明为什么是同一件事。输出 JSON：{"matches":[{"claim_id":"","why":""}]}',
+      ].join("\n"),
+      JSON.stringify({ new_claim: claim, claims: pool.map((c) => ({ claim_id: c.id, said_on: c.published_date, deadline: c.deadline, quote: c.quote_zh || c.quote_en })) }),
+      800,
+    )) as { matches?: { claim_id?: string; why?: string }[] };
+    const byId = new Map(pool.map((c) => [c.id, c]));
+    const seen = new Set<string>();
+    return (out.matches ?? [])
+      .filter((m) => m.claim_id && byId.has(m.claim_id) && !seen.has(m.claim_id) && seen.add(m.claim_id))
+      .slice(0, 5)
+      .map((m) => {
+        const c = byId.get(m.claim_id!)!;
+        return {
+          claim_id: c.id,
+          said_on: c.published_date,
+          deadline: c.deadline,
+          status: c.status,
+          quote_zh: c.quote_zh,
+          source_url: c.source_url,
+          url: `${SITE}/p/${c.person_id}/${c.id}`,
+          why: (m.why ?? "").slice(0, 200),
+        };
+      })
+      .sort((a, b) => a.said_on.localeCompare(b.said_on));
+  } catch {
+    return [];
+  }
+}
+
 export async function consultPrior(input: ConsultRequest) {
   const rawQuery = (input.query || "").trim();
   const qLower = rawQuery.toLowerCase();
@@ -130,9 +205,12 @@ export async function consultPrior(input: ConsultRequest) {
 
   const categories = [...new Set(allClaims.map((claim) => claim.category))];
   const terms = rawQuery ? searchTerms(rawQuery) : [];
+  const parsed = rawQuery && !input.person_id ? await parseQuery(rawQuery, people, categories) : null;
   let matchedPeopleIds: string[] = [];
   if (input.person_id && people.some((person) => person.id === input.person_id)) {
     matchedPeopleIds = [input.person_id];
+  } else if (parsed?.person_id) {
+    matchedPeopleIds = [parsed.person_id];
   } else if (!rawQuery) {
     matchedPeopleIds = people.map((person) => person.id);
   } else {
@@ -149,6 +227,10 @@ export async function consultPrior(input: ConsultRequest) {
 
   const matchedDomains = new Set<string>();
   if (input.domain && input.domain !== "all") matchedDomains.add(input.domain);
+  // The parsed domain counts only if the person actually has claims there; otherwise their best domain is used.
+  if (parsed?.domain && (!parsed.person_id || allClaims.some((c) => c.person_id === parsed.person_id && c.category === parsed.domain))) {
+    matchedDomains.add(parsed.domain);
+  }
   for (const category of categories) {
     if (qLower.includes(category.toLowerCase())) matchedDomains.add(category);
   }
@@ -306,7 +388,7 @@ export async function consultPrior(input: ConsultRequest) {
       step: "01",
       title: "实体与领域对齐 / Entity & Domain Resolution",
       status: "completed",
-      detail: `识别人物：${evaluations.map((e) => e.person_name).join("、")}；锁定技术领域：${
+      detail: `${parsed ? `模型解析：${parsed.person_id ?? "未识别人物"} · ${parsed.domain ?? "未识别领域"}${parsed.deadline ? ` · 期限 ${parsed.deadline}` : ""}。` : "关键词匹配。"}识别人物：${evaluations.map((e) => e.person_name).join("、")}；锁定技术领域：${
         matchedDomains.size > 0 ? [...matchedDomains].join(" / ") : primary?.domain ?? "全领域扫描"
       }`,
     },
@@ -370,8 +452,15 @@ export async function consultPrior(input: ConsultRequest) {
     }
   }
 
+  const precedents =
+    parsed?.claim && parsed.person_id ? await findPrecedents(parsed.claim, allClaims.filter((c) => c.person_id === parsed.person_id)) : [];
+
   return {
     query: rawQuery || "库内人物先验",
+    // How the sentence was understood (model, checked against the catalogue); null = keyword matching was used.
+    parsed,
+    // What this person said before about the same thing, and how it turned out.
+    precedents,
     timestamp: new Date().toISOString(),
     formula_version: FORMULA_VERSION,
     min_judged_threshold: MIN_JUDGED,

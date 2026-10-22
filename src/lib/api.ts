@@ -126,6 +126,10 @@ export type ConsultEvaluation = {
 
 export type ConsultPayload = {
   query: string;
+  // consult 第二层: how the sentence was understood (null = keyword matching).
+  parsed?: { person_id: string | null; domain: string | null; deadline: string | null; claim: string | null } | null;
+  // What the person said before about the same thing, and how it turned out.
+  precedents?: { claim_id: string; said_on: string; deadline: string; status: string; quote_zh: string; url: string; why: string }[];
   timestamp: string;
   formula_version: string;
   min_scored_threshold: number;

@@ -53,6 +53,36 @@ export default async function SearchPage({
       ) : (
         <div className="mt-10 grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
           <section>
+            {data.parsed?.claim ? (
+              <p className="mb-6 rounded-2xl bg-card px-4 py-3 text-sm leading-6">
+                <span className="text-mute">理解为：</span>
+                {data.parsed.person_id ? <b className="font-semibold">{data.evaluations[0]?.person_name ?? data.parsed.person_id}</b> : "未识别人物"}
+                {data.parsed.domain ? ` · ${data.parsed.domain}` : ""}
+                {data.parsed.deadline ? ` · 期限 ${data.parsed.deadline}` : ""}
+                <span className="mt-0.5 block text-mute">「{data.parsed.claim}」</span>
+              </p>
+            ) : null}
+            {data.precedents && data.precedents.length > 0 ? (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold tracking-tight">他以前说过同一件事</h2>
+                <p className="mt-1 text-xs text-mute">同一个目标在不同时间说过的话，以及后来的结果</p>
+                <ul className="mt-3 overflow-hidden rounded-2xl bg-card">
+                  {data.precedents.map((item) => (
+                    <li key={item.claim_id} className="border-b border-line last:border-0">
+                      <Link href={item.url.replace(/^https?:\/\/[^/]+/, "")} title={item.why} className="block px-4 py-3 no-underline hover-fine:bg-sunken/60">
+                        <span className="flex flex-wrap items-center gap-2 text-xs text-mute">
+                          <StatusPill status={item.status} />
+                          <span className="num">
+                            {item.said_on} 说 · 期限 {item.deadline}
+                          </span>
+                        </span>
+                        <span className="mt-1.5 block text-sm leading-6">{item.quote_zh}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <h2 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
               <Icon name="person" size={20} className="text-mute" />
               人物先验
