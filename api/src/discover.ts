@@ -91,6 +91,7 @@ type Extracted = {
   said_on?: string;
   deadline?: string;
   domain?: string;
+  kind?: string;
 };
 
 export class JobStop extends Error {
@@ -239,17 +240,17 @@ async function extractClaims(identity: Identity, pages: Snapshot[], emit: Return
     const result = (await arkJson(
       [
         `只从给定网页原文中抽取 ${identity.name_zh}（${identity.name_en ?? ""}）本人说的、带明确时间的预测或承诺。`,
-        "- quote 必须是此人自己的话：引号里的直接引语，或第一人称的原话（演讲实录、本人博客、本人推文）。",
-        "- 记者的叙述和转述一律不要：「X said/says/revealed/tells/claimed/predicted…」「X 表示/称/认为…」「April 2024: X tells…」这类句子不收。",
-        "- 如果一句转述里带着引号内的原话（例如 Musk said FSD would be ready \"by the end of the year\"），只取引号里面的部分作为 quote；引号内太短（不足 15 个字符）或离开上下文看不出预测内容就整条不要。",
+        "- 两类都收（SPEC 原则 2）：kind=direct 是此人自己的话（引号里的直接引语，或演讲实录、本人博客、本人推文里的第一人称原话）；kind=reported 是可靠来源明确把这句话归于此人的转述（「X said/told/predicted…」「X 表示/称…」「according to X」），整句照抄，包括说话人名字和转述词。",
+        "- 如果转述里带着引号内的原话且引号内容本身就看得出预测和期限，优先只取引号里面的部分，kind=direct。",
+        "- 不要：作者或记者自己的推算、评论和背景介绍；没有归于此人的公司公告、新闻稿、产品发布信息；别人对此人计划的猜测。",
         "- 必须有时间：具体日期、年份、或「明年」「三年内」这类可换算的期限。没有期限的不要。",
         "- 不要任何关于选举结果和政府政策的预测。",
-        "- quote 必须从该页原文逐字复制（保留原文语言），20 到 400 字，不改写、不拼接，不要包含说话人的名字和「said/表示」这类转述词。",
+        "- quote 必须从该页原文逐字复制（保留原文语言），20 到 400 字，不改写、不拼接。direct 不要包含说话人名字和「said/表示」；reported 要保留，让人看得出是谁说的。",
         "- article_date 是这篇网页的发布日期（看不出就留空）。said_on 是此人说这话的日期：优先取原文里写明的说话时间（例如「in a 2019 interview」「2020 年 1 月的推文」），只知道年月就填当月 1 日，只知道年份填 1 月 1 日；原文没写才用 article_date。said_on 不能晚于 article_date。deadline 是期限到的那天（只有年份就填 12-31；「明年」按 said_on 推算）。格式 YYYY-MM-DD。",
         `- domain 只能从这个列表里选一个最贴切的：${DOMAINS.join("、")}。`,
         "- quote_zh 必须是简体中文译文（原文是中文就照抄原文），quote_en 是英文版本（原文是英文就照抄原文）。不要把英文原文直接填进 quote_zh。",
         "找不到就返回空数组，不要凑数。",
-        '输出 JSON：{"claims":[{"page":1,"quote":"","quote_zh":"","quote_en":"","article_date":"","said_on":"","deadline":"","domain":""}]}',
+        '输出 JSON：{"claims":[{"page":1,"kind":"direct","quote":"","quote_zh":"","quote_en":"","article_date":"","said_on":"","deadline":"","domain":""}]}',
       ].join("\n"),
       JSON.stringify({
         person: { name_zh: identity.name_zh, name_en: identity.name_en },
@@ -300,10 +301,12 @@ async function keepVerified(
     }
     // Said-on can never be after the article that reports it.
     if (item.article_date && isoDate.test(item.article_date) && item.said_on > item.article_date) item.said_on = item.article_date;
-    if (isReportedSpeech(quote, speaker)) {
-      dropped.push({ quote, reason: "记者转述，不是本人原话" });
+    // 转述可以收，但必须是明确归于本人的那一句（SPEC 原则 2）。模型标成原话、句子却是转述的，改记为转述。
+    if (item.kind === "reported" && !isReportedSpeech(quote, speaker)) {
+      dropped.push({ quote, reason: "转述没有明确归于本人" });
       continue;
     }
+    if (isReportedSpeech(quote, speaker)) item.kind = "reported";
     if (!quoteOnPage(quote, page.text)) {
       dropped.push({ quote, reason: "原文里找不到这句话" });
       continue;
@@ -338,12 +341,12 @@ async function keepVerified(
     await sql`
       INSERT INTO claims (
         id, person_id, category, claim_type, quote_en, quote_zh, quote_original, source_url,
-        published_date, deadline, actual_result, status, publication, rationale, evidence, provenance
+        published_date, deadline, actual_result, status, publication, rationale, evidence, provenance, quote_kind
       ) VALUES (
         ${claim.id}, ${personId}, ${claim.category}, 'prediction', ${claim.quote_en}, ${claim.quote_zh}, ${quote},
         ${claim.source_url}, ${claim.published_date}, ${claim.deadline}, '', '待定', ${autoPublish() ? "published" : "proposed"},
-        ${`原话已在存档网页中逐字核对（sources#${page.id}，sha256 ${page.sha256.slice(0, 12)}）。尚未判定。`},
-        '[]'::jsonb, 'agent'
+        ${`${item.kind === "reported" ? "转述" : "原话"}已在存档网页中逐字核对（sources#${page.id}，sha256 ${page.sha256.slice(0, 12)}）。尚未判定。`},
+        '[]'::jsonb, 'agent', ${item.kind === "reported" ? "reported" : "direct"}
       )
     `;
     if (autoPublish()) await sql`UPDATE claims SET published_at = now() WHERE id = ${claim.id}`;

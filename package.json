@@ -10,6 +10,7 @@
     "api:seed": "cd api && bun run seed",
     "api:seed-check": "cd api && bun run seed-check",
     "api:interests": "cd api && bun run interests",
+    "api:exposures": "cd api && bun run exposures",
     "api:agent": "cd api && bun run agent",
     "api:docker": "cd api && docker compose up -d",
     "api:verify": "cd api && bun run verify",
@@ -30,6 +31,7 @@
     "chart.xkcd": "^2.0.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "d3-sankey": "^0.12.3",
     "motion": "^14.4.0",
     "next": "16.2.9",
     "react": "19.2.4",
@@ -38,6 +40,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/d3-sankey": "^0.12.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

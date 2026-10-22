@@ -1,7 +1,20 @@
 import { sql } from "./db";
 
 // Idempotent schema upgrades for databases created from an older init.sql.
+// Several processes (API, worker, scripts) migrate on start; concurrent CREATE TABLE IF NOT EXISTS can still
+// collide in pg_type, so migrations run one process at a time under a session advisory lock.
 export async function migrate() {
+  const conn = await sql.reserve();
+  try {
+    await conn`SELECT pg_advisory_lock(hashtext('prediction-tracker-migrate'))`;
+    await migrateUnlocked();
+  } finally {
+    await conn`SELECT pg_advisory_unlock(hashtext('prediction-tracker-migrate'))`.catch(() => {});
+    conn.release();
+  }
+}
+
+async function migrateUnlocked() {
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS provenance text NOT NULL DEFAULT 'agent'`;
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS reviewed_at timestamptz`;
   await sql`
@@ -112,6 +125,47 @@ export async function migrate() {
       PRIMARY KEY (claim_id, interest_id)
     )
   `;
+  // 利益关系的三层数据: scale on layer 1, a shared organisation key, layer 2 exposures and layer 3 claim links.
+  await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS stake_pct numeric`;
+  await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS amount_usd numeric`;
+  await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS org_key text`;
+  await sql`ALTER TABLE claim_interests ADD COLUMN IF NOT EXISTS level text NOT NULL DEFAULT 'direct'`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS org_exposures (
+      id bigserial PRIMARY KEY,
+      org_key text NOT NULL,
+      dimension text NOT NULL,
+      target text NOT NULL,
+      target_zh text NOT NULL DEFAULT '',
+      country text,
+      metric_kind text,
+      metric_value numeric,
+      metric_year integer,
+      started text,
+      ended text,
+      source_url text NOT NULL,
+      source_id bigint,
+      quote text NOT NULL,
+      publication text NOT NULL DEFAULT 'proposed',
+      provenance text NOT NULL DEFAULT 'agent',
+      reviewed_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS org_exposures_unique_idx
+    ON org_exposures (org_key, dimension, lower(target), coalesce(metric_kind, ''), coalesce(metric_year, 0))
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS claim_exposures (
+      claim_id text NOT NULL,
+      exposure_id bigint NOT NULL,
+      level text NOT NULL DEFAULT 'indirect',
+      reason text NOT NULL DEFAULT '',
+      created_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (claim_id, exposure_id)
+    )
+  `;
   // Every Ark call, from any process: the shared rate limiter reserves slots here and the AFP budget sums it.
   await sql`
     CREATE TABLE IF NOT EXISTS ark_calls (
@@ -136,6 +190,26 @@ export async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS jobs_queue_idx ON jobs (state, run_after, created_at)`;
   // Which judged claims (id + status) a snapshot counted, so a change can be explained claim by claim.
   await sql`ALTER TABLE score_snapshots ADD COLUMN IF NOT EXISTS basis jsonb`;
+  // 原话 (direct) or 可核实转述 (reported): a reliable source attributes the statement to the person (SPEC 原则 2).
+  await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS quote_kind text NOT NULL DEFAULT 'direct'`;
+  // P9 更正通道: a public counter-example. Pending rows are the review queue; the claim stays published.
+  await sql`
+    CREATE TABLE IF NOT EXISTS challenges (
+      id bigserial PRIMARY KEY,
+      target_kind text NOT NULL,
+      target_id text NOT NULL,
+      person_id text NOT NULL,
+      url text NOT NULL,
+      note text NOT NULL,
+      state text NOT NULL DEFAULT 'pending',
+      source_id bigint,
+      decision_note text NOT NULL DEFAULT '',
+      created_at timestamptz NOT NULL DEFAULT now(),
+      decided_at timestamptz
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS challenges_pending_idx ON challenges (state, created_at)`;
+  await sql`CREATE INDEX IF NOT EXISTS challenges_target_idx ON challenges (target_kind, target_id)`;
 }
 
 export async function logEvent(event: {

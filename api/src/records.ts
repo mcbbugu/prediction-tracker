@@ -1,4 +1,5 @@
 import { sql } from "./db";
+import { orgKey } from "./orgs";
 
 export type Evidence = { url: string };
 
@@ -20,6 +21,7 @@ export type ClaimRow = {
   evidence: Evidence[];
   provenance: string;
   reviewed: boolean;
+  quote_kind: string;
 };
 
 export type ScoreRow = {
@@ -39,7 +41,7 @@ const claimSelect = sql`
   to_char(c.published_date, 'YYYY-MM-DD') AS published_date,
   to_char(c.deadline, 'YYYY-MM-DD') AS deadline,
   c.actual_result, c.status, c.publication, c.rationale, c.evidence,
-  c.provenance, (c.reviewed_at IS NOT NULL) AS reviewed
+  c.provenance, (c.reviewed_at IS NOT NULL) AS reviewed, c.quote_kind
 `;
 
 export async function publishedClaims(personId?: string) {
@@ -133,4 +135,180 @@ export async function personInterests(personId: string) {
   const claim_notes: Record<string, string> = {};
   for (const [claimId, orgs] of perClaim) claim_notes[claimId] = [...orgs.values()].map(interestNote).join("；");
   return { collected: relations.length > 0, relations, claim_notes };
+}
+
+const EXPOSURE_DIMENSIONS = new Set(["region", "facility", "supplier", "customer", "partner", "investment"]);
+const METRIC_KINDS = new Set(["revenue_share", "production_share", "amount_usd", "stake_pct"]);
+
+export type AtlasRelation = {
+  id: number;
+  kind: "role" | "holding" | "deal";
+  role: string;
+  stake_pct: number | null;
+  amount_usd: number | null;
+  started: string | null;
+  ended: string | null;
+  source_url: string;
+  quote: string;
+  reviewed: boolean;
+};
+
+export type AtlasExposure = {
+  id: number;
+  dimension: "region" | "facility" | "supplier" | "customer" | "partner" | "investment";
+  target: string;
+  target_zh: string;
+  country: string | null;
+  metric: { kind: "revenue_share" | "production_share" | "amount_usd" | "stake_pct"; value: number; year: number | null } | null;
+  started: string | null;
+  ended: string | null;
+  source_url: string;
+  quote: string;
+  reviewed: boolean;
+};
+
+export type AtlasOrg = { org_key: string; name: string; name_zh: string; relations: AtlasRelation[]; exposures: AtlasExposure[] };
+
+export type AtlasLink = {
+  claim_id: string;
+  target_kind: "relation" | "exposure";
+  target_id: number;
+  level: "direct" | "indirect";
+  reason: string;
+};
+
+// SPEC 利益关系的三层数据, as the person page and /interests detail page read it.
+export async function personInterestAtlas(personId: string) {
+  const rows = await sql<
+    {
+      id: number;
+      kind: "role" | "holding" | "deal";
+      counterparty: string;
+      counterparty_zh: string;
+      org_key: string | null;
+      role: string;
+      stake_pct: number | null;
+      amount_usd: number | null;
+      started: string | null;
+      ended: string | null;
+      source_url: string;
+      quote: string;
+      reviewed: boolean;
+    }[]
+  >`
+    SELECT id::int AS id, kind, counterparty, counterparty_zh, org_key, role,
+           stake_pct::float8 AS stake_pct, amount_usd::float8 AS amount_usd,
+           started, ended, source_url, quote, (reviewed_at IS NOT NULL) AS reviewed
+    FROM interests
+    WHERE person_id = ${personId} AND publication = 'published'
+    ORDER BY CASE kind WHEN 'role' THEN 0 WHEN 'holding' THEN 1 ELSE 2 END, counterparty, started NULLS LAST
+  `;
+
+  const orgs = new Map<string, AtlasOrg>();
+  for (const row of rows) {
+    const key = row.org_key || orgKey(row.counterparty);
+    const org = orgs.get(key) ?? { org_key: key, name: row.counterparty, name_zh: row.counterparty_zh, relations: [], exposures: [] };
+    if (row.counterparty.length > org.name.length) org.name = row.counterparty;
+    if (row.counterparty_zh && !org.name_zh) org.name_zh = row.counterparty_zh;
+    org.relations.push({
+      id: row.id,
+      kind: row.kind,
+      role: row.role,
+      stake_pct: row.stake_pct,
+      amount_usd: row.amount_usd,
+      started: row.started,
+      ended: row.ended,
+      source_url: row.source_url,
+      quote: row.quote,
+      reviewed: row.reviewed,
+    });
+    orgs.set(key, org);
+  }
+
+  const keys = [...orgs.keys()];
+  if (keys.length) {
+    const exposures = await sql<
+      {
+        id: number;
+        org_key: string;
+        dimension: string;
+        target: string;
+        target_zh: string;
+        country: string | null;
+        metric_kind: string | null;
+        metric_value: number | null;
+        metric_year: number | null;
+        started: string | null;
+        ended: string | null;
+        source_url: string;
+        quote: string;
+        reviewed: boolean;
+      }[]
+    >`
+      SELECT id::int AS id, org_key, dimension, target, target_zh, country,
+             metric_kind, metric_value::float8 AS metric_value, metric_year,
+             started, ended, source_url, quote, (reviewed_at IS NOT NULL) AS reviewed
+      FROM org_exposures
+      WHERE org_key IN ${sql(keys)} AND publication = 'published'
+      ORDER BY dimension, target
+    `;
+    for (const item of exposures) {
+      const org = orgs.get(item.org_key);
+      if (!org || !EXPOSURE_DIMENSIONS.has(item.dimension)) continue;
+      const kind = item.metric_kind && METRIC_KINDS.has(item.metric_kind) ? item.metric_kind : null;
+      org.exposures.push({
+        id: item.id,
+        dimension: item.dimension as AtlasExposure["dimension"],
+        target: item.target,
+        target_zh: item.target_zh,
+        country: item.country,
+        metric: kind && item.metric_value != null ? { kind: kind as NonNullable<AtlasExposure["metric"]>["kind"], value: item.metric_value, year: item.metric_year } : null,
+        started: item.started,
+        ended: item.ended,
+        source_url: item.source_url,
+        quote: item.quote,
+        reviewed: item.reviewed,
+      });
+    }
+  }
+
+  const relationLinks = await sql<{ claim_id: string; target_id: number; level: string; reason: string }[]>`
+    SELECT ci.claim_id, ci.interest_id::int AS target_id, ci.level, ci.reason
+    FROM claim_interests ci
+    JOIN interests i ON i.id = ci.interest_id
+    JOIN claims c ON c.id = ci.claim_id
+    WHERE i.person_id = ${personId} AND i.publication = 'published' AND c.publication = 'published'
+  `;
+  const exposureLinks = keys.length
+    ? await sql<{ claim_id: string; target_id: number; level: string; reason: string }[]>`
+        SELECT ce.claim_id, ce.exposure_id::int AS target_id, ce.level, ce.reason
+        FROM claim_exposures ce
+        JOIN org_exposures e ON e.id = ce.exposure_id
+        JOIN claims c ON c.id = ce.claim_id
+        WHERE e.org_key IN ${sql(keys)} AND e.publication = 'published' AND c.publication = 'published' AND c.person_id = ${personId}
+      `
+    : [];
+
+  const claim_links: AtlasLink[] = [
+    ...relationLinks.map((link) => ({
+      claim_id: link.claim_id,
+      target_kind: "relation" as const,
+      target_id: link.target_id,
+      level: link.level === "indirect" ? ("indirect" as const) : ("direct" as const),
+      reason: link.reason,
+    })),
+    ...exposureLinks.map((link) => ({
+      claim_id: link.claim_id,
+      target_kind: "exposure" as const,
+      target_id: link.target_id,
+      level: link.level === "direct" ? ("direct" as const) : ("indirect" as const),
+      reason: link.reason,
+    })),
+  ];
+
+  return {
+    status: rows.length > 0 ? ("collected" as const) : ("not_collected" as const),
+    orgs: [...orgs.values()],
+    claim_links,
+  };
 }

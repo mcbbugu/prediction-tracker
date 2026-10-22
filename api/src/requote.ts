@@ -38,6 +38,7 @@ type Row = {
 type Judgement = {
   direct?: boolean;
   speaker_quote?: string;
+  attributed?: boolean;
   quote_zh?: string;
   quote_en?: string;
   said_on?: string;
@@ -101,8 +102,9 @@ async function judge(row: Row, quote: string, page: { text: string; title: strin
       "speaker_quote：direct 为 false 时，从原文里找出此人自己说的、表达同一预测的原话（通常在引号里），逐字复制，不改写、不拼接、不带引号外的叙述和说话人名字；必须包含预测内容本身和与 deadline 对应的时间期限，说的必须是同一件事（不能换成同页另一句预测），至少 20 个字符。只有引号里的零碎短语（例如 \"in a month or two\"）或原文里没有原话时留空。direct 为 true 时留空。",
       "quote_zh：最终原话（direct 时是 quote，否则是 speaker_quote）的简体中文忠实译文；quote_en：它的英文版本（原文是英文就照抄）。speaker_quote 为空且 direct 为 false 时这两项留空。",
       "said_on：原文明确写出此人说这话的日期时填 YYYY-MM-DD（只知道年月填当月 1 日，只知道年份填 1 月 1 日）；原文没写就留空。said_on_basis：原文里说明这个日期的那几个词，逐字复制。",
+      "attributed：quote 是可靠来源明确把这项预测或承诺归于此人的转述时为 true（原文写明是此人说的、表示的、预测的，例如「X said…」「据 X 称」）；作者或记者自己的推算和评论、没有归于此人的公司公告和新闻稿、别人对此人计划的猜测为 false。direct 为 true 时也填 true。",
       "reason：一句中文说明判断理由。",
-      '输出 JSON：{"direct":true,"speaker_quote":"","quote_zh":"","quote_en":"","said_on":"","said_on_basis":"","reason":""}',
+      '输出 JSON：{"direct":true,"speaker_quote":"","attributed":true,"quote_zh":"","quote_en":"","said_on":"","said_on_basis":"","reason":""}',
     ].join("\n"),
     JSON.stringify({
       person: { name_zh: row.name_zh, name_en: row.name_en },
@@ -154,16 +156,18 @@ async function requote(row: Row, touched: Set<string>, log: (line: string) => vo
       ? candidate
       : "";
   if (replacement) taken.add(words(replacement));
+  // SPEC 原则 2: a reliable source attributing the prediction to the person counts as 转述 (kept as is, labelled).
+  const reportedKeep = !direct && !replacement && !duplicate && Boolean(verdict.attributed) && quoteOnPage(quote, page.text);
 
-  if (!direct && !replacement) {
+  if (!direct && !replacement && !reportedKeep) {
     const why = duplicate
       ? "原句是转述，页面里对应的原话已是另一条主张"
       : reported
         ? "引号外是记者叙述（出现说话人名字或转述动词）"
-        : "模型判定不是本人直接引语";
+        : "模型判定不是本人直接引语，也不是明确归于此人的转述";
     const reason = duplicate
       ? `${why}，不重复收录。${verdict.reason ?? ""}`.trim()
-      : `${why}，存档原文里找不到能逐字核对的本人原话。${verdict.reason ?? ""}`.trim();
+      : `${why}，也不是可靠来源明确归于此人的转述。${verdict.reason ?? ""}`.trim();
     log(`✗ ${row.id} 撤回：${quote.slice(0, 80)}`);
     if (dryRun) return "rejected";
     if (row.publication === "published") {
@@ -182,9 +186,9 @@ async function requote(row: Row, touched: Set<string>, log: (line: string) => vo
     return "rejected";
   }
 
-  const finalQuote = direct ? quote : replacement;
+  const finalQuote = direct || reportedKeep ? quote : replacement;
   const update: Partial<Pick<Row, "quote_original" | "quote_en" | "quote_zh" | "said_on">> = {};
-  if (!direct) {
+  if (!direct && !reportedKeep) {
     update.quote_original = replacement;
     update.quote_en = hasChinese(replacement) ? (verdict.quote_en ?? "").trim() || replacement : replacement;
   }
@@ -212,10 +216,11 @@ async function requote(row: Row, touched: Set<string>, log: (line: string) => vo
     `${direct ? "✓" : "↻"} ${row.id}${direct ? "" : ` 换成原话：${replacement.slice(0, 80)}`}` +
       `${update.quote_zh && direct ? " · 补中文" : ""}${update.said_on ? ` · said_on ${row.said_on} → ${update.said_on}（${basis}）` : ""}`,
   );
-  if (dryRun) return direct ? "kept" : "corrected";
+  if (dryRun) return direct || reportedKeep ? "kept" : "corrected";
 
   await sql`
     UPDATE claims SET
+      quote_kind = ${reportedKeep ? "reported" : "direct"},
       quote_original = ${update.quote_original ?? row.quote_original},
       quote_en = ${update.quote_en ?? row.quote_en},
       quote_zh = ${update.quote_zh ?? row.quote_zh},
@@ -239,7 +244,17 @@ async function requote(row: Row, touched: Set<string>, log: (line: string) => vo
       note: "重新复核通过，恢复公开（机器核对）。",
     });
   }
-  if (!direct) {
+  if (reportedKeep) {
+    touched.add(row.person_id);
+    await logEvent({
+      claim_id: row.id,
+      person_id: row.person_id,
+      action: "quote_marked_reported",
+      actor: "agent",
+      after: { quote_kind: "reported" },
+      note: `可靠来源明确归于此人的转述，按 SPEC 原则 2 保留并标「转述」。${verdict.reason ?? ""}`.trim(),
+    });
+  } else if (!direct) {
     touched.add(row.person_id);
     await logEvent({
       claim_id: row.id,
@@ -271,7 +286,7 @@ async function requote(row: Row, touched: Set<string>, log: (line: string) => vo
       note: `原文写明：${basis}`,
     });
   }
-  return direct ? "kept" : "corrected";
+  return direct || reportedKeep ? "kept" : "corrected";
 }
 
 async function main() {

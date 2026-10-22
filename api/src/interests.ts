@@ -1,4 +1,4 @@
-// pnpm api:interests -- [--people=musk,altman] [--first=20] [--publish] [--link-only]
+// pnpm api:interests -- [--people=musk,altman] [--first=20] [--publish] [--link-only] [--concurrency=3]
 // 利益关系采集（SPEC「利益关系」、P12）：任职与控制、持股与投资、商业往来，每条带起止时间和存档出处。
 //
 // Same bar as claims — the model is never trusted on its own:
@@ -10,9 +10,10 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { arkJson, arkSearch } from "./ark";
+import { BudgetExceeded, arkJson, arkSearch } from "./ark";
 import { sql } from "./db";
 import { migrate } from "./migrate";
+import { canonicalName, orgKey, parseScale } from "./orgs";
 import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
@@ -32,15 +33,12 @@ type Extracted = {
   ended?: string;
   page?: number;
   quote?: string;
+  stake_text?: string;
+  amount_text?: string;
 };
 
-// "Tesla, Inc." and "Tesla" are the same counterparty.
-function canonical(name: string) {
-  return name.replace(/[,.]?\s+(inc|corp|corporation|ltd|llc|co|plc|company)\.?$/i, "").replace(/\s+/g, " ").trim();
-}
-
 // "2008", "2008-10" or "2008-10-01"; anything else is unknown.
-function cleanDate(value: string | undefined) {
+export function cleanDate(value: string | undefined) {
   const match = (value ?? "").trim().match(/^\d{4}(-\d{2}(-\d{2})?)?$/);
   return match ? match[0] : null;
 }
@@ -53,6 +51,7 @@ async function search(query: string) {
   try {
     return (await arkSearch(query)).urls;
   } catch (error) {
+    if (error instanceof BudgetExceeded) throw error;
     console.log(`  搜索失败：${(error as Error).message.slice(0, 120)}`);
     return [];
   }
@@ -93,12 +92,13 @@ async function extract(person: Person, page: Snapshot) {
       "- role：任职与控制（创始人、联合创始人、CEO、总裁、董事、董事长、控股）。",
       "- holding：公开披露的持股和投资（含本人公开说过的持仓、投资某公司）。",
       "- deal：本人与机构之间有明确来源的商业往来（付费顾问、代言、赞助、合同、薪酬方案）。",
-      "不收：他名下公司对外的交易（如他的公司和别家签合同、被收购）、竞争对手、亲属关系、捐款、学历、荣誉、传闻、计划中尚未发生的事。",
+      "不收：政府和公职、他名下公司对外的交易（如他的公司和别家签合同、被收购）、竞争对手、亲属关系、捐款、学历、荣誉、传闻、计划中尚未发生的事。",
       "同一家机构的同一种关系只列一次。",
-      "counterparty 写机构英文正式名（如 Tesla、OpenAI、NVIDIA），counterparty_zh 写常用中文名。role 用中文简写，如「CEO」「联合创始人」「董事」「持股约 13%」「投资人」「顾问」。",
+      "counterparty 写机构英文正式名（如 Tesla、OpenAI、NVIDIA），counterparty_zh 写中文媒体常用的叫法，没有通行中文名的品牌（如 SpaceX、OpenAI、Neuralink、PayPal、xAI）留空字符串，不要硬译。role 用中文简写，如「CEO」「联合创始人」「董事」「持股约 13%」「投资人」「顾问」。",
       "started / ended 只在原文写明时填，格式 YYYY 或 YYYY-MM；仍在任填 ended = \"present\"；原文没写就留空字符串。",
       "quote 必须从原文逐字复制一句（20 到 300 字），这句话要能单独说明这条关系，并且出现机构名。不要改写、翻译或拼接。",
-      '输出 JSON：{"relations":[{"kind":"role","counterparty":"","counterparty_zh":"","role":"","started":"","ended":"","quote":""}]}',
+      "stake_text：quote 里写明的持股比例原文片段（如「20.3%」「about 13 percent」），amount_text：quote 里写明的金额原文片段（如「$6.5 million」「1亿美元」）。必须从 quote 里逐字复制；quote 里没有就留空，不要估算或换算。",
+      '输出 JSON：{"relations":[{"kind":"role","counterparty":"","counterparty_zh":"","role":"","started":"","ended":"","quote":"","stake_text":"","amount_text":""}]}',
     ].join("\n"),
     JSON.stringify({ person: person.name_en, url: page.final_url, title: page.title, text: excerpt(page.text, KEYS, 10000) }),
     3000,
@@ -108,7 +108,6 @@ async function extract(person: Person, page: Snapshot) {
 
 async function collect(person: Person) {
   const pages = await candidatePages(person);
-  console.log(`  存档 ${pages.length} 个页面`);
   let kept = 0;
   let rejected = 0;
   for (const page of pages) {
@@ -121,7 +120,7 @@ async function collect(person: Person) {
     }
     for (const item of relations) {
       const kind = (item.kind ?? "").trim();
-      const counterparty = canonical((item.counterparty ?? "").trim());
+      const counterparty = canonicalName((item.counterparty ?? "").trim());
       const quote = (item.quote ?? "").trim();
       const names = [counterparty, (item.counterparty ?? "").trim(), (item.counterparty_zh ?? "").trim()].filter(Boolean).map(normalize);
       if (!KINDS.has(kind) || !counterparty || !quoteOnPage(quote, page.text) || !names.some((name) => normalize(quote).includes(name))) {
@@ -130,10 +129,12 @@ async function collect(person: Person) {
       }
       const ended = (item.ended ?? "").trim().toLowerCase() === "present" ? "present" : cleanDate(item.ended);
       const rows = await sql`
-        INSERT INTO interests (person_id, kind, counterparty, counterparty_zh, role, started, ended, source_url, source_id, quote, publication)
+        INSERT INTO interests (person_id, kind, counterparty, counterparty_zh, role, started, ended, source_url, source_id, quote, publication,
+                               org_key, stake_pct, amount_usd)
         VALUES (
           ${person.id}, ${kind}, ${counterparty}, ${(item.counterparty_zh ?? "").trim()}, ${(item.role ?? "").trim()},
-          ${cleanDate(item.started)}, ${ended}, ${page.final_url}, ${page.id}, ${quote}, ${publish ? "published" : "proposed"}
+          ${cleanDate(item.started)}, ${ended}, ${page.final_url}, ${page.id}, ${quote}, ${publish ? "published" : "proposed"},
+          ${orgKey(counterparty)}, ${parseScale(item.stake_text, quote, "pct")}, ${parseScale(item.amount_text, quote, "usd")}
         )
         ON CONFLICT (person_id, kind, lower(counterparty), lower(role)) DO NOTHING
         RETURNING id
@@ -144,8 +145,71 @@ async function collect(person: Person) {
   return { pages: pages.length, kept, rejected };
 }
 
+// Several pages describe the same relation in different words. Keep one row per relation — the most complete one,
+// with its own source and sentence untouched — and mark the rest as merged (nothing is deleted).
+export async function consolidate(personId: string) {
+  const rows = await sql<{ id: number; kind: string; counterparty: string; org_key: string | null; role: string; started: string | null; ended: string | null; source_url: string }[]>`
+    SELECT id::int AS id, kind, counterparty, org_key, role, started, ended, source_url
+    FROM interests WHERE person_id = ${personId} AND publication IN ('published', 'proposed')
+  `;
+  if (rows.length < 2) return 0;
+  const answer = (await arkJson(
+    [
+      "下面是同一个人的利益关系记录，来自不同网页，很多是同一件事的不同写法。",
+      "把描述同一条关系的记录分到一组（同一机构、同一种关系；例如「CEO」「CEO兼产品架构师」是同一组，「董事长」和「CEO」不是同一组；同一家公司不同时间点的持股可以并成一组）。",
+      "org_key 相同的是同一家机构（如 X 与 Twitter）；org_key 不同的不要合并。",
+      "每组选一条保留：优先有起止时间的，其次出处更权威的（公司公告、SEC、官方简介 > 维基百科 > 其他）。",
+      '输出 JSON：{"groups":[{"keep":1,"merge":[2,3]}]}，只有一条的组也要列出。',
+    ].join("\n"),
+    JSON.stringify(rows),
+    4000,
+  )) as { groups?: { keep?: number; merge?: number[] }[] };
+  const known = new Set(rows.map((row) => row.id));
+  const keep = new Set((answer.groups ?? []).map((group) => Number(group.keep)).filter((id) => known.has(id)));
+  const merged = (answer.groups ?? [])
+    .flatMap((group) => group.merge ?? [])
+    .map(Number)
+    .filter((id) => known.has(id) && !keep.has(id));
+  if (merged.length) await sql`UPDATE interests SET publication = 'merged' WHERE id IN ${sql(merged)}`;
+  return merged.length;
+}
+
+// Rows collected before the scale fields existed: set org_key, and read stake / amount from the sentence we already kept.
+export async function backfill(personId: string) {
+  const rows = await sql<{ id: number; counterparty: string; quote: string; org_key: string | null; stake_pct: string | null; amount_usd: string | null }[]>`
+    SELECT id::int AS id, counterparty, quote, org_key, stake_pct, amount_usd
+    FROM interests WHERE person_id = ${personId} AND publication IN ('published', 'proposed')
+  `;
+  for (const row of rows) {
+    if (row.org_key !== orgKey(row.counterparty)) await sql`UPDATE interests SET org_key = ${orgKey(row.counterparty)} WHERE id = ${row.id}`;
+  }
+  const todo = rows.filter((row) => row.stake_pct === null && row.amount_usd === null && /\d/.test(row.quote));
+  if (!todo.length) return 0;
+  const answer = (await arkJson(
+    [
+      "下面每条是一句原文。如果句子里写明了持股比例或金额，把那个原文片段逐字复制出来。",
+      "stake_text 如「20.3%」「about 13 percent」；amount_text 如「$6.5 million」「1亿美元」。句子里没有就留空，不要估算或换算。",
+      '输出 JSON：{"rows":[{"id":1,"stake_text":"","amount_text":""}]}',
+    ].join("\n"),
+    JSON.stringify(todo.map((row) => ({ id: row.id, counterparty: row.counterparty, quote: row.quote }))),
+    3000,
+  )) as { rows?: { id?: number; stake_text?: string; amount_text?: string }[] };
+  const byId = new Map(todo.map((row) => [row.id, row]));
+  let filled = 0;
+  for (const item of answer.rows ?? []) {
+    const row = byId.get(Number(item.id));
+    if (!row) continue;
+    const stake = parseScale(item.stake_text, row.quote, "pct");
+    const amount = parseScale(item.amount_text, row.quote, "usd");
+    if (stake === null && amount === null) continue;
+    await sql`UPDATE interests SET stake_pct = ${stake}, amount_usd = ${amount} WHERE id = ${row.id}`;
+    filled += 1;
+  }
+  return filled;
+}
+
 // "said" is YYYY-MM-DD; a relation date may be YYYY or YYYY-MM, so compare at its precision.
-function activeOn(interest: { started: string | null; ended: string | null }, said: string) {
+export function activeOn(interest: { started: string | null; ended: string | null }, said: string) {
   if (!interest.started || said.slice(0, interest.started.length) < interest.started) return false;
   if (interest.ended === "present") return true;
   if (!interest.ended) return false;
@@ -189,8 +253,8 @@ export async function linkClaims(personId: string) {
       const interest = byId.get(Number(interestId));
       if (!interest || !activeOn(interest, claim.published_date)) continue;
       await sql`
-        INSERT INTO claim_interests (claim_id, interest_id, reason)
-        VALUES (${claim.id}, ${Number(interestId)}, ${(link.reason ?? "").trim()})
+        INSERT INTO claim_interests (claim_id, interest_id, reason, level)
+        VALUES (${claim.id}, ${Number(interestId)}, ${(link.reason ?? "").trim()}, 'direct')
         ON CONFLICT DO NOTHING
       `;
       linked += 1;
@@ -233,18 +297,27 @@ async function main() {
   await migrate();
   const people = await resolvePeople();
   console.log(`利益关系：${people.length} 人 · ${publish ? "通过核对的直接公开（机器核对）" : "结果进审核台"}${linkOnly ? " · 只重新标注主张" : ""}`);
-  for (const person of people) {
-    console.log(`\n${person.name}（${person.name_en}）`);
-    if (!linkOnly) {
-      const result = await collect(person);
-      console.log(`  新增关系 ${result.kept} 条，丢弃 ${result.rejected} 条（依据句对不上或没提到机构）`);
-    }
-    try {
-      console.log(`  标注利益相关主张 ${await linkClaims(person.id)} 条`);
-    } catch (error) {
-      console.log(`  标注失败：${(error as Error).message.slice(0, 120)}`);
+  const concurrency = Math.max(1, Number(arg("concurrency") ?? 3));
+  let next = 0;
+  async function worker() {
+    while (next < people.length) {
+      const person = people[next++];
+      const lines = [`\n${person.name}（${person.name_en}）`];
+      try {
+        if (!linkOnly) {
+          const result = await collect(person);
+          lines.push(`  存档 ${result.pages} 个页面，新增关系 ${result.kept} 条，丢弃 ${result.rejected} 条（依据句对不上或没提到机构）`);
+        }
+        lines.push(`  补规模字段 ${await backfill(person.id)} 条`);
+        if (!linkOnly) lines.push(`  合并重复 ${await consolidate(person.id)} 条`);
+        lines.push(`  标注利益相关主张 ${await linkClaims(person.id)} 条`);
+      } catch (error) {
+        lines.push(`  出错：${(error as Error).message.slice(0, 160)}`);
+      }
+      console.log(lines.join("\n"));
     }
   }
+  await Promise.all(Array.from({ length: concurrency }, worker));
   await sql.end();
 }
 

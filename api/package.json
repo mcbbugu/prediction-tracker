@@ -8,6 +8,7 @@
     "seed": "bun run src/seed.ts",
     "seed-check": "bun run src/seed-check.ts",
     "interests": "bun run src/interests.ts",
+    "exposures": "bun run src/exposures.ts",
     "agent": "bun run src/agent.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",

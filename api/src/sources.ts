@@ -45,7 +45,8 @@ export function textFromHtml(html: string) {
 }
 
 // Opens the page ourselves and keeps a dated copy with a content hash (L1 evidence store).
-export async function snapshot(url: string): Promise<Snapshot | null> {
+// Annual reports run past 200k characters; callers that need the whole filing can raise the cap.
+export async function snapshot(url: string, maxChars = 200_000): Promise<Snapshot | null> {
   let response: Response;
   try {
     response = await fetch(url, {
@@ -60,7 +61,7 @@ export async function snapshot(url: string): Promise<Snapshot | null> {
   const type = response.headers.get("content-type") || "";
   const { title, text } = type.includes("html") || raw.trimStart().startsWith("<") ? textFromHtml(raw) : { title: "", text: raw };
   // Postgres text cannot hold NUL bytes; some pages (and PDFs served as text) contain them.
-  const kept = text.replace(/\u0000/g, "").replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/g, " ").slice(0, 200_000);
+  const kept = text.replace(/\u0000/g, "").replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/g, " ").slice(0, maxChars);
   const cleanTitle = title.replace(/[\u0000-\u001f]/g, " ").trim();
   const sha256 = createHash("sha256").update(kept).digest("hex");
   const rows = await sql<{ id: number }[]>`

@@ -6,7 +6,7 @@ import { remapStrayDomains } from "./remap-domains";
 import { arkConfigured } from "./ark";
 import { sql } from "./db";
 import { logEvent, migrate } from "./migrate";
-import { latestScores, oneClaim, personInterests, publishedClaims, type ScoreRow } from "./records";
+import { latestScores, oneClaim, personInterestAtlas, personInterests, publishedClaims, type ScoreRow } from "./records";
 import { COMPOSITE_WEIGHTS, interestSplit, personProfile, recomputeScores } from "./score";
 
 const reviewToken = process.env.REVIEW_TOKEN;
@@ -154,16 +154,25 @@ const app = new Elysia()
       },
     };
   })
+  .get("/v1/people/:id/interests", async ({ params, set }) => {
+    const people = await sql<{ id: string }[]>`SELECT id FROM people WHERE id = ${params.id} LIMIT 1`;
+    if (!people[0]) {
+      set.status = 404;
+      return { error: "未找到该人物" };
+    }
+    return personInterestAtlas(params.id);
+  })
   .get("/v1/people/:id/claims/:claimId", async ({ params, set }) => {
     const claim = await oneClaim(params.id, params.claimId);
     if (!claim) {
       set.status = 404;
       return { error: "未找到该条目" };
     }
+    const interests = await personInterests(params.id);
     const related = (await publishedClaims(params.id)).filter(
       (item) => item.category === claim.category && item.id !== claim.id
     );
-    return { claim, related: related.slice(0, 4) };
+    return { claim: { ...claim, interest_note: interests.claim_notes[claim.id] ?? null }, related: related.slice(0, 4) };
   })
   .get("/v1/review", async ({ request, set }) => {
     if (!authorized(request)) {

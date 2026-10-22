@@ -1,6 +1,6 @@
 import { arkConfigured, arkJson } from "./ark";
 import { sql } from "./db";
-import { latestScores, personInterests, publishedClaims } from "./records";
+import { latestScores, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg } from "./records";
 import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, interestSplit, personProfile } from "./score";
 
 export type ConsultRequest = {
@@ -39,6 +39,57 @@ function searchTerms(query: string) {
 function covers(haystack: string, terms: string[]) {
   const hay = haystack.toLowerCase();
   return terms.some((term) => hay.includes(term));
+}
+
+// Exposures tied to the chosen domain's claims, plus any whose name shows up in the query.
+function pickExposures(atlas: Awaited<ReturnType<typeof personInterestAtlas>> | undefined, claimIds: string[], terms: string[]) {
+  if (!atlas) return [];
+  const wanted = new Set(claimIds);
+  const located = new Map<number, { org: AtlasOrg; exposure: AtlasOrg["exposures"][number] }>();
+  for (const org of atlas.orgs) for (const exposure of org.exposures) located.set(exposure.id, { org, exposure });
+  const seen = new Set<number>();
+  const out: {
+    org_key: string;
+    organisation: string;
+    dimension: string;
+    target: string;
+    target_zh: string;
+    country: string | null;
+    metric: AtlasOrg["exposures"][number]["metric"];
+    level: "direct" | "indirect";
+    reason: string;
+    source_url: string;
+  }[] = [];
+  const push = (org: AtlasOrg, exposure: AtlasOrg["exposures"][number], level: "direct" | "indirect", reason: string) => {
+    if (seen.has(exposure.id) || out.length >= 8) return;
+    seen.add(exposure.id);
+    out.push({
+      org_key: org.org_key,
+      organisation: org.name_zh || org.name,
+      dimension: exposure.dimension,
+      target: exposure.target,
+      target_zh: exposure.target_zh,
+      country: exposure.country,
+      metric: exposure.metric,
+      level,
+      reason,
+      source_url: exposure.source_url,
+    });
+  };
+  for (const link of atlas.claim_links) {
+    if (link.target_kind !== "exposure" || !wanted.has(link.claim_id)) continue;
+    const hit = located.get(link.target_id);
+    if (hit) push(hit.org, hit.exposure, link.level, link.reason);
+  }
+  if (terms.length) {
+    for (const org of atlas.orgs) {
+      for (const exposure of org.exposures) {
+        const hay = `${org.name} ${org.name_zh} ${exposure.target} ${exposure.target_zh} ${exposure.country ?? ""}`;
+        if (covers(hay, terms)) push(org, exposure, "indirect", "");
+      }
+    }
+  }
+  return out;
 }
 
 function halfLifeWeight(deadline: string, now = new Date()): number {
@@ -101,6 +152,7 @@ export async function consultPrior(input: ConsultRequest) {
 
   // SPEC 利益关系: not part of the score; returned so downstream AIs can weigh it themselves.
   const interestMap = new Map(await Promise.all(matchedPeopleIds.map(async (pid) => [pid, await personInterests(pid)] as const)));
+  const atlasMap = new Map(await Promise.all(matchedPeopleIds.map(async (pid) => [pid, await personInterestAtlas(pid)] as const)));
 
   // 3. Build per-person domain prior evaluations
   const evaluations = matchedPeopleIds.map((pid) => {
@@ -199,6 +251,8 @@ export async function consultPrior(input: ConsultRequest) {
             claim_notes: interests.claim_notes,
           }
         : { status: "not_collected" as const },
+      // 与这次查询的领域或话题对得上的对外敞口（地域、工厂、供应链、合作、投资）。
+      exposures: pickExposures(atlasMap.get(person.id), domainClaims.map((claim) => claim.id), terms),
       composite_weights: COMPOSITE_WEIGHTS,
       min_required: MIN_JUDGED,
       confidence: domainScore?.confidence ?? "不足",
