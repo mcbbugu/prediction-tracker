@@ -9,6 +9,7 @@
 //   5. A verdict of 已兑现/部分兑现/未兑现 with no surviving evidence becomes 证据不足.
 //   6. The result is a proposal. Only a person on /review can apply it to the public record.
 import { arkJson, arkSearch } from "./ark";
+import { maybeQueueAudit, verdictAutoPublish } from "./calibration";
 import { sql } from "./db";
 import { logEvent } from "./migrate";
 import { excerpt, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
@@ -225,4 +226,14 @@ export async function applyVerdictAutomatically(proposalId: number) {
     note: `verdict_proposals#${verdict.id}`,
   });
   return true;
+}
+
+// An agent verdict takes effect without a person only in local mode or once calibration has passed
+// (SPEC 核对分层 · 校准规则); in calibrated mode 5% of them are queued for a blind audit.
+export async function applyVerdictIfAllowed(proposalId: number) {
+  const gate = await verdictAutoPublish();
+  if (!gate.allowed) return false;
+  const applied = await applyVerdictAutomatically(proposalId);
+  if (applied) await maybeQueueAudit(proposalId, gate.mode);
+  return applied;
 }

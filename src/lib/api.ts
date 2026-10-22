@@ -22,6 +22,8 @@ export type Claim = {
   quote_kind?: "direct" | "reported" | string;
   // SPEC 利益关系: neutral note such as「说话时任特斯拉 CEO」, null when the claim does not touch the speaker's interests.
   interest_note?: string | null;
+  // 改期合并 (formula v1.3): restatements of one commitment share a thread.
+  thread_id?: string | null;
 };
 
 export type Person = {
@@ -45,6 +47,8 @@ export type Score = {
   n: number;
   confidence: string;
   formula_version: string;
+  // 证据不足 in this domain: void, not scored.
+  voided?: number;
 };
 
 // SPEC 人物画像与综合分: per domain, composite = accuracy + consistency, every part listed.
@@ -93,6 +97,7 @@ export type ConsultEvaluation = {
   score: number | null;
   prior_weight: number | null;
   verified_count: number;
+  voided_count?: number;
   interval_80: { low: number; high: number } | null;
   min_required: number;
   confidence: string;

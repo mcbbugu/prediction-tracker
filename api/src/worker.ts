@@ -8,7 +8,7 @@ import { sql } from "./db";
 import { runAnalyzeJob } from "./discover";
 import { migrate } from "./migrate";
 import { recomputeScores } from "./score";
-import { applyVerdictAutomatically, verifyClaim, type DueClaim } from "./verdict";
+import { applyVerdictIfAllowed, verifyClaim, type DueClaim } from "./verdict";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const concurrency = Math.max(1, Math.min(4, Number(arg("concurrency") ?? 1)));
@@ -87,7 +87,7 @@ async function verifyJob(job: Job) {
   if (!claim) throw new Error(`没有这条主张：${job.payload.claim_id}`);
   const outcome = await verifyClaim(claim);
   let applied = false;
-  if (process.env.AUTO_PUBLISH === "1" && outcome.proposal_id) applied = await applyVerdictAutomatically(outcome.proposal_id);
+  if (outcome.proposal_id) applied = await applyVerdictIfAllowed(outcome.proposal_id);
   if (applied) await recomputeScores(claim.person_id, { claim_id: claim.id, action: "verdict_auto_applied" });
   const result = { claim_id: claim.id, person_id: claim.person_id, status: outcome.status, applied, proposal_id: outcome.proposal_id };
   await sql`UPDATE jobs SET state = 'done', person_id = ${claim.person_id}, result = ${sql.json(result)}, updated_at = now() WHERE id = ${job.id}`;

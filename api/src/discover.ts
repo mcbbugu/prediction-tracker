@@ -7,7 +7,7 @@ import { logEvent } from "./migrate";
 import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "./sources";
 import { ensurePortrait } from "./portrait";
 import { recomputeScores } from "./score";
-import { applyVerdictAutomatically, verifyClaim, type DueClaim } from "./verdict";
+import { applyVerdictIfAllowed, verifyClaim, type DueClaim } from "./verdict";
 
 const MAX_PAGES = 10;
 // A fixed domain list: free-form labels ("人工智能" vs "大模型" vs "AI") split one person's record
@@ -405,7 +405,7 @@ export async function runAnalyzeJob(jobId: string) {
         try {
           const outcome = await verifyClaim(claim, (status, message, data) => emit("到期核对", status, message, { claim: claim.id, ...data }));
           verdicts.push({ claim: claim.id, status: outcome.status });
-          if (autoPublish() && outcome.proposal_id) await applyVerdictAutomatically(outcome.proposal_id);
+          if (outcome.proposal_id) await applyVerdictIfAllowed(outcome.proposal_id);
         } catch (error) {
           if (error instanceof ArkStopped) throw error;
           await emit("到期核对", "failed", `一条核对失败：${error instanceof Error ? error.message.slice(0, 120) : error}`, { claim: claim.id });

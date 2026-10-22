@@ -11,6 +11,8 @@
     "exposures": "bun run src/exposures.ts",
     "wayback": "bun run src/wayback.ts",
     "sec": "bun run src/sec.ts",
+    "threads": "bun run src/threads.ts",
+    "calibrate": "bun run src/calibration.ts",
     "agent": "bun run src/agent.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",

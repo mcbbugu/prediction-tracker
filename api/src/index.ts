@@ -1,5 +1,6 @@
 import { cors } from "@elysiajs/cors";
 import { Elysia, t } from "elysia";
+import { LABELS, calibrationReport, sampleCalibration } from "./calibration";
 import { consultPrior } from "./consult";
 import { runAnalyzeJob } from "./discover";
 import { remapStrayDomains } from "./remap-domains";
@@ -103,7 +104,7 @@ const app = new Elysia()
       ({ person_id: string } & ScoreRow)[]
     >`
       SELECT DISTINCT ON (person_id, domain)
-        person_id, domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence, formula_version
+        person_id, domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence, formula_version, voided
       FROM score_snapshots
       ORDER BY person_id, domain, computed_at DESC
     `;
@@ -138,6 +139,7 @@ const app = new Elysia()
       status: claim.status,
       deadline: claim.deadline,
       evidence_count: Array.isArray(claim.evidence) ? claim.evidence.length : 0,
+      thread_id: claim.thread_id,
       related: claim.interest_note !== null,
     }));
     const profile = personProfile(rows, interests.collected);
@@ -340,6 +342,65 @@ const app = new Elysia()
         evidence_urls: t.Optional(t.Array(t.String())),
       }),
     },
+  )
+  // 校准协议 (SPEC 核对分层): blind labels for agent verdicts. Items never carry the model's status or reasoning.
+  .get("/v1/calibration", async ({ request, set }) => {
+    if (!authorized(request)) {
+      set.status = 401;
+      return { error: "审核口令不正确" };
+    }
+    const items = await sql`
+      SELECT ci.id::int AS id, ci.purpose, p.name AS person_name, c.category, c.quote_zh, c.quote_en, c.source_url,
+             to_char(c.published_date, 'YYYY-MM-DD') AS published_date, to_char(c.deadline, 'YYYY-MM-DD') AS deadline,
+             coalesce((SELECT jsonb_agg(e->>'url') FROM jsonb_array_elements(v.evidence) e), '[]'::jsonb) AS evidence_urls
+      FROM calibration_items ci
+      JOIN verdict_proposals v ON v.id = ci.proposal_id
+      JOIN claims c ON c.id = ci.claim_id
+      JOIN people p ON p.id = c.person_id
+      WHERE ci.human_status IS NULL
+      ORDER BY CASE ci.purpose WHEN 'audit' THEN 0 ELSE 1 END, ci.id
+      LIMIT 20
+    `;
+    return { report: await calibrationReport(), labels: LABELS, items };
+  })
+  .post(
+    "/v1/calibration/:id",
+    async ({ params, body, request, set }) => {
+      if (!authorized(request)) {
+        set.status = 401;
+        return { error: "审核口令不正确" };
+      }
+      if (!(LABELS as readonly string[]).includes(body.human_status)) {
+        set.status = 400;
+        return { error: "结论只能是已兑现、部分兑现、未兑现、证据不足或待定" };
+      }
+      const rows = await sql`
+        UPDATE calibration_items
+        SET human_status = ${body.human_status}, note = ${body.note ?? ""}, labeler = ${body.labeler ?? "reviewer"}, labeled_at = now()
+        WHERE id = ${Number(params.id)} AND human_status IS NULL
+        RETURNING id
+      `;
+      if (!rows.length) {
+        set.status = 404;
+        return { error: "这一条不存在或已经标过" };
+      }
+      return { ok: true };
+    },
+    {
+      params: t.Object({ id: t.String() }),
+      body: t.Object({ human_status: t.String(), note: t.Optional(t.String()), labeler: t.Optional(t.String()) }),
+    },
+  )
+  .post(
+    "/v1/calibration/sample",
+    async ({ body, request, set }) => {
+      if (!authorized(request)) {
+        set.status = 401;
+        return { error: "审核口令不正确" };
+      }
+      return { sampled: await sampleCalibration(Math.max(1, Math.min(300, body.n ?? 120))) };
+    },
+    { body: t.Object({ n: t.Optional(t.Number()) }) },
   )
   .post(
     "/v1/verdicts/:id/:action",

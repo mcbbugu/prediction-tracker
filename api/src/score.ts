@@ -2,7 +2,10 @@ import { sql } from "./db";
 
 // v1.1 (2026-10-21): same formula; a score and its 80% interval show from the first judged claim (no 3/8 tiers).
 // v1.2 (2026-10-21): half-life 180 days → 3 years, so a record from years ago still counts.
-export const FORMULA_VERSION = "v1.2";
+// v1.3 (2026-10-22): 改期合并 — restatements of one commitment (same thread_id) share weight: k judged claims
+// in a thread count √k in total, so a repeatedly rescheduled promise is evidence without swamping the domain.
+// 证据不足 stays void (not scored); the number voided is reported next to the score. 部分兑现 = 0.5.
+export const FORMULA_VERSION = "v1.3";
 const KAPPA = 4;
 const PRIOR = 0.5;
 // A judged claim's weight halves every HALF_LIFE_DAYS after its deadline. 3 years: recent outcomes count more,
@@ -24,7 +27,11 @@ export type ScoredRow = {
   status: string;
   deadline: string;
   evidence_count: number;
+  thread_id?: string | null;
 };
+
+// 证据不足: the deadline passed but the outcome cannot be established from sources. Void, not scored.
+export const VOID_STATUS = "证据不足";
 
 function weight(deadline: string, now: Date) {
   const then = Date.parse(`${deadline}T00:00:00Z`);
@@ -102,11 +109,19 @@ export function scoreDomain(rows: ScoredRow[], now = new Date()) {
   let weightedEvidence = 0;
   let weightedOutcome = 0;
   let n = 0;
-  for (const row of rows) {
+  // Judged claims per thread; a claim without a thread is a thread of one.
+  const threadKey = (row: ScoredRow, index: number) => row.thread_id || `self:${index}`;
+  const threadSize = new Map<string, number>();
+  rows.forEach((row, index) => {
+    if (OUTCOME[row.status] !== undefined) threadSize.set(threadKey(row, index), (threadSize.get(threadKey(row, index)) ?? 0) + 1);
+  });
+  const voided = rows.filter((row) => row.status === VOID_STATUS).length;
+  for (const [index, row] of rows.entries()) {
     const outcome = OUTCOME[row.status];
     if (outcome === undefined) continue;
     const reliability = row.evidence_count > 0 ? 1 : 0.5;
-    const w = weight(row.deadline, now);
+    const share = 1 / Math.sqrt(threadSize.get(threadKey(row, index)) ?? 1);
+    const w = weight(row.deadline, now) * share;
     weightedEvidence += w * reliability;
     weightedOutcome += w * reliability * outcome;
     n += 1;
@@ -116,11 +131,11 @@ export function scoreDomain(rows: ScoredRow[], now = new Date()) {
   const beta = KAPPA * (1 - PRIOR) + (weightedEvidence - weightedOutcome);
   const tail = (1 - INTERVAL_MASS) / 2;
   if (n < MIN_JUDGED) {
-    return { n, value: null as number | null, low: null as number | null, high: null as number | null, confidence: "不足", alpha, beta };
+    return { n, voided, value: null as number | null, low: null as number | null, high: null as number | null, confidence: "不足", alpha, beta };
   }
   const interval = { low: Math.round(100 * betaQuantile(tail, alpha, beta)), high: Math.round(100 * betaQuantile(1 - tail, alpha, beta)) };
   const value = (100 * alpha) / (alpha + beta);
-  return { n, value: Math.round(value * 10) / 10, ...interval, confidence: confidence(n), alpha, beta };
+  return { n, voided, value: Math.round(value * 10) / 10, ...interval, confidence: confidence(n), alpha, beta };
 }
 
 // ---- Composite score (SPEC 人物画像与综合分): combined inside one domain only, never across domains.
@@ -252,7 +267,8 @@ export async function recomputeScores(
            category,
            status,
            to_char(deadline, 'YYYY-MM-DD') AS deadline,
-           jsonb_array_length(evidence) AS evidence_count
+           jsonb_array_length(evidence) AS evidence_count,
+           thread_id
     FROM claims
     WHERE person_id = ${personId} AND publication = 'published'
   `;
@@ -272,10 +288,11 @@ export async function recomputeScores(
       confidence: string;
       formula_version: string;
       basis: { id: string; status: string }[] | null;
+      voided: number;
     }[]
   >`
     SELECT DISTINCT ON (domain) domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence,
-           formula_version, basis
+           formula_version, basis, voided
     FROM score_snapshots
     WHERE person_id = ${personId}
     ORDER BY domain, computed_at DESC
@@ -303,6 +320,7 @@ export async function recomputeScores(
       before.confidence !== "已移除" &&
       before.formula_version === FORMULA_VERSION &&
       before.n === scored.n &&
+      before.voided === scored.voided &&
       (before.value ?? null) === scored.value &&
       (before.low ?? null) === scored.low &&
       (before.high ?? null) === scored.high &&
@@ -310,7 +328,7 @@ export async function recomputeScores(
     )
       continue;
     await sql`
-      INSERT INTO score_snapshots (person_id, domain, value, low, high, n, confidence, formula_version, trigger_claim_id, trigger_action, basis)
+      INSERT INTO score_snapshots (person_id, domain, value, low, high, n, confidence, formula_version, trigger_claim_id, trigger_action, basis, voided)
       VALUES (
         ${personId},
         ${domain},
@@ -322,7 +340,8 @@ export async function recomputeScores(
         ${FORMULA_VERSION},
         ${trigger.claim_id ?? null},
         ${trigger.action ?? null},
-        ${sql.json(basis)}
+        ${sql.json(basis)},
+        ${scored.voided}
       )
     `;
   }

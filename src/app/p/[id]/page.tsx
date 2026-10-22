@@ -101,6 +101,8 @@ export default async function PersonPage({
         fulfilled: list.filter((claim) => claim.status === "已兑现").length,
         partial: list.filter((claim) => claim.status === "部分兑现").length,
         missed: list.filter((claim) => claim.status === "未兑现").length,
+        voided: list.filter((claim) => claim.status === "证据不足").length,
+        threads: new Set(list.filter((claim) => claim.thread_id).map((claim) => claim.thread_id)).size,
         overdue: count(list, "overdue"),
         upcoming: count(list, "upcoming"),
         next,
@@ -381,6 +383,8 @@ export default async function PersonPage({
                           </span>
                           <span className="num text-[11px] whitespace-nowrap text-mute">
                             兑现 {row.fulfilled} · 部分 {row.partial} · 未 {row.missed}
+                            {row.voided ? <span title="期限已过但查不到能判定结果的资料：作废，不计分"> · 作废 {row.voided}</span> : null}
+                            {row.threads ? <span title="同一承诺反复改期再说，连成一串，整串 k 条合计按 √k 条计分"> · 改期串 {row.threads}</span> : null}
                           </span>
                         </span>
                       ) : (

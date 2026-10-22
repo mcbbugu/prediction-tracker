@@ -216,6 +216,8 @@ export async function consultPrior(input: ConsultRequest) {
       score: scoreVal,
       prior_weight: priorWeight,
       verified_count: domainScore?.n ?? 0,
+      // 证据不足 claims in this domain: void, not scored (formula v1.3); a high count means vague or unverifiable talk.
+      voided_count: domainScore?.voided ?? 0,
       interval_80: interval,
       // SPEC 人物画像与综合分: composite within this domain, with every part listed so it can be taken apart.
       profile:
@@ -225,6 +227,7 @@ export async function consultPrior(input: ConsultRequest) {
             status: c.status,
             deadline: c.deadline,
             evidence_count: Array.isArray(c.evidence) ? c.evidence.length : 0,
+            thread_id: c.thread_id,
             related: c.id in interests.claim_notes,
           })),
           interests.collected,
@@ -247,6 +250,7 @@ export async function consultPrior(input: ConsultRequest) {
                 status: c.status,
                 deadline: c.deadline,
                 evidence_count: Array.isArray(c.evidence) ? c.evidence.length : 0,
+            thread_id: c.thread_id,
                 related: c.id in interests.claim_notes,
               })),
             ),

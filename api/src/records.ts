@@ -22,6 +22,8 @@ export type ClaimRow = {
   provenance: string;
   reviewed: boolean;
   quote_kind: string;
+  // 改期合并: claims restating one commitment share a thread (null = stands alone).
+  thread_id: string | null;
 };
 
 export type ScoreRow = {
@@ -33,6 +35,8 @@ export type ScoreRow = {
   n: number;
   confidence: string;
   formula_version: string;
+  // 证据不足 claims in this domain: void, not scored, reported next to the score.
+  voided: number;
 };
 
 const claimSelect = sql`
@@ -41,7 +45,7 @@ const claimSelect = sql`
   to_char(c.published_date, 'YYYY-MM-DD') AS published_date,
   to_char(c.deadline, 'YYYY-MM-DD') AS deadline,
   c.actual_result, c.status, c.publication, c.rationale, c.evidence,
-  c.provenance, (c.reviewed_at IS NOT NULL) AS reviewed, c.quote_kind
+  c.provenance, (c.reviewed_at IS NOT NULL) AS reviewed, c.quote_kind, c.thread_id
 `;
 
 export async function publishedClaims(personId?: string) {
@@ -77,7 +81,7 @@ export async function oneClaim(personId: string, claimId: string) {
 export async function latestScores(personId: string) {
   const rows = await sql<ScoreRow[]>`
     SELECT DISTINCT ON (domain)
-      domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence, formula_version
+      domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence, formula_version, voided
     FROM score_snapshots
     WHERE person_id = ${personId}
     ORDER BY domain, computed_at DESC

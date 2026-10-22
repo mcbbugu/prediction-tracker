@@ -244,6 +244,31 @@ async function migrateUnlocked() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS challenges_pending_idx ON challenges (state, created_at)`;
   await sql`CREATE INDEX IF NOT EXISTS challenges_target_idx ON challenges (target_kind, target_id)`;
+  // 改期合并 (formula v1.3): restatements of one commitment share a thread; the thread's judged claims
+  // count √k in total. thread_source says who linked them (agent / manual).
+  await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS thread_id text`;
+  await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS thread_source text`;
+  await sql`CREATE INDEX IF NOT EXISTS claims_thread_idx ON claims (thread_id) WHERE thread_id IS NOT NULL`;
+  // 证据不足 is void (not scored); how many were voided is published next to the score.
+  await sql`ALTER TABLE score_snapshots ADD COLUMN IF NOT EXISTS voided integer NOT NULL DEFAULT 0`;
+  // 校准协议: blind human labels for agent verdicts. purpose = calibration (the stratified sample that opens
+  // auto-publishing) or audit (the ongoing 5% sample that can close it again).
+  await sql`
+    CREATE TABLE IF NOT EXISTS calibration_items (
+      id bigserial PRIMARY KEY,
+      proposal_id bigint NOT NULL UNIQUE,
+      claim_id text NOT NULL,
+      model_status text NOT NULL,
+      stratum text NOT NULL,
+      purpose text NOT NULL DEFAULT 'calibration',
+      human_status text,
+      labeler text,
+      note text NOT NULL DEFAULT '',
+      created_at timestamptz NOT NULL DEFAULT now(),
+      labeled_at timestamptz
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS calibration_items_open_idx ON calibration_items (purpose, labeled_at)`;
 }
 
 export async function logEvent(event: {
