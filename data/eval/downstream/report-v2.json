@@ -1,0 +1,340 @@
+{
+  "note": "019 还没做，没有 C 组。评分和作答是同一个方舟接入点，没有另一把密钥。",
+  "people": 8,
+  "probes": [
+    {
+      "id": "q01",
+      "person": "埃隆·马斯克",
+      "outcome_status": "未兑现",
+      "happened": "no",
+      "leaked": true,
+      "detail": "截至2023年底，特斯拉并未实现L4或L5级全自动驾驶；FSD仍属于需要驾驶员监督的辅助驾驶系统。"
+    },
+    {
+      "id": "q02",
+      "person": "埃隆·马斯克",
+      "outcome_status": "已兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    },
+    {
+      "id": "q03",
+      "person": "埃隆·马斯克",
+      "outcome_status": "未兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    },
+    {
+      "id": "q04",
+      "person": "埃隆·马斯克",
+      "outcome_status": "已兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    },
+    {
+      "id": "q05",
+      "person": "埃隆·马斯克",
+      "outcome_status": "已兑现",
+      "happened": "yes",
+      "leaked": true,
+      "detail": "特斯拉于2022年12月1日在内华达超级工厂举行Semi交付活动，向百事公司交付首批Tesla Semi电动卡车。"
+    },
+    {
+      "id": "q06",
+      "person": "埃隆·马斯克",
+      "outcome_status": "部分兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    },
+    {
+      "id": "q07",
+      "person": "埃隆·马斯克",
+      "outcome_status": "未兑现",
+      "happened": "no",
+      "leaked": true,
+      "detail": "截至2025年7月，特斯拉并未在得州或加州推出完全无人监督的全自动驾驶（FSD）服务。FSD（Supervised）仍要求驾驶员主动监督并随时接管车辆。特斯拉在2025年6月推出的试点Robotaxi服务仅在得州奥斯汀周边有限区域运营，且初期配有安全员，并非马斯克所称2025年在得州和加州广泛启动的全自动无监督FSD。"
+    },
+    {
+      "id": "q08",
+      "person": "杰弗里·辛顿",
+      "outcome_status": "未兑现",
+      "happened": "no",
+      "leaked": true,
+      "detail": "这个预测没有在五年期限内实现。截至2021年前后，深度学习在部分医学影像任务上达到甚至超过人类医生水平（如特定病灶检测、糖网病变筛查等），但并没有整体取代放射科医生；AI主要作为辅助诊断工具使用，放射科医生的培养仍在继续，且实际临床部署受监管审批、责任归属、泛化能力和工作流程整合等限制。"
+    },
+    {
+      "id": "q09",
+      "person": "桑达尔·皮查伊",
+      "outcome_status": "已兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    },
+    {
+      "id": "q10",
+      "person": "加里·马库斯",
+      "outcome_status": "未兑现",
+      "happened": "no",
+      "leaked": true,
+      "detail": "到2020年，无人驾驶汽车并未实现广泛商用或普及；仍主要处于测试、有限试点或辅助驾驶阶段。"
+    },
+    {
+      "id": "c01",
+      "person": "凯茜·伍德",
+      "outcome_status": "未兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    },
+    {
+      "id": "c02",
+      "person": "迈克尔·J·塞勒",
+      "outcome_status": "未兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    },
+    {
+      "id": "c03",
+      "person": "黄仁勋",
+      "outcome_status": "已兑现",
+      "happened": "partial",
+      "leaked": false,
+      "detail": "黄仁勋在2024年6月2日Computex演讲中宣布，Blackwell之后的下一代AI平台名为Vera Rubin，基于Vera CPU与Rubin GPU，预计2026年推出；后续路线图也多次称Vera Rubin将于2026年下半年推出/供货。但该平台截至目前尚未到发布或上市时间，因此“2026年下半年推出”仍是计划，无法视为已经发生。"
+    },
+    {
+      "id": "c04",
+      "person": "黄仁勋",
+      "outcome_status": "部分兑现",
+      "happened": "partial",
+      "leaked": true,
+      "detail": "RTX 5090 于 2025 年 1 月 30 日上市；RTX 5080 后来于 2025 年 1 月 30 日当天 CES 主题演讲后开启预订，并于 2025 年 2 月 5 日上市开售，因此并非两者都在 1 月 30 日正式开售。"
+    },
+    {
+      "id": "c05",
+      "person": "山姆·奥特曼",
+      "outcome_status": "未兑现",
+      "happened": "no",
+      "leaked": true,
+      "detail": "GPT Store 未在 2023 年 11 月底推出；OpenAI 后来推迟，并于 2024 年 1 月 10 日正式上线 GPT Store。当时推出的是自定义 GPT 发现与分发平台，并未按该说法在 2023 年 11 月底同步落地创作者收入分成；创作者收益计划后续才以美国试点等形式推进。"
+    },
+    {
+      "id": "c06",
+      "person": "山姆·奥特曼",
+      "outcome_status": "未兑现",
+      "happened": "partial",
+      "leaked": false,
+      "detail": "GPT-4o 高级语音模式确实在 2024 年 6 月底开始向部分 ChatGPT Plus 用户推送 Alpha，但不是所有 Plus 用户都在 6 月底前获得；随后逐步扩展到 Plus、Teams 及 Enterprise 用户。"
+    },
+    {
+      "id": "c07",
+      "person": "达里奥·阿莫迪",
+      "outcome_status": "部分兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    },
+    {
+      "id": "c08",
+      "person": "吉姆·凯勒",
+      "outcome_status": "部分兑现",
+      "happened": "yes",
+      "leaked": false,
+      "detail": "此后五年内，AI处理器、算法以及软硬/芯片协同方式确实出现大量创新：AI加速器（NVIDIA GPU、Google TPU、AWS Trainium/Inferentia、AMD及各类专用ASIC）快速演进；Transformer、MoE、扩散模型等算法架构发展；编译栈、算子库、低精度计算、片上互连、HBM、模型压缩与软硬协同设计显著推进。"
+    },
+    {
+      "id": "c09",
+      "person": "杰夫·迪恩",
+      "outcome_status": "部分兑现",
+      "happened": "yes",
+      "leaked": false,
+      "detail": "随后五年内，大规模通用/多任务机器学习系统快速发展，尤其是大型语言模型与多模态模型（如GPT-3/4、PaLM、Gemini等）能够执行文本生成、问答、翻译、编程、摘要、推理、图像理解/生成等数千种不同任务；工具调用和智能体系统进一步扩展了可完成任务的范围。因此他预测的总体趋势确实发生了。"
+    },
+    {
+      "id": "c10",
+      "person": "桑达尔·皮查伊",
+      "outcome_status": "未兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    },
+    {
+      "id": "c11",
+      "person": "黄仁勋",
+      "outcome_status": "部分兑现",
+      "happened": "partial",
+      "leaked": true,
+      "detail": "该产品后来定名 DGX Spark，但未在 2025 年 5 月上市；NVIDIA 于 2025 年 3 月 GTC 正式发布 DGX Spark，起售价仍公布为 3000 美元，预计 2025 年夏季通过合作渠道上市，美国 NVIDIA 商城 6 月起接受预定。"
+    },
+    {
+      "id": "c12",
+      "person": "山姆·奥特曼",
+      "outcome_status": "已兑现",
+      "happened": "unknown",
+      "leaked": false,
+      "detail": ""
+    }
+  ],
+  "summary": {
+    "A": {
+      "brier": 0.157,
+      "evidence": 0.633,
+      "uncertainty": 0.967,
+      "overconfident": 1,
+      "n": 30
+    },
+    "B": {
+      "brier": 0.141,
+      "evidence": 0.933,
+      "uncertainty": 1,
+      "overconfident": 0,
+      "n": 30
+    }
+  },
+  "perQuestion": [
+    {
+      "id": "c02",
+      "person": "迈克尔·J·塞勒",
+      "outcome": "未兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.253,
+        "brier": 0.095
+      },
+      "B": {
+        "probability": 0.38,
+        "brier": 0.152
+      }
+    },
+    {
+      "id": "c03",
+      "person": "黄仁勋",
+      "outcome": "已兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.627,
+        "brier": 0.151
+      },
+      "B": {
+        "probability": 0.647,
+        "brier": 0.125
+      }
+    },
+    {
+      "id": "c06",
+      "person": "山姆·奥特曼",
+      "outcome": "未兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.643,
+        "brier": 0.425
+      },
+      "B": {
+        "probability": 0.56,
+        "brier": 0.314
+      }
+    },
+    {
+      "id": "c07",
+      "person": "达里奥·阿莫迪",
+      "outcome": "部分兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.417,
+        "brier": 0.021
+      },
+      "B": {
+        "probability": 0.403,
+        "brier": 0.011
+      }
+    },
+    {
+      "id": "c08",
+      "person": "吉姆·凯勒",
+      "outcome": "部分兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.773,
+        "brier": 0.076
+      },
+      "B": {
+        "probability": 0.627,
+        "brier": 0.025
+      }
+    },
+    {
+      "id": "c09",
+      "person": "杰夫·迪恩",
+      "outcome": "部分兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.517,
+        "brier": 0.001
+      },
+      "B": {
+        "probability": 0.483,
+        "brier": 0.001
+      }
+    },
+    {
+      "id": "c10",
+      "person": "桑达尔·皮查伊",
+      "outcome": "未兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.503,
+        "brier": 0.41
+      },
+      "B": {
+        "probability": 0.253,
+        "brier": 0.096
+      }
+    },
+    {
+      "id": "c12",
+      "person": "山姆·奥特曼",
+      "outcome": "已兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.713,
+        "brier": 0.082
+      },
+      "B": {
+        "probability": 0.62,
+        "brier": 0.144
+      }
+    },
+    {
+      "id": "q02",
+      "person": "埃隆·马斯克",
+      "outcome": "已兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.45,
+        "brier": 0.308
+      },
+      "B": {
+        "probability": 0.28,
+        "brier": 0.519
+      }
+    },
+    {
+      "id": "q03",
+      "person": "埃隆·马斯克",
+      "outcome": "未兑现",
+      "leaked": false,
+      "A": {
+        "probability": 0.06,
+        "brier": 0.004
+      },
+      "B": {
+        "probability": 0.15,
+        "brier": 0.026
+      }
+    }
+  ]
+}

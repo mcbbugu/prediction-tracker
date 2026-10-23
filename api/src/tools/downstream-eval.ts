@@ -12,6 +12,7 @@ import { priorAsOf } from "../queries/prior";
 
 const ANSWER_V1 = "DOWNSTREAM_ANSWER_V1";
 const SCORE_V1 = "DOWNSTREAM_SCORE_V1";
+const LEAK_V1 = "DOWNSTREAM_LEAK_V1";
 const RUNS = 3;
 
 const ANSWER_PROMPT = [
@@ -19,6 +20,13 @@ const ANSWER_PROMPT = [
   "只根据给你的材料。没有的事实不要编。",
   "材料很少时，直接写样本不足，概率放在 0.5 附近。",
   '只输出 JSON：{"probability":0.5,"reason":""}。probability 是 0 到 1。',
+].join("\n");
+
+const LEAK_PROMPT = [
+  "只根据你训练时见过的知识回答，不要假装查过资料。",
+  "如果记不清或没见过结果，happened 填 unknown，detail 留空。",
+  "只有你能说出后来实际怎样（日期、产品名、数字）时，才填 yes、no 或 partial。",
+  '只输出 JSON：{"happened":"unknown","detail":""}。happened 只能是 yes、no、partial、unknown。',
 ].join("\n");
 
 const SCORE_PROMPT = [
@@ -51,6 +59,14 @@ export function brier(probability: number, outcome: number) {
 export function overconfident(probability: number, outcome: number) {
   const extreme = probability >= 0.9 || probability <= 0.1;
   return extreme && Math.abs(probability - outcome) >= 0.4;
+}
+
+export function leaked(outcomeStatus: string, happened: string, detail: string) {
+  if (happened === "unknown" || detail.trim().length < 12) return false;
+  if (outcomeStatus === "已兑现") return happened === "yes";
+  if (outcomeStatus === "未兑现") return happened === "no";
+  if (outcomeStatus === "部分兑现") return happened === "partial";
+  return false;
 }
 
 export function clampProbability(value: unknown) {
@@ -116,6 +132,113 @@ async function scoreOnce(question: Question, answer: Answer, key: string) {
 
 function snippet(text: string) {
   return text.replace(/\s+/g, " ").slice(0, 180);
+}
+
+async function probe(question: Question) {
+  const raw = (await arkJson(
+    LEAK_PROMPT,
+    `${question.person} 在 ${question.said_on} 说过：「${question.quote_zh}」后来这件事发生了吗？`,
+    300,
+    LEAK_V1,
+  )) as { happened?: string; detail?: string };
+  const happened = ["yes", "no", "partial", "unknown"].includes(raw.happened ?? "") ? (raw.happened as string) : "unknown";
+  const detail = (raw.detail ?? "").trim();
+  return { happened, detail, leaked: leaked(question.outcome_status, happened, detail) };
+}
+
+function loadJsonl(name: string) {
+  const file = join(dirname(fileURLToPath(import.meta.url)), "../../../data/eval/downstream", name);
+  return readFileSync(file, "utf8")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Question);
+}
+
+function summarize(rows: { group: "A" | "B"; brier: number; evidence: number; uncertainty: number; overconfident: boolean }[]) {
+  const side = (group: "A" | "B") => {
+    const mine = rows.filter((row) => row.group === group);
+    return {
+      brier: round(mean(mine.map((row) => row.brier))),
+      evidence: round(mean(mine.map((row) => row.evidence))),
+      uncertainty: round(mean(mine.map((row) => row.uncertainty))),
+      overconfident: mine.filter((row) => row.overconfident).length,
+      n: mine.length,
+    };
+  };
+  return { A: side("A"), B: side("B") };
+}
+
+async function mainV2() {
+  await migrate();
+  const original = loadJsonl("questions.jsonl");
+  const extra = loadJsonl("candidates.jsonl");
+  const probes = [];
+  for (const question of [...original, ...extra]) {
+    const result = await probe(question);
+    probes.push({ ...question, ...result });
+    console.log(`${question.id} ${result.leaked ? "泄露" : "未泄露"} ${result.happened} ${result.detail.slice(0, 60)}`);
+  }
+  const clean = [...probes.filter((row) => !row.leaked && row.id.startsWith("c")), ...probes.filter((row) => !row.leaked && !row.id.startsWith("c"))];
+  const people = new Set(clean.map((row) => row.person_id));
+  const picked = clean.slice(0, 10);
+  console.log(`未泄露 ${clean.length} 题，人物 ${people.size}，拿来对照 ${picked.length} 题`);
+  if (picked.length < 4 || people.size < 4) console.log("未泄露题或人物不足 4，报告里按实际数量写。");
+
+  const rows: { id: string; person: string; group: "A" | "B"; run: number; probability: number; reason: string; brier: number; overconfident: boolean; evidence: number; uncertainty: number }[] = [];
+  const used: Question[] = [];
+  for (const question of clean) {
+    if (used.length >= 10) break;
+    let prior = "";
+    try {
+      prior = await priorJson(question);
+    } catch (error) {
+      console.log(`${question.id} 没有公开先验，跳过：${error instanceof Error ? error.message : error}`);
+      continue;
+    }
+    used.push(question);
+    for (const group of ["A", "B"] as const) {
+      for (let run = 1; run <= RUNS; run += 1) {
+        const answered = await answerOnce(question, group, run, prior);
+        const key = createHash("sha256").update(`${question.id}:${group}:${run}:${answered.reason}`).digest("hex").slice(0, 12);
+        const scored = await scoreOnce(question, answered, key);
+        rows.push({
+          id: question.id,
+          person: question.person,
+          group,
+          run,
+          probability: answered.probability,
+          reason: answered.reason,
+          brier: brier(answered.probability, question.outcome),
+          overconfident: overconfident(answered.probability, question.outcome),
+          evidence: scored.evidence,
+          uncertainty: scored.uncertainty,
+        });
+        console.log(`${question.id} ${group}#${run} p=${answered.probability}`);
+      }
+    }
+  }
+  const report = {
+    note: "019 还没做，没有 C 组。评分和作答是同一个方舟接入点，没有另一把密钥。",
+    people: new Set(used.map((row) => row.person_id)).size,
+    probes: probes.map((row) => ({ id: row.id, person: row.person, outcome_status: row.outcome_status, happened: row.happened, leaked: row.leaked, detail: row.detail })),
+    summary: summarize(rows),
+    perQuestion: used.map((question) => {
+      const side = (group: "A" | "B") => {
+        const mine = rows.filter((row) => row.id === question.id && row.group === group);
+        return { probability: round(mean(mine.map((row) => row.probability))), brier: round(mean(mine.map((row) => row.brier))) };
+      };
+      return { id: question.id, person: question.person, outcome: question.outcome_status, leaked: false, A: side("A"), B: side("B") };
+    }),
+  };
+  const out = join(dirname(fileURLToPath(import.meta.url)), "../../../data/eval/downstream/report-v2.json");
+  writeFileSync(out, JSON.stringify(report, null, 2));
+  console.log("\n泄露检测");
+  for (const row of report.probes) console.log(`${row.id} ${row.person} 真实${row.outcome_status} 模型${row.happened} ${row.leaked ? "泄露" : "未泄露"}`);
+  console.log("\n无泄露题");
+  console.log(`A Brier ${report.summary.A.brier} 证据 ${report.summary.A.evidence} 过度自信 ${report.summary.A.overconfident}`);
+  console.log(`B Brier ${report.summary.B.brier} 证据 ${report.summary.B.evidence} 过度自信 ${report.summary.B.overconfident}`);
+  for (const row of report.perQuestion) console.log(`${row.id} ${row.person} ${row.outcome} A ${row.A.probability}/${row.A.brier} B ${row.B.probability}/${row.B.brier}`);
 }
 
 async function main() {
@@ -197,7 +320,8 @@ async function main() {
 }
 
 if (import.meta.main) {
-  main()
+  const entry = process.argv.includes("--v2") ? mainV2 : main;
+  entry()
     .catch((error) => {
       console.error(error instanceof Error ? error.message : error);
       process.exitCode = 1;
