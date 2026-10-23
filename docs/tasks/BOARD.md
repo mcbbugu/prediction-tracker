@@ -22,4 +22,7 @@
 | [016](016-exposure-intervals.md) | 推算带区间、假设和时间对齐（依赖 011） | Cursor | P1 | 待办 | |
 | [017](017-insider-trades.md) | 言行一致：SEC Form 4 内部人交易 | Cursor | P1 | 待办 | |
 | [018](018-event-study-baseline.md) | 事件研究与同类基准（依赖 012） | Cursor | P2 | 待办 | |
+| [019](019-delay-survival.md) | 生存分析：延迟系数与兑现时间预测 | Cursor | P0 | 待办 | |
+| [020](020-difficulty-hierarchical.md) | 难度调整技能分 + 分层贝叶斯，公式 v2.0（依赖 012） | Cursor | P0 | 待办 | |
+| [021](021-commitment-strength.md) | 承诺强度与本人校准（依赖 012） | Cursor | P1 | 待办 | |
 | [H01](H01-blind-calibration.md) | 盲标 49 条校准判定（等 009，暂缓） | 人工 | P2 | 待办 | — |
