@@ -1,5 +1,5 @@
-// bun --env-file=.env run src/evidence/refetch.ts -- [--apply] [--limit=10]
-// 重抓最新一份存档质量差的网址：正文以 %PDF 开头、HTTP 状态 >= 400，或正文少于 400 字。
+// bun --env-file=.env run src/evidence/refetch.ts -- [--apply] [--limit=10] [--garbled]
+// 重抓最新一份存档质量差的网址：正文以 %PDF 开头、大量 U+FFFD、HTTP 状态 >= 400，或正文少于 400 字。
 // 排除 sec.gov 的 XBRL 文件（那是申报数据，不是抓坏的网页）。
 // 默认试运行，只打印；--apply 才对每个网址调用 snapshot(url)，追加一条新存档，不改旧行。
 // 网址之间间隔 1 秒。重抓后用 quoteOnPage 复核 source_url 相同的主张
@@ -10,6 +10,7 @@ import { hostOf, quoteOnPage, snapshot, type Snapshot } from "./sources";
 
 const arg = (name: string) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
 const apply = process.argv.includes("--apply");
+const garbledOnly = process.argv.includes("--garbled");
 const limitArg = arg("limit");
 const limit = limitArg && Number.isFinite(Number(limitArg)) && Number(limitArg) > 0 ? Math.floor(Number(limitArg)) : null;
 const GAP_MS = 1_000;
@@ -22,6 +23,7 @@ type Latest = {
   content_type: string | null;
   len: number;
   pdf: boolean;
+  garbled: boolean;
   fetched_at: Date;
 };
 
@@ -47,21 +49,30 @@ function isSecXbrl(row: Latest) {
   return /xml/i.test(type) && !/html/i.test(type);
 }
 
-function badCopy(row: Pick<Latest, "pdf" | "http_status" | "len">) {
-  return row.pdf || row.http_status >= 400 || row.len < 400;
+function badCopy(row: Pick<Latest, "pdf" | "garbled" | "http_status" | "len">) {
+  return row.pdf || row.garbled || row.http_status >= 400 || row.len < 400;
 }
 
 function reasons(row: Latest) {
   const parts: string[] = [];
   if (row.pdf) parts.push("正文以 %PDF 开头");
+  if (row.garbled) parts.push("大量不可读字符");
   if (row.http_status >= 400) parts.push(`HTTP ${row.http_status}`);
   if (row.len < 400) parts.push(`正文 ${row.len} 字`);
   return parts.join(" · ");
 }
 
+function replacementCount(text: string) {
+  let count = 0;
+  const sample = text.slice(0, 4000);
+  for (const char of sample) if (char === "\uFFFD") count += 1;
+  return count;
+}
+
 function outcome(saved: Snapshot | null) {
   if (!saved) return "重抓失败";
   if (saved.text.startsWith("%PDF")) return "仍是 %PDF";
+  if (replacementCount(saved.text) > 40) return "仍是乱码";
   if (saved.http_status >= 400) return `HTTP ${saved.http_status}`;
   if (saved.text.length < 400) return "正文仍短";
   return "已改善";
@@ -78,6 +89,7 @@ async function main() {
       id, url, http_status, title, content_type,
       char_length(text)::int AS len,
       starts_with(text, '%PDF') AS pdf,
+      (char_length(left(text, 4000)) - char_length(replace(left(text, 4000), chr(65533), ''))) > 40 AS garbled,
       fetched_at
     FROM sources
     ORDER BY url, fetched_at DESC, id DESC
@@ -88,10 +100,11 @@ async function main() {
     http_status: Number(row.http_status),
     len: Number(row.len),
     pdf: Boolean(row.pdf),
+    garbled: Boolean(row.garbled),
     fetched_at: new Date(row.fetched_at),
   }));
   const skipped = rows.filter((row) => badCopy(row) && isSecXbrl(row));
-  const bad = rows.filter((row) => badCopy(row) && !isSecXbrl(row));
+  const bad = rows.filter((row) => badCopy(row) && !isSecXbrl(row) && (!garbledOnly || row.garbled));
 
   const claims = bad.length
     ? await sql<Claim[]>`
@@ -116,12 +129,13 @@ async function main() {
   const batch = limit ? bad.slice(0, limit) : bad;
 
   const pdfN = bad.filter((row) => row.pdf).length;
+  const garbledN = bad.filter((row) => row.garbled).length;
   const httpN = bad.filter((row) => row.http_status >= 400).length;
   const shortN = bad.filter((row) => row.len < 400).length;
   console.log(
     `符合条件 ${bad.length} 个网址（排除 sec.gov XBRL ${skipped.length} 个）· 本次 ${batch.length} 个 · ${apply ? "重抓" : "试运行（加 --apply 才重抓）"}`,
   );
-  console.log(`其中正文以 %PDF 开头 ${pdfN} · HTTP ≥ 400 ${httpN} · 正文少于 400 字 ${shortN} · 关联主张 ${claims.length} 条（${byUrl.size} 个网址）`);
+  console.log(`其中正文以 %PDF 开头 ${pdfN} · 大量不可读字符 ${garbledN} · HTTP ≥ 400 ${httpN} · 正文少于 400 字 ${shortN} · 关联主张 ${claims.length} 条（${byUrl.size} 个网址）`);
 
   if (!apply) {
     for (const [index, row] of batch.entries()) {
