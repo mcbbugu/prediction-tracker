@@ -32,7 +32,7 @@
 
 ## 完成记录
 
-补上「大量 U+FFFD」判定和 `--garbled`，`api/package.json` 增加 `refetch`。默认试运行；`--apply` 才 `snapshot`，新存档追加在后，不改旧行，也不改主张状态。
+提交 `f9437cf`。补上「大量 U+FFFD」判定和 `--garbled`，`api/package.json` 增加 `refetch`。默认试运行；`--apply` 才 `snapshot`，新存档追加在后，不改旧行，也不改主张状态。
 
 最新一份存档里符合条件 623 个网址（排除 sec.gov XBRL 64 个）。正文以 `%PDF` 开头 0 个，大量不可读字符 4 个，HTTP ≥ 400 有 475 个，正文少于 400 字 553 个。关联主张 1 条。
 
