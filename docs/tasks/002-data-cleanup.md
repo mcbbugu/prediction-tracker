@@ -35,3 +35,26 @@
 
 ## 完成记录
 
+新增 `api/src/tools/cleanup.ts` 和 `api/package.json` 的 `cleanup` 脚本。默认只打印；`--apply` 才把重复主张的 `publication` 改成 `withdrawn`（记 `claim_events`，`action=duplicate_withdrawn`），并把 `basis=crawl`、`metric_kind=amount_usd`、数值 &lt; 10000 的敞口数值和类型置空。不删行。同一人物下，规范化后完全相同（至少 36 字）或几乎相同（至少 48 字，包含且长度比 ≥ 0.75，或 trigram Dice ≥ 0.9 且 80% 实词相同）算重复；证据链接更多的留下，一样多则留更早录入的。
+
+试运行：
+
+```
+重复主张 0 组，将撤回 0 条
+可疑期限 1 条（只列出，不修改）
+  altman-006 山姆·奥特曼 published 出处是网站首页 https://ia.samaltman.com/
+单位丢失的金额 6 条
+  #2 tesla region/UNITED STATES 47.63（2025）原文是 $47.63B
+  #4 tesla region/CHINA 20.96（2025）原文是 $20.96B
+  #6 tesla region/UNITED STATES 13.21（2026）原文是 $13.21B
+  #8 tesla region/CHINA 4.67（2026）原文是 $4.67B
+  #33 tesla investment/xAI 20（2026）原文是 $20B Series E
+  #34 tesla investment/Wiferion 76（2023）原文是收购价约 $76M
+```
+
+没有截止日期早于说话日的主张。上面这 1 条留给人工：首页不能当出处。
+
+`--apply` 置空了这 6 条的 `metric_kind` 和 `metric_value`，原文还在，敞口表仍是 1080 行。没有主张被撤回，所以没有重算分数。再跑一次试运行：重复主张 0，单位丢失 0，首页那条仍在。`/v1/people/musk/interests` 仍是 200。
+
+`cd api && bun run typecheck && bun run test`：70 通过。根目录 `pnpm lint` 和 `npx tsc --noEmit -p .` 通过。
+

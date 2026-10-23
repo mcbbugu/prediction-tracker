@@ -20,6 +20,7 @@
     "docker:down": "docker compose down",
     "verify": "bun run src/claims/verify.ts",
     "probe": "bun run src/tools/probe-search.ts",
+    "cleanup": "bun run src/tools/cleanup.ts",
     "batch": "bun run src/jobs/batch.ts",
     "remap": "bun run src/claims/remap-domains.ts",
     "merge-orgs": "bun run src/interests/merge-orgs.ts",
