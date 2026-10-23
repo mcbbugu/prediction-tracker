@@ -81,6 +81,13 @@ function host(url: string) {
 const subscribeNothing = () => () => {};
 const readSavedToken = () => sessionStorage.getItem("review-token") ?? "";
 
+type CalBrief = {
+  overall: { n: number };
+  open: number;
+  gate: { open: boolean };
+  thresholds: { min_labels: number };
+};
+
 export function ReviewDesk() {
   // The saved token is read from sessionStorage without setting state in an effect (empty on the server).
   const savedToken = useSyncExternalStore(subscribeNothing, readSavedToken, () => "");
@@ -90,6 +97,8 @@ export function ReviewDesk() {
   const [verdicts, setVerdicts] = useState<Verdict[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [calibration, setCalibration] = useState<CalBrief | null>(null);
+  const [ready, setReady] = useState(false);
   const [decisionNotes, setDecisionNotes] = useState<Record<number, string>>({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -117,6 +126,12 @@ export function ReviewDesk() {
     setVerdicts(body.verdicts ?? []);
     setRuns(body.runs);
     setChallenges(body.challenges ?? []);
+    setReady(true);
+    const calibrationResponse = await fetch(`${API}/v1/calibration`, { headers: { "x-review-token": nextToken } });
+    if (calibrationResponse.ok) {
+      const calibrationBody = await calibrationResponse.json();
+      setCalibration(calibrationBody.report);
+    }
   }
 
   function fail(message: string) {
@@ -178,6 +193,8 @@ export function ReviewDesk() {
   }, [proposals]);
 
   const visible = person === "all" ? proposals : proposals.filter((item) => item.person_id === person);
+  const calibrationPending = calibration != null && (!calibration.gate.open || calibration.open > 0);
+  const nothingToDo = ready && calibration != null && !calibrationPending && challenges.length === 0 && proposals.length === 0;
 
   return (
     <div className="grid items-start gap-12 lg:grid-cols-[1fr_280px]">
@@ -197,13 +214,62 @@ export function ReviewDesk() {
         </div>
         {error ? <p className="mt-3 text-sm text-mute">{error}</p> : null}
 
+        {nothingToDo ? <p className="mt-6 text-sm text-mute">没有待办</p> : null}
+        {ready && !nothingToDo ? (
+          <section className="mt-6" aria-label="待办">
+            <h2 className="text-lg font-semibold tracking-tight">待办</h2>
+            <ul className="mt-3 divide-y divide-line overflow-hidden rounded-2xl border border-line">
+              <li>
+                <a href="/review/calibration" className="flex items-baseline justify-between gap-4 px-4 py-3 no-underline hover-fine:bg-card">
+                  <span>
+                    <span className="font-medium text-ink">校准盲标</span>
+                    <span className="mt-0.5 block text-sm text-mute">看不到模型结论，自己判断这句话兑现了没有。先标满 100 条。</span>
+                  </span>
+                  <span className="num shrink-0 text-sm">
+                    {calibration
+                      ? `${calibration.overall.n}/${calibration.thresholds.min_labels} · 待标 ${calibration.open} · ${calibration.gate.open ? "已达标" : "未达标"}`
+                      : "—"}
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a href="#challenges" className="flex items-baseline justify-between gap-4 px-4 py-3 no-underline hover-fine:bg-card">
+                  <span>
+                    <span className="font-medium text-ink">待处理反证</span>
+                    <span className="mt-0.5 block text-sm text-mute">有人提交了「这条判错了」，并附了证据。</span>
+                  </span>
+                  <span className="num shrink-0 text-sm">{challenges.length}</span>
+                </a>
+              </li>
+              <li>
+                <a href="#disagreements" className="flex items-baseline justify-between gap-4 px-4 py-3 no-underline hover-fine:bg-card">
+                  <span>
+                    <span className="font-medium text-ink">模型分歧</span>
+                    <span className="mt-0.5 block text-sm text-mute">两个模型对同一条主张给出了不同判定。</span>
+                  </span>
+                  <span className="num shrink-0 text-sm">0</span>
+                </a>
+              </li>
+              <li>
+                <a href="#proposals" className="flex items-baseline justify-between gap-4 px-4 py-3 no-underline hover-fine:bg-card">
+                  <span>
+                    <span className="font-medium text-ink">待发布主张</span>
+                    <span className="mt-0.5 block text-sm text-mute">还没公开的提案，核对后再发布。</span>
+                  </span>
+                  <span className="num shrink-0 text-sm">{proposals.length}</span>
+                </a>
+              </li>
+            </ul>
+          </section>
+        ) : null}
+
         {challenges.length > 0 ? (
-          <section className="mt-8">
+          <section id="challenges" className="mt-8">
             <h2 className="inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight">
               <Icon name="flag" />
               反证 {challenges.length}
             </h2>
-            <p className="mt-1 text-sm text-mute">公众提交的反证。复核期间这些主张标「有争议」。接受后到主张上用判定工具改结论；驳回也要写理由。</p>
+            <p className="mt-1 text-sm text-mute">看原话、现在的判定和对方给的证据，点开自己判断。接受表示原判定有问题，驳回要写一句会公开的理由。拿不准就不要硬改。</p>
             <ul className="mt-3 space-y-3">
               {challenges.map((item) => (
                 <li key={item.id} className="rounded-2xl border border-line bg-card p-4 text-sm">
@@ -254,11 +320,20 @@ export function ReviewDesk() {
           </section>
         ) : null}
 
-        {proposals.length > 0 ? (
-          <h2 className="mt-10 inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight">
-            <Icon name="quote" />
-            待发布主张 {proposals.length}
-          </h2>
+        {ready ? (
+          <>
+            <section id="disagreements" className="mt-8">
+              <h2 className="inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight">模型分歧 0</h2>
+              <p className="mt-1 text-sm text-mute">两个模型意见不一致时，对照各自的理由自己判：接受、驳回，或改为证据不足。这项还没接上。</p>
+            </section>
+            <section id="proposals" className="mt-8">
+              <h2 className="inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight">
+                <Icon name="quote" />
+                待发布主张 {proposals.length}
+              </h2>
+              <p className="mt-1 text-sm text-mute">点开出处和证据核对，必要时改判定，再发布。已经判定、但没有证据链接的不能发布。</p>
+            </section>
+          </>
         ) : null}
 
         {people.length > 0 ? (
@@ -280,7 +355,7 @@ export function ReviewDesk() {
         ) : null}
 
         <div className="mt-6">
-          {visible.length === 0 ? <p className="text-sm text-mute">没有待发布提案。</p> : null}
+          {ready && visible.length === 0 ? <p className="text-sm text-mute">没有待发布提案。</p> : null}
           {visible.map((proposal) => (
             <ProposalCard key={proposal.id} proposal={proposal} onAct={act} onEdit={edit} />
           ))}
