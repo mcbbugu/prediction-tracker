@@ -109,7 +109,7 @@ async function extract(person: Person, page: Snapshot) {
   return answer.relations ?? [];
 }
 
-async function collect(person: Person) {
+async function collect(person: Person, publication: "published" | "proposed" = publish ? "published" : "proposed") {
   const pages = await candidatePages(person);
   let kept = 0;
   let rejected = 0;
@@ -136,7 +136,7 @@ async function collect(person: Person) {
                                org_key, stake_pct, amount_usd)
         VALUES (
           ${person.id}, ${kind}, ${counterparty}, ${(item.counterparty_zh ?? "").trim()}, ${(item.role ?? "").trim()},
-          ${cleanDate(item.started)}, ${ended}, ${endKind(ended)}, ${page.final_url}, ${page.id}, ${quote}, ${publish ? "published" : "proposed"},
+          ${cleanDate(item.started)}, ${ended}, ${endKind(ended)}, ${page.final_url}, ${page.id}, ${quote}, ${publication},
           ${orgKey(counterparty)}, ${parseScale(item.stake_text, quote, "pct")}, ${parseScale(item.amount_text, quote, "usd")}
         )
         ON CONFLICT (person_id, kind, lower(counterparty), lower(role)) DO NOTHING
@@ -209,6 +209,17 @@ export async function backfill(personId: string) {
     filled += 1;
   }
   return filled;
+}
+
+// 按需分析用：给一个人补齐详情页上的利益关系，核对通过的直接公开。
+export async function fillPersonInterests(personId: string) {
+  const [person] = await sql<Person[]>`SELECT id, name, name_en FROM people WHERE id = ${personId}`;
+  if (!person?.name_en) return { pages: 0, kept: 0, rejected: 0, linked: 0 };
+  const result = await collect(person, "published");
+  await backfill(person.id);
+  await consolidate(person.id);
+  const linked = await linkClaims(person.id);
+  return { ...result, linked };
 }
 
 // "said" is YYYY-MM-DD; a relation date may be YYYY or YYYY-MM, so compare at its precision.

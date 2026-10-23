@@ -1,14 +1,14 @@
 // 按需分析：用户输入一个名字，agent 在后台找这个人带截止日的公开预测，逐条核对原话，到期的再找结果。
 // 每一步写进 job_events，前端 /jobs/[id] 轮询显示真实进度。
-// 抽到的主张一律是「待发布」提案；人物在审核通过前是 draft，不出现在公开列表里。
+// 核对通过的主张直接公开（标成机器核对），人物进入目录。做完后前端打开这个人的详情页。
 import { ArkStopped, arkJson, arkSearch } from "../core/ark";
 import { sql } from "../core/db";
 import { logEvent } from "../core/migrate";
 import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
 import { ensurePortrait } from "../people/portrait";
 import { recomputeScores } from "../scoring/score";
-import { applyVerdictIfAllowed, verifyClaim, type DueClaim } from "./verdict";
-import { localPublishMode } from "../core/env";
+import { fillPersonInterests } from "../interests/interests";
+import { applyVerdictAutomatically, verifyClaim, type DueClaim } from "./verdict";
 
 const MAX_PAGES = 10;
 // A fixed domain list: free-form labels ("人工智能" vs "大模型" vs "AI") split one person's record
@@ -30,9 +30,6 @@ export const DOMAINS = [
   "宏观经济与市场",
   "其他科技",
 ];
-// AUTO_PUBLISH=1 is for a local, not-yet-public site only: machine-checked claims go straight onto the
-// site, labelled 机器核对. Before going public, turn it off and calibrate (see SPEC.md 核对分层).
-const autoPublish = () => localPublishMode();
 const MAX_DUE_CHECKS = 3;
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -346,19 +343,19 @@ async function keepVerified(
         published_date, deadline, actual_result, status, publication, rationale, evidence, provenance, quote_kind
       ) VALUES (
         ${claim.id}, ${personId}, ${claim.category}, 'prediction', ${claim.quote_en}, ${claim.quote_zh}, ${quote},
-        ${claim.source_url}, ${claim.published_date}, ${claim.deadline}, '', '待定', ${autoPublish() ? "published" : "proposed"},
+        ${claim.source_url}, ${claim.published_date}, ${claim.deadline}, '', '待定', 'published',
         ${`${item.kind === "reported" ? "转述" : "原话"}已在存档网页中逐字核对（sources#${page.id}，sha256 ${page.sha256.slice(0, 12)}）。尚未判定。`},
         '[]'::jsonb, 'agent', ${item.kind === "reported" ? "reported" : "direct"}
       )
     `;
-    if (autoPublish()) await sql`UPDATE claims SET published_at = now() WHERE id = ${claim.id}`;
+    await sql`UPDATE claims SET published_at = now() WHERE id = ${claim.id}`;
     await logEvent({
       claim_id: id,
       person_id: personId,
       action: "proposed",
       actor: "agent",
-      after: { status: "待定", publication: autoPublish() ? "published" : "proposed", source_url: page.final_url },
-      note: autoPublish() ? "按需分析 · 自动公开（机器核对）" : "按需分析",
+      after: { status: "待定", publication: "published", source_url: page.final_url },
+      note: "按需分析 · 机器核对后公开",
     });
     kept.push(claim);
   }
@@ -379,18 +376,17 @@ export async function runAnalyzeJob(jobId: string) {
     const person = await ensurePerson(identity, job.query);
     await sql`UPDATE jobs SET person_id = ${person.id} WHERE id = ${jobId}`;
     if (!person.created) await emit("识别人物", "info", "库里已有此人，继续补充新的公开发言");
-    if (person.created) {
-      try {
-        const portrait = await ensurePortrait(person.id);
-        await emit(
-          "识别人物",
-          "info",
-          portrait.ok ? `头像取自 Wikimedia Commons（${portrait.portrait.license}）` : `暂无头像：${portrait.reason}`,
-          portrait.ok ? { portrait_source_url: portrait.portrait.source } : {},
-        );
-      } catch (error) {
-        await emit("识别人物", "info", `头像查找失败：${error instanceof Error ? error.message.slice(0, 120) : error}`);
+    try {
+      const portrait = await ensurePortrait(person.id);
+      if (portrait.ok) {
+        await emit("识别人物", "info", `头像取自 Wikimedia Commons（${portrait.portrait.license}）`, {
+          portrait_source_url: portrait.portrait.source,
+        });
+      } else if (portrait.reason !== "已有头像") {
+        await emit("识别人物", "info", `暂无头像：${portrait.reason}`);
       }
+    } catch (error) {
+      await emit("识别人物", "info", `头像查找失败：${error instanceof Error ? error.message.slice(0, 120) : error}`);
     }
 
     const pages = await gatherPages(identity, emit);
@@ -406,7 +402,7 @@ export async function runAnalyzeJob(jobId: string) {
         try {
           const outcome = await verifyClaim(claim, (status, message, data) => emit("到期核对", status, message, { claim: claim.id, ...data }));
           verdicts.push({ claim: claim.id, status: outcome.status });
-          if (outcome.proposal_id) await applyVerdictIfAllowed(outcome.proposal_id);
+          if (outcome.proposal_id) await applyVerdictAutomatically(outcome.proposal_id);
         } catch (error) {
           if (error instanceof ArkStopped) throw error;
           await emit("到期核对", "failed", `一条核对失败：${error instanceof Error ? error.message.slice(0, 120) : error}`, { claim: claim.id });
@@ -414,25 +410,32 @@ export async function runAnalyzeJob(jobId: string) {
       }
     }
 
-    if (autoPublish() && kept.length > 0) {
-      await sql`UPDATE people SET visibility = 'public' WHERE id = ${person.id}`;
-      await recomputeScores(person.id, { action: "auto_publish" });
+    let interests = { kept: 0, linked: 0 };
+    await emit("利益关系", "running", "查找任职、持股和商业往来");
+    try {
+      interests = await fillPersonInterests(person.id);
+      await emit("利益关系", "done", `新增 ${interests.kept} 条关系，${interests.linked} 条主张标上了利益`);
+    } catch (error) {
+      if (error instanceof ArkStopped) throw error;
+      await emit("利益关系", "failed", `利益关系没补上：${error instanceof Error ? error.message.slice(0, 120) : error}`);
     }
+
+    await sql`UPDATE people SET visibility = 'public' WHERE id = ${person.id}`;
+    if (kept.length > 0 || verdicts.length > 0) await recomputeScores(person.id, { action: "auto_publish" });
     const summary = {
       person_id: person.id,
       person_created: person.created,
       claims_found: kept.length,
       due_checked: verdicts.length,
       verdicts,
+      interests_found: interests.kept,
     };
     await emit(
       "完成",
       "done",
       kept.length === 0
         ? "没有找到能核对的带期限说法。这个人暂时样本不足。"
-        : autoPublish()
-          ? `新增 ${kept.length} 条主张并以「机器核对」公开，${verdicts.length} 条已到期并自动判定。`
-          : `新增 ${kept.length} 条待审核主张，${verdicts.length} 条已到期并给出判定建议。审核通过后才会公开。`,
+        : `新增 ${kept.length} 条主张，${verdicts.length} 条已到期并自动判定，${interests.kept} 条利益关系。`,
       summary,
     );
     await sql`UPDATE jobs SET state = 'done', result = ${sql.json(summary)}, updated_at = now() WHERE id = ${jobId}`;
