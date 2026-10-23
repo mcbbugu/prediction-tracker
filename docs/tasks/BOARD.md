@@ -7,7 +7,7 @@
 | [001](001-perf-indexes.md) | 加索引、去掉 N+1 查询 | Cursor | P1 | 已完成 | fc57ccb |
 | [009](009-restore-review-pages.md) | 恢复审核和校准入口（H01 被它卡住） | Cursor | P0 | 待办 | |
 | [002](002-data-cleanup.md) | 数据清理脚本 | Cursor | P1 | 已完成 | a8e177c |
-| [005](005-analysis-trace-data.md) | 按需分析：每步记录完整细节 | Cursor | P0 | 进行中 | |
+| [005](005-analysis-trace-data.md) | 按需分析：每步记录完整细节 | Cursor | P0 | 已完成 | 见完成记录 |
 | [006](006-analysis-trace-ui.md) | 任务页展示分析过程（依赖 005） | Cursor | P0 | 待办 | |
 | [007](007-analysis-parity.md) | 按需分析补齐模块、加自动收录标签 | Cursor | P0 | 待办 | |
 | [008](008-analysis-rate-limit.md) | 按 IP 限流和排队 | Cursor | P1 | 待办 | |

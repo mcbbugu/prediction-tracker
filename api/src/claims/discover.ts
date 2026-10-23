@@ -1,6 +1,7 @@
 // 按需分析：用户输入一个名字，agent 在后台找这个人带截止日的公开预测，逐条核对原话，到期的再找结果。
 // 每一步写进 job_events，前端 /jobs/[id] 轮询显示真实进度。
 // 核对通过的主张直接公开（标成机器核对），人物进入目录。做完后前端打开这个人的详情页。
+import { basename } from "node:path";
 import { ArkStopped, arkJson, arkSearch } from "../core/ark";
 import { sql } from "../core/db";
 import { logEvent } from "../core/migrate";
@@ -68,6 +69,8 @@ export async function translateToChinese(quotes: string[]) {
   });
 }
 
+type IdentityCandidate = { name_zh?: string; name_en?: string; title_zh?: string; why?: string };
+
 type Identity = {
   found?: boolean;
   name_zh?: string;
@@ -78,7 +81,37 @@ type Identity = {
   is_politician?: boolean;
   aliases?: string[];
   reason?: string;
+  candidates?: IdentityCandidate[];
 };
+
+export function inScope(identity: Pick<Identity, "found" | "name_zh" | "is_public_figure" | "is_politician">) {
+  return Boolean(identity.found && identity.name_zh && identity.is_public_figure && !identity.is_politician);
+}
+
+export function identityTrace(identity: Identity, searchUrls: string[]) {
+  const listed = (identity.candidates ?? []).filter((item) => item.name_zh || item.name_en);
+  const candidates = listed.length
+    ? listed
+    : [{ name_zh: identity.name_zh, name_en: identity.name_en, title_zh: identity.title_zh, why: identity.reason }];
+  return {
+    name_zh: identity.name_zh,
+    name_en: identity.name_en,
+    title: identity.title_zh,
+    candidates,
+    reason: identity.reason ?? "",
+    in_scope: inScope(identity),
+    is_public_figure: Boolean(identity.is_public_figure),
+    is_politician: Boolean(identity.is_politician),
+    search_urls: searchUrls,
+  };
+}
+
+export function archiveFailure(page: { http_status: number; text: string } | null) {
+  if (!page) return "打不开";
+  if (page.http_status >= 400) return `HTTP ${page.http_status}`;
+  if (page.text.length < 400) return "正文太短";
+  return null;
+}
 
 type Extracted = {
   page?: number;
@@ -133,26 +166,30 @@ async function identify(query: string, emit: ReturnType<typeof emitter>) {
       "is_politician：此人的主要身份是政治人物（现任或前任政府官员、民选官员或候选人、政党人员、政府发言人）。企业家、学者、投资人短期担任政府顾问类职务，主要身份仍不是政治人物，填 false。",
       "slug：英文名的小写短横线形式，例如 liang-wenfeng。",
       "found=false 表示无法确定是谁或同名的人太多。",
-      '输出 JSON：{"found":true,"name_zh":"","name_en":"","title_zh":"","slug":"","is_public_figure":true,"is_politician":false,"aliases":[],"reason":""}',
+      "candidates：搜索里可能对上的人，最多 5 个，包含被排除的同名者。确定是谁时，选中的人放第一条。why 用一句中文说明为什么是或不是。",
+      '输出 JSON：{"found":true,"name_zh":"","name_en":"","title_zh":"","slug":"","is_public_figure":true,"is_politician":false,"aliases":[],"reason":"","candidates":[{"name_zh":"","name_en":"","title_zh":"","why":""}]}',
     ].join("\n"),
     JSON.stringify({ query, search_summary: search.text.slice(0, 3000) }),
     800,
   )) as Identity;
 
+  const trace = identityTrace(identity, search.urls);
   if (!identity.found || !identity.name_zh) {
-    throw new JobStop(`没能确认「${query}」是谁。${identity.reason ?? ""}`.trim(), "failed");
+    const message = `没能确认「${query}」是谁。${identity.reason ?? ""}`.trim();
+    await emit("识别人物", "failed", message, trace);
+    throw new JobStop(message, "failed");
   }
   if (identity.is_politician) {
-    throw new JobStop(`${identity.name_zh}属于政治人物，目前不收录。`, "rejected");
+    const message = `${identity.name_zh}属于政治人物，目前不收录。`;
+    await emit("识别人物", "failed", message, trace);
+    throw new JobStop(message, "rejected");
   }
   if (!identity.is_public_figure) {
-    throw new JobStop(`${identity.name_zh}看起来不是有公开身份的公众人物，不做分析。`, "rejected");
+    const message = `${identity.name_zh}看起来不是有公开身份的公众人物，不做分析。`;
+    await emit("识别人物", "failed", message, trace);
+    throw new JobStop(message, "rejected");
   }
-  await emit("识别人物", "done", `${identity.name_zh}（${identity.name_en || "无英文名"}）· ${identity.title_zh || "公众人物"}`, {
-    name_zh: identity.name_zh,
-    name_en: identity.name_en,
-    title: identity.title_zh,
-  });
+  await emit("识别人物", "done", `${identity.name_zh}（${identity.name_en || "无英文名"}）· ${identity.title_zh || "公众人物"}`, trace);
   return identity;
 }
 
@@ -194,34 +231,78 @@ async function gatherPages(identity: Identity, emit: ReturnType<typeof emitter>)
       `(e.g. "by 2025", "next year", "within three years"). List 6-10 source URLs: interviews, transcripts, official blogs, news articles. No homepages.`,
   ];
   const urls: string[] = [];
+  const searches: { query: string; urls: string[]; error?: string }[] = [];
   for (const query of queries) {
     try {
       const result = await arkSearch(query);
       urls.push(...result.urls);
+      searches.push({ query, urls: result.urls });
     } catch (error) {
       if (error instanceof ArkStopped) throw error;
-      await emit("搜索公开发言", "info", `一次搜索失败：${error instanceof Error ? error.message.slice(0, 120) : error}`);
+      const message = error instanceof Error ? error.message.slice(0, 120) : String(error);
+      searches.push({ query, urls: [], error: message });
+      await emit("搜索公开发言", "info", `一次搜索失败：${message}`, { query, urls: [] });
     }
   }
   const candidates = usableLinks(urls).slice(0, MAX_PAGES + 4);
-  await emit("搜索公开发言", "done", `找到 ${candidates.length} 个可能的出处链接`, { urls: candidates });
+  await emit("搜索公开发言", "done", `找到 ${candidates.length} 个可能的出处链接`, { urls: candidates, searches });
   if (candidates.length === 0) throw new JobStop("联网搜索没有找到可用的出处链接。", "failed");
 
   await emit("存档网页", "running", `逐个打开链接并保存正文`);
   const pages: Snapshot[] = [];
   const unreachable: string[] = [];
+  const archives: {
+    url: string;
+    ok: boolean;
+    reason: string | null;
+    fetched_via: string | null;
+    sha256: string | null;
+    wayback_url: string | null;
+    source_id: number | null;
+  }[] = [];
   for (const url of candidates) {
-    if (pages.length >= MAX_PAGES) break;
+    if (pages.length >= MAX_PAGES) {
+      archives.push({ url, ok: false, reason: "已达存档上限", fetched_via: null, sha256: null, wayback_url: null, source_id: null });
+      continue;
+    }
     const page = await snapshot(url);
-    if (!page || page.http_status >= 400 || page.text.length < 400) {
+    const reason = archiveFailure(page);
+    if (!page || reason) {
       unreachable.push(url);
+      archives.push({
+        url,
+        ok: false,
+        reason,
+        fetched_via: page?.fetched_via ?? null,
+        sha256: page?.sha256 ?? null,
+        wayback_url: null,
+        source_id: page?.id ?? null,
+      });
       continue;
     }
     pages.push(page);
+    archives.push({
+      url: page.final_url,
+      ok: true,
+      reason: null,
+      fetched_via: page.fetched_via,
+      sha256: page.sha256,
+      wayback_url: null,
+      source_id: page.id,
+    });
+  }
+  const savedIds = archives.flatMap((row) => (row.source_id == null ? [] : [row.source_id]));
+  if (savedIds.length) {
+    const shots = await sql<{ id: number; wayback_url: string | null }[]>`
+      SELECT id::int AS id, wayback_url FROM sources WHERE id IN ${sql(savedIds)}
+    `;
+    const byId = new Map(shots.map((row) => [row.id, row.wayback_url]));
+    for (const row of archives) if (row.source_id != null) row.wayback_url = byId.get(row.source_id) ?? null;
   }
   await emit("存档网页", "done", `存档 ${pages.length} 个网页，${unreachable.length} 个打不开或没有正文`, {
     archived: pages.map((page) => ({ url: page.final_url, title: page.title })),
     unreachable,
+    archives,
   });
   if (pages.length === 0) throw new JobStop("搜到的链接都打不开，没法核对原话。", "failed");
   return pages;
@@ -267,7 +348,14 @@ async function extractClaims(identity: Identity, pages: Snapshot[], emit: Return
       if (page) found.push({ page, item });
     }
   }
-  await emit("抽取预测", "done", `模型提出 ${found.length} 条候选`);
+  await emit("抽取预测", "done", `模型提出 ${found.length} 条候选`, {
+    candidates: found.map(({ page, item }) => ({
+      quote: (item.quote ?? "").trim(),
+      deadline: item.deadline ?? "",
+      source_id: page.id,
+      url: page.final_url,
+    })),
+  });
   return found;
 }
 
@@ -286,43 +374,43 @@ async function keepVerified(
   const names = speaker.map((name) => normalize(name));
   const today = new Date().toISOString().slice(0, 10);
 
-  const kept: DueClaim[] = [];
-  const dropped: { quote: string; reason: string }[] = [];
+  const kept: (DueClaim & { source_id: number })[] = [];
+  const dropped: { quote: string; reason: string; source_id: number; outcome: "dropped" }[] = [];
   for (const { page, item } of candidates) {
     const quote = (item.quote ?? "").trim();
     if (!quote || !item.deadline || !isoDate.test(item.deadline) || !item.said_on || !isoDate.test(item.said_on)) {
-      dropped.push({ quote, reason: "缺日期或期限" });
+      dropped.push({ quote, reason: "缺日期或期限", source_id: page.id, outcome: "dropped" });
       continue;
     }
     if (item.said_on > today) {
-      dropped.push({ quote, reason: "说话日期晚于今天" });
+      dropped.push({ quote, reason: "说话日期晚于今天", source_id: page.id, outcome: "dropped" });
       continue;
     }
     // Said-on can never be after the article that reports it.
     if (item.article_date && isoDate.test(item.article_date) && item.said_on > item.article_date) item.said_on = item.article_date;
     // 转述可以收，但必须是明确归于本人的那一句（SPEC 原则 2）。模型标成原话、句子却是转述的，改记为转述。
     if (item.kind === "reported" && !isReportedSpeech(quote, speaker)) {
-      dropped.push({ quote, reason: "转述没有明确归于本人" });
+      dropped.push({ quote, reason: "转述没有明确归于本人", source_id: page.id, outcome: "dropped" });
       continue;
     }
     if (isReportedSpeech(quote, speaker)) item.kind = "reported";
     if (!quoteOnPage(quote, page.text)) {
-      dropped.push({ quote, reason: "原文里找不到这句话" });
+      dropped.push({ quote, reason: "原文里找不到这句话", source_id: page.id, outcome: "dropped" });
       continue;
     }
     if (!names.some((name) => normalize(page.text).includes(name))) {
-      dropped.push({ quote, reason: "网页里没有出现此人名字" });
+      dropped.push({ quote, reason: "网页里没有出现此人名字", source_id: page.id, outcome: "dropped" });
       continue;
     }
     if (seen.has(normalize(quote))) {
-      dropped.push({ quote, reason: "库里已有" });
+      dropped.push({ quote, reason: "库里已有", source_id: page.id, outcome: "dropped" });
       continue;
     }
     seen.add(normalize(quote));
     let quoteZh = (item.quote_zh ?? "").trim();
     if (!hasChinese(quoteZh)) quoteZh = hasChinese(quote) ? quote : ((await translateToChinese([quote]))[0] ?? "");
     if (!quoteZh) {
-      dropped.push({ quote, reason: "没能生成中文译文" });
+      dropped.push({ quote, reason: "没能生成中文译文", source_id: page.id, outcome: "dropped" });
       continue;
     }
     const id = `${personId}-a-${crypto.randomUUID().slice(0, 8)}`;
@@ -334,6 +422,7 @@ async function keepVerified(
       quote_en: (item.quote_en || quote).trim(),
       quote_zh: quoteZh,
       source_url: page.final_url,
+      source_id: page.id,
       published_date: item.said_on,
       deadline: item.deadline,
     };
@@ -360,17 +449,37 @@ async function keepVerified(
     kept.push(claim);
   }
   await emit("核对原话", "done", `通过 ${kept.length} 条，丢弃 ${dropped.length} 条`, {
-    kept: kept.map((claim) => ({ id: claim.id, quote: claim.quote_zh, deadline: claim.deadline, domain: claim.category, url: claim.source_url })),
+    kept: kept.map((claim) => ({
+      id: claim.id,
+      quote: claim.quote_zh,
+      deadline: claim.deadline,
+      domain: claim.category,
+      url: claim.source_url,
+      source_id: claim.source_id,
+      outcome: "passed" as const,
+    })),
     dropped,
   });
   return kept;
 }
 
+async function jobSearchCount(afterId: number) {
+  const caller = basename(process.argv[1] ?? "");
+  const [row] = await sql<{ n: number }[]>`
+    SELECT count(*)::int AS n FROM ark_calls
+    WHERE kind = 'search' AND id > ${afterId} AND caller = ${caller}
+  `;
+  return row?.n ?? 0;
+}
+
 export async function runAnalyzeJob(jobId: string) {
   const emit = emitter(jobId);
+  const started = Date.now();
+  const [mark] = await sql<{ id: number }[]>`SELECT coalesce(max(id), 0)::int AS id FROM ark_calls`;
   const job = (await sql<{ query: string }[]>`SELECT query FROM jobs WHERE id = ${jobId}`)[0];
   if (!job) return;
   await sql`UPDATE jobs SET state = 'running', updated_at = now() WHERE id = ${jobId}`;
+  const usage = async () => ({ elapsed_ms: Date.now() - started, search_count: await jobSearchCount(mark.id) });
   try {
     const identity = await identify(job.query, emit);
     const person = await ensurePerson(identity, job.query);
@@ -395,29 +504,44 @@ export async function runAnalyzeJob(jobId: string) {
 
     const today = new Date().toISOString().slice(0, 10);
     const due = kept.filter((claim) => claim.deadline < today).slice(0, MAX_DUE_CHECKS);
-    const verdicts: { claim: string; status: string }[] = [];
+    const verdicts: { claim: string; status: string; accepted: { source_id: number; url: string }[]; rejected: { url: string; quote: string; reason: string }[] }[] = [];
     if (due.length > 0) {
       await emit("到期核对", "running", `${due.length} 条已过截止日，逐条找结果`);
       for (const claim of due) {
         try {
           const outcome = await verifyClaim(claim, (status, message, data) => emit("到期核对", status, message, { claim: claim.id, ...data }));
-          verdicts.push({ claim: claim.id, status: outcome.status });
+          verdicts.push({ claim: claim.id, status: outcome.status, accepted: outcome.accepted, rejected: outcome.rejected });
           if (outcome.proposal_id) await applyVerdictAutomatically(outcome.proposal_id);
         } catch (error) {
           if (error instanceof ArkStopped) throw error;
-          await emit("到期核对", "failed", `一条核对失败：${error instanceof Error ? error.message.slice(0, 120) : error}`, { claim: claim.id });
+          await emit("到期核对", "failed", `一条核对失败：${error instanceof Error ? error.message.slice(0, 120) : error}`, {
+            claim: claim.id,
+            status: null,
+            accepted: [],
+            rejected: [],
+          });
         }
       }
+      await emit("到期核对", "done", `核对了 ${verdicts.length} 条`, { verdicts });
+    } else {
+      await emit("到期核对", "done", "没有已过截止日的新主张", { verdicts: [] });
     }
 
     let interests = { kept: 0, linked: 0 };
     await emit("利益关系", "running", "查找任职、持股和商业往来");
+    const [interestMark] = await sql<{ at: Date }[]>`SELECT clock_timestamp() AS at`;
     try {
       interests = await fillPersonInterests(person.id);
-      await emit("利益关系", "done", `新增 ${interests.kept} 条关系，${interests.linked} 条主张标上了利益`);
+      const relations = await sql<{ id: number; kind: string; counterparty: string; counterparty_zh: string; role: string; source_url: string; publication: string }[]>`
+        SELECT id::int AS id, kind, counterparty, counterparty_zh, role, source_url, publication
+        FROM interests
+        WHERE person_id = ${person.id} AND created_at >= ${interestMark.at}
+        ORDER BY id
+      `;
+      await emit("利益关系", "done", `新增 ${interests.kept} 条关系，${interests.linked} 条主张标上了利益`, { relations });
     } catch (error) {
       if (error instanceof ArkStopped) throw error;
-      await emit("利益关系", "failed", `利益关系没补上：${error instanceof Error ? error.message.slice(0, 120) : error}`);
+      await emit("利益关系", "failed", `利益关系没补上：${error instanceof Error ? error.message.slice(0, 120) : error}`, { relations: [] });
     }
 
     await sql`UPDATE people SET visibility = 'public' WHERE id = ${person.id}`;
@@ -429,6 +553,7 @@ export async function runAnalyzeJob(jobId: string) {
       due_checked: verdicts.length,
       verdicts,
       interests_found: interests.kept,
+      ...(await usage()),
     };
     await emit(
       "完成",
@@ -442,7 +567,7 @@ export async function runAnalyzeJob(jobId: string) {
   } catch (error) {
     const stop = error instanceof JobStop ? error : null;
     const message = error instanceof Error ? error.message : String(error);
-    await emit("完成", "failed", stop ? message : `任务出错：${message.slice(0, 300)}`);
+    await emit("完成", "failed", stop ? message : `任务出错：${message.slice(0, 300)}`, { message, ...(await usage()) });
     await sql`
       UPDATE jobs SET state = ${stop?.state ?? "failed"}, result = ${sql.json({ message })}, updated_at = now()
       WHERE id = ${jobId}

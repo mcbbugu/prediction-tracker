@@ -53,7 +53,18 @@ export type VerdictOutcome = {
   evidence_rejected: number;
   unreachable: number;
   proposal_id: number | null;
+  accepted: { source_id: number; url: string }[];
+  rejected: { url: string; quote: string; reason: string }[];
 };
+
+export function verdictTrace(status: string, kept: KeptEvidence[], rejected: { url: string; quote: string; reason: string }[]) {
+  return {
+    status,
+    evidence: kept.map((item) => ({ url: item.url, quote: item.quote })),
+    accepted: kept.map((item) => ({ source_id: item.source_id, url: item.url })),
+    rejected: rejected.map((item) => ({ url: item.url, quote: item.quote, reason: item.reason })),
+  };
+}
 
 const silent: Emit = async () => {};
 
@@ -158,7 +169,9 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent): Promise
   });
 
   if (pages.length === 0) {
-    return { status: "证据不足", pages: 0, evidence_kept: 0, evidence_rejected: 0, unreachable: unreachable.length, proposal_id: null };
+    const trace = verdictTrace("证据不足", [], []);
+    await emit("done", "判定建议：证据不足（没有可核对的网页）", trace);
+    return { status: "证据不足", pages: 0, evidence_kept: 0, evidence_rejected: 0, unreachable: unreachable.length, proposal_id: null, accepted: [], rejected: [] };
   }
 
   const judged = await judgeOnPages(claim, pages);
@@ -186,10 +199,8 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent): Promise
     after: { status, evidence: kept.map((item) => item.url) },
     note: `verdict_proposals#${rows[0].id}`,
   });
-  await emit("done", `判定建议：${status}（证据 ${kept.length} 条通过原文核对，丢弃 ${rejected.length} 条）`, {
-    status,
-    evidence: kept.map((item) => ({ url: item.url, quote: item.quote })),
-  });
+  const trace = verdictTrace(status, kept, rejected);
+  await emit("done", `判定建议：${status}（证据 ${kept.length} 条通过原文核对，丢弃 ${rejected.length} 条）`, trace);
   return {
     status,
     pages: pages.length,
@@ -197,6 +208,8 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent): Promise
     evidence_rejected: rejected.length,
     unreachable: unreachable.length,
     proposal_id: Number(rows[0].id),
+    accepted: trace.accepted,
+    rejected: trace.rejected,
   };
 }
 
