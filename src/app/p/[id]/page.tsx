@@ -822,7 +822,7 @@ async function PersonBody({
       </section>
 
       {/* For agents */}
-      <section className="mt-8">
+      <section id="agents" className="mt-8 scroll-mt-24">
         <h2 className="text-[15px] font-bold">给 AI 调用</h2>
         <p className="mt-1 text-xs text-mute">采信{data.person.name}的一句新说法之前，先取这个人在该领域的兑现记录。三种方式返回同一套数字和出处。</p>
         {[

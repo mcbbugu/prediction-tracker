@@ -3,13 +3,13 @@ import { Card, CARD_TARGET_CLASS } from "@/components/beui/motion/card";
 import { HomeHero } from "@/components/home-hero";
 import {
   AgentSection,
-  PipelineSection,
-  PrinciplesSection,
+  LifeSection,
+  MomentsSection,
+  PromisesSection,
   ReceiptSection,
   StatsStrip,
   VerdictTicker,
   VisionSection,
-  WhySection,
   type AgentExample,
   type HomeStats,
   type Receipt,
@@ -78,6 +78,11 @@ async function buildStory(everyone: PeoplePage, home: { claims: Claim[]; today: 
     judged: judged.length,
     upcoming: claims.filter((c) => c.status === "待定" && c.deadline >= home.today).length,
     voided: claims.filter((c) => c.status === "证据不足").length,
+    overdue: claims.filter((c) => c.status === "待定" && c.deadline < home.today).length,
+    fulfilled: claims.filter((c) => c.status === "已兑现").length,
+    partial: claims.filter((c) => c.status === "部分兑现").length,
+    missed: claims.filter((c) => c.status === "未兑现").length,
+    rescheduled: new Set(claims.map((c) => c.thread_id).filter(Boolean)).size,
     since: years.length ? Math.min(...years) : null,
   };
   // Most recent deadlines first, at most two per person so one prolific speaker does not fill the ticker.
@@ -218,10 +223,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
               <section className="pt-12">
                 <StatsStrip stats={story.stats} />
               </section>
-              <WhySection />
-              <PipelineSection />
+              <MomentsSection />
+              <LifeSection stats={story.stats} />
               <ReceiptSection receipt={story.receipt} />
-              <PrinciplesSection />
+              <PromisesSection />
               <AgentSection example={story.agent} />
               <VisionSection />
             </>

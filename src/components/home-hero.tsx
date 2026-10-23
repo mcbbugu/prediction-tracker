@@ -33,8 +33,8 @@ export function HomeHero() {
           <TextReveal text="时间会一句句核对。" split="char" stagger={0.035} delay={0.35} className="block text-blue" />
         </h1>
         <p className="mx-auto mt-6 max-w-[38em] text-[17px] leading-8 text-ink/75">
-          公众人物每天都在许诺未来，几乎没人回头记账。我们把他们带期限的原话逐字存档，到期后对照结果，按领域算出兑现率，并标出说话那天他的钱在哪里。
-          <span className="text-ink">在相信一句话之前，先看说话的人以前准不准。</span>
+          公众人物每天都在许诺未来，却很少有人回头看他们说中了没有。我们记下他们说过的每一句带期限的话，到期去看结果，也告诉你他说这话时有没有利益在里面。
+          <span className="text-ink">在相信下一句之前，先看看他以前准不准。</span>
         </p>
 
         <form
