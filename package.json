@@ -17,6 +17,7 @@
     "api:sec": "cd api && bun run sec",
     "api:threads": "cd api && bun run threads",
     "api:calibrate": "cd api && bun run calibrate",
+    "api:consistency": "cd api && bun run consistency",
     "api:agent": "cd api && bun run agent",
     "api:docker": "cd api && docker compose up -d",
     "api:verify": "cd api && bun run verify",

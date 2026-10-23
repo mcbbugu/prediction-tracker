@@ -14,6 +14,7 @@
     "sec": "bun run src/interests/sec.ts",
     "threads": "bun run src/claims/threads.ts",
     "calibrate": "bun run src/scoring/calibration.ts",
+    "consistency": "bun run src/consistency/check.ts",
     "agent": "bun run src/claims/agent.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",

@@ -9,6 +9,7 @@
 | `people/` | 人物：头像、种子导入与种子核对 |
 | `claims/` | 主张：按需发现（`discover`）、到期核对（`verdict` / `verify`）、原话复核、改期串、领域归并、旧版 agent |
 | `interests/` | 利益关系：任职持股（`interests`）、机构敞口（`exposures`）、机构名归一（`orgs`）、SEC 营收、合并机构名 |
+| `consistency/` | 可信度（一致性）对照：采集文件的入库前核对（`check`，格式见 `data/consistency/README.md`） |
 | `scoring/` | 计分公式（`score`）、校准协议（`calibration`）、画像旁证（`indicators`） |
 | `queries/` | 接口用的读取查询（`records`）、consult |
 | `jobs/` | 任务队列的 worker、入队、批量 |

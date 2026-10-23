@@ -298,6 +298,32 @@ async function migrateUnlocked() {
     END
     WHERE end_kind IS NULL
   `;
+  // P13 可信度（一致性）. One row per topic the collector looked at (see data/consistency/README.md):
+  // reversal = later statement says the opposite (consistent only when he explained the change),
+  // reaffirm = later statement keeps the stance, walk = his advice to others vs his own action.
+  // Side a / b / explanation each carry an archived source and whether the quote was found word for word.
+  // label stays null until a person reviews it; nothing here is scored before calibration.
+  await sql`
+    CREATE TABLE IF NOT EXISTS consistency_pairs (
+      id text PRIMARY KEY,
+      person_id text NOT NULL,
+      domain text NOT NULL,
+      topic text NOT NULL,
+      kind text NOT NULL,
+      a jsonb NOT NULL,
+      b jsonb NOT NULL,
+      explanation jsonb,
+      proposed_label text NOT NULL,
+      rationale text NOT NULL DEFAULT '',
+      label text,
+      publication text NOT NULL DEFAULT 'proposed',
+      provenance text NOT NULL DEFAULT 'cursor',
+      reviewed_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS consistency_pairs_person_idx ON consistency_pairs (person_id, domain)`;
 }
 
 export async function logEvent(event: {
