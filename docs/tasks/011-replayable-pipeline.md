@@ -34,7 +34,7 @@
 
 ## 完成记录
 
-`model_calls` 用输入哈希当 id。同样的模型、提示词、版本、参数和输入再调用时直接读缓存，不打第二次模型。`ARK_REPLAY=1` 只读缓存，缺失就报错。`ARK_CACHE=off` 每次都打模型。联网搜索按 query 加上海时区的日期分桶。
+提交 `f6fda7e`。`model_calls` 用输入哈希当 id。同样的模型、提示词、版本、参数和输入再调用时直接读缓存，不打第二次模型。`ARK_REPLAY=1` 只读缓存，缺失就报错。`ARK_CACHE=off` 每次都打模型。联网搜索按 query 加上海时区的日期分桶。
 
 提示词版本进哈希：抽取是 `EXTRACT_V1`，判定是 `JUDGE_V1`，交叉判定是 `CROSS_V1`，利益关系是 `RELATIONS_V1`。主张、`verdict_proposals`、利益关系加了可空的 `model_call_id`，旧行不回填。
 
