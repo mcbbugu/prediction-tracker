@@ -432,6 +432,10 @@ async function migrateUnlocked() {
   await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`;
   await sql`CREATE INDEX IF NOT EXISTS people_name_trgm_idx ON people USING gin (name gin_trgm_ops, name_en gin_trgm_ops)`;
   await sql`CREATE INDEX IF NOT EXISTS claims_quote_trgm_idx ON claims USING gin (quote_zh gin_trgm_ops, quote_en gin_trgm_ops)`;
+  // 承诺 / 预测 / 拿不准。默认 uncertain，回填脚本写上真正的类别。旧的合并兑现率仍在 slice = all。
+  await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'uncertain'`;
+  await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS kind_reason text NOT NULL DEFAULT ''`;
+  await sql`ALTER TABLE score_snapshots ADD COLUMN IF NOT EXISTS slice text NOT NULL DEFAULT 'all'`;
 }
 
 export async function logEvent(event: {

@@ -15,6 +15,7 @@ import { recomputeScores } from "../scoring/score";
 import { indicators } from "../scoring/indicators";
 import { fillPersonInterests } from "../interests/interests";
 import { structureClaim } from "./structure";
+import { classifyStored } from "./kind";
 import { applyVerdictAutomatically, promoteIfUnanimous, verifyClaim, type DueClaim } from "./verdict";
 
 const MAX_PAGES = 10;
@@ -503,6 +504,7 @@ export async function supplementPerson(personId: string) {
     for (const claim of kept) {
       try {
         await structureClaim(claim);
+        await assignKind(claim.id);
       } catch (error) {
         if (error instanceof ArkStopped) throw error;
       }
@@ -519,6 +521,12 @@ export async function supplementPerson(personId: string) {
       runs: [] as SourceRun[],
     };
   }
+}
+
+async function assignKind(claimId: string) {
+  const result = await classifyStored(claimId);
+  await sql`UPDATE claims SET kind = ${result.kind}, kind_reason = ${result.reason} WHERE id = ${claimId}`;
+  return result;
 }
 
 export async function runAnalyzeJob(jobId: string) {
@@ -559,9 +567,15 @@ export async function runAnalyzeJob(jobId: string) {
       try {
         const propositionId = await structureClaim(claim);
         propositions.push({ claim_id: claim.id, proposition_id: propositionId });
+        await assignKind(claim.id);
       } catch (error) {
         if (error instanceof ArkStopped) throw error;
         await emit("结构化", "failed", `一条命题没写成：${error instanceof Error ? error.message.slice(0, 120) : error}`, { claim: claim.id });
+        try {
+          await assignKind(claim.id);
+        } catch (kindError) {
+          if (kindError instanceof ArkStopped) throw kindError;
+        }
       }
     }
     await emit("结构化", "done", `写下 ${propositions.length} 条命题`, { propositions });

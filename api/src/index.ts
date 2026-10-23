@@ -142,6 +142,7 @@ const app = new Elysia()
       SELECT DISTINCT ON (person_id, domain)
         person_id, domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence, formula_version, voided
       FROM score_snapshots
+      WHERE slice = 'all'
       ORDER BY person_id, domain, computed_at DESC
     `;
     return { people, claims, scores: scores.filter((score) => score.confidence !== "已移除"), today: new Date().toISOString().slice(0, 10) };
@@ -195,6 +196,7 @@ const app = new Elysia()
       deadline: claim.deadline,
       evidence_count: Array.isArray(claim.evidence) ? claim.evidence.length : 0,
       thread_id: claim.thread_id,
+      kind: claim.kind,
       related: claim.interest_note !== null,
     }));
     const profile = personProfile(rows, interests.collected);
@@ -679,7 +681,7 @@ const app = new Elysia()
         SELECT domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence, formula_version,
                trigger_claim_id, trigger_action, computed_at, basis
         FROM score_snapshots
-        WHERE person_id = ${params.id}
+        WHERE person_id = ${params.id} AND slice = 'all'
         ORDER BY computed_at DESC
         LIMIT 200
       `,

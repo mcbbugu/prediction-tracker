@@ -24,6 +24,8 @@ export type ClaimRow = {
   quote_kind: string;
   // 改期合并: claims restating one commitment share a thread (null = stands alone).
   thread_id: string | null;
+  kind: string;
+  kind_reason: string;
   // 更正通道: counter-evidence waiting for review → shown as 有争议.
   disputed: boolean;
   recheck_note: string | null;
@@ -50,7 +52,7 @@ const claimSelect = sql`
   to_char(c.published_date, 'YYYY-MM-DD') AS published_date,
   to_char(c.deadline, 'YYYY-MM-DD') AS deadline,
   c.actual_result, c.status, c.publication, c.rationale, c.evidence,
-  c.provenance, (c.reviewed_at IS NOT NULL) AS reviewed, c.quote_kind, c.thread_id, p.curation,
+  c.provenance, (c.reviewed_at IS NOT NULL) AS reviewed, c.quote_kind, c.thread_id, c.kind, c.kind_reason, p.curation,
   (c.disagreement IS NOT NULL) AS disagreed,
   EXISTS (SELECT 1 FROM challenges ch WHERE ch.target_kind = 'claim' AND ch.target_id = c.id AND ch.state = 'pending') AS disputed,
   (SELECT e.note FROM claim_events e WHERE e.claim_id = c.id AND e.action = 'challenge_rechecked' ORDER BY e.id DESC LIMIT 1) AS recheck_note
@@ -91,7 +93,7 @@ export async function latestScores(personId: string) {
     SELECT DISTINCT ON (domain)
       domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence, formula_version, voided
     FROM score_snapshots
-    WHERE person_id = ${personId}
+    WHERE person_id = ${personId} AND slice = 'all'
     ORDER BY domain, computed_at DESC
   `;
   return rows.filter((row) => row.confidence !== "已移除");
@@ -109,7 +111,7 @@ export async function latestScoresFor(personIds: string[]) {
       SELECT DISTINCT ON (person_id, domain)
         person_id, domain, value, low, high, n, confidence, formula_version, voided
       FROM score_snapshots
-      WHERE person_id IN ${sql(personIds)}
+      WHERE person_id IN ${sql(personIds)} AND slice = 'all'
       ORDER BY person_id, domain, computed_at DESC
     ) latest
     WHERE confidence <> '已移除'

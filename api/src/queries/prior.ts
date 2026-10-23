@@ -5,7 +5,7 @@
 // 结果用的是今天查到的事实（我们并不知道当年的人是否已经知道结果），所以它回答的是
 // 「到那天为止，他到期的话兑现得怎么样」，不是「当年的人会怎么看」。
 import { sql } from "../core/db";
-import { FORMULA_VERSION, scoreDomain } from "../scoring/score";
+import { FORMULA_VERSION, fulfillmentSplit, scoreDomain } from "../scoring/score";
 import { indicators, type IndicatorClaim } from "../scoring/indicators";
 import { publishedClaims, personInterests, type ClaimRow } from "./records";
 import { DISCLOSURE, eventsByClaim, tallyTiers, verdictTier } from "./verdict-tier";
@@ -62,13 +62,28 @@ function domainPrior(
       deadline: c.deadline,
       evidence_count: Array.isArray(c.evidence) ? c.evidence.length : 0,
       thread_id: c.thread_id,
+      kind: c.kind,
     })),
     new Date(`${asOf}T00:00:00Z`),
   );
   const judged = due.filter((c) => JUDGED.has(c.status));
   const ind = indicators(due.map((c) => ({ ...c }) as IndicatorClaim));
+  const split = fulfillmentSplit(
+    due.map((c) => ({
+      category: c.category,
+      status: c.status,
+      deadline: c.deadline,
+      evidence_count: Array.isArray(c.evidence) ? c.evidence.length : 0,
+      thread_id: c.thread_id,
+      kind: c.kind,
+    })),
+    new Date(`${asOf}T00:00:00Z`),
+  );
   return {
     score: scored.value,
+    score_deprecated: true,
+    promise: split.promise,
+    forecast: split.forecast,
     interval_80: scored.low != null ? { low: scored.low, high: scored.high } : null,
     prior_weight: scored.value != null ? Math.round(scored.value * 10) / 1000 : null,
     judged: scored.n,
@@ -142,7 +157,7 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
     disclosure: DISCLOSURE,
     verdict_tiers: tallyTiers(withEvents),
     method: `${SITE}/method`,
-    note: "分数只在领域内成立。as_of 只计那天之前说过、期限已到的主张；结果按今天查到的事实判定。证据不足作废不计分；同一承诺的反复改期整串按 √k 计。",
+    note: "分数只在领域内成立。score 是承诺和预测混在一起的旧兑现率，已弃用；靠谱度看 promise，判断力看 forecast。as_of 只计那天之前说过、期限已到的主张；结果按今天查到的事实判定。证据不足作废不计分；同一承诺的反复改期整串按 √k 计。类别存疑的主张两边都不计。",
     domains: Object.fromEntries(
       picked.map((d) => [
         d,
@@ -175,7 +190,9 @@ export const PRIOR_OUTPUT_SCHEMA = {
       additionalProperties: {
         type: "object",
         properties: {
-          score: { type: ["number", "null"], description: "0–100 兑现率先验；null = 截至 as_of 还没有已判定的主张" },
+          score: { type: ["number", "null"], description: "已弃用。承诺和预测混在一起的旧兑现率。请用 promise（靠谱度）和 forecast（判断力）。" },
+          promise: { type: "object", properties: { value: { type: ["number", "null"] }, low: { type: ["number", "null"] }, high: { type: ["number", "null"] }, n: { type: "number" } } },
+          forecast: { type: "object", properties: { value: { type: ["number", "null"] }, low: { type: ["number", "null"] }, high: { type: ["number", "null"] }, n: { type: "number" } } },
           interval_80: { type: ["object", "null"], properties: { low: { type: "number" }, high: { type: "number" } } },
           prior_weight: { type: ["number", "null"], description: "score / 100" },
           judged: { type: "integer" },

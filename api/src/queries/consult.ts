@@ -2,7 +2,7 @@ import { ArkStopped, arkConfigured, arkJson } from "../core/ark";
 import { sql } from "../core/db";
 import { latestScoresFor, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg, type ClaimRow } from "./records";
 import { indicators } from "../scoring/indicators";
-import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, interestSplit, personProfile } from "../scoring/score";
+import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, fulfillmentSplit, interestSplit, personProfile } from "../scoring/score";
 import { DISCLOSURE, eventsForClaims, tallyTiers, verdictTier } from "./verdict-tier";
 
 export type ConsultRequest = {
@@ -285,6 +285,16 @@ export async function consultPrior(input: ConsultRequest) {
       }
     }
 
+    const split = fulfillmentSplit(
+      domainClaims.map((claim) => ({
+        category: claim.category,
+        status: claim.status,
+        deadline: claim.deadline,
+        evidence_count: Array.isArray(claim.evidence) ? claim.evidence.length : 0,
+        thread_id: claim.thread_id,
+        kind: claim.kind,
+      })),
+    );
     return {
       person_id: person.id,
       person_name: person.name,
@@ -293,6 +303,8 @@ export async function consultPrior(input: ConsultRequest) {
       portrait_path: person.portrait_path,
       domain: domainScore?.domain ?? "未分类",
       score: scoreVal,
+      promise: split.promise,
+      forecast: split.forecast,
       prior_weight: priorWeight,
       verified_count: domainScore?.n ?? 0,
       // 证据不足 claims in this domain: void, not scored (formula v1.3); a high count means vague or unverifiable talk.
@@ -309,6 +321,7 @@ export async function consultPrior(input: ConsultRequest) {
             deadline: c.deadline,
             evidence_count: Array.isArray(c.evidence) ? c.evidence.length : 0,
             thread_id: c.thread_id,
+            kind: c.kind,
             related: c.id in interests.claim_notes,
           })),
           interests.collected,

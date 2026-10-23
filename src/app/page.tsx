@@ -11,9 +11,17 @@ export const dynamic = "force-dynamic";
 
 
 // Scored domains first, then the ones with nothing judged yet; larger samples first.
-const stage = (score: Score) => (score.value != null ? 1 : 0);
-function rankDomains(scores: Score[]) {
-  return [...scores].sort((a, b) => stage(b) - stage(a) || b.n - a.n);
+function picked(score: Score, rank: "promise" | "forecast" | "all"): Score {
+  if (rank === "all") return score;
+  const part = rank === "forecast" ? score.forecast : score.promise;
+  if (!part) return { ...score, value: null, low: null, high: null, n: 0 };
+  return { ...score, value: part.value, low: part.low, high: part.high, n: part.n };
+}
+
+function rankDomains(scores: Score[], rank: "promise" | "forecast" | "all") {
+  const stage = (score: Score) => (score.value != null ? 1 : 0);
+  const view = scores.map((score) => picked(score, rank));
+  return view.sort((a, b) => stage(b) - stage(a) || b.n - a.n);
 }
 
 const PAGE_SIZE = 20;
@@ -30,15 +38,23 @@ type PeoplePage = {
   })[];
 };
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const { page: pageParam } = await searchParams;
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ page?: string; rank?: string }> }) {
+  const { page: pageParam, rank: rankParam } = await searchParams;
+  const rank = rankParam === "forecast" || rankParam === "all" ? rankParam : "promise";
   const requested = Math.max(1, Number(pageParam) || 1);
   // Counts and lead domains are aggregated by the API (GET /v1/people), one page at a time, most-judged first.
   const data = await getJson<PeoplePage>(`/v1/people?limit=${PAGE_SIZE}&offset=${(requested - 1) * PAGE_SIZE}&sort=judged`);
   const pages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
   const page = Math.min(pages, requested);
+  const homeHref = (n: number) => {
+    const params = new URLSearchParams();
+    if (n > 1) params.set("page", String(n));
+    if (rank !== "promise") params.set("rank", rank);
+    const text = params.toString();
+    return text ? `/?${text}` : "/";
+  };
   const shown = data.people.map((person) => {
-    const scores = rankDomains(person.domains);
+    const scores = rankDomains(person.domains, rank);
     return {
       person,
       lead: scores[0],
@@ -63,7 +79,20 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <div className="mb-8 text-center">
           <p className="text-xs font-medium tracking-wide text-blue">人物先验库</p>
           <h2 className="mt-1 text-[28px] font-semibold tracking-tight">已收录 {cards.length} 位公众人物</h2>
-          <p className="mx-auto mt-2 max-w-[44ch] text-sm leading-6 text-mute">分数按领域分开。70 以上是实心，52–70 是浅色，再低是空心。还没有判定过的，显示为虚线。</p>
+          <p className="mx-auto mt-2 max-w-[44ch] text-sm leading-6 text-mute">分数按领域分开。默认看靠谱度（承诺兑现了多少）。70 以上是实心，52–70 是浅色，再低是空心。这一侧还没有判定过的，显示为虚线。</p>
+          <p className="mt-3 flex justify-center gap-3 text-xs">
+            {(
+              [
+                ["promise", "靠谱度"],
+                ["forecast", "判断力"],
+                ["all", "全部（旧）"],
+              ] as const
+            ).map(([key, label]) => (
+              <Link key={key} href={key === "promise" ? "/" : `/?rank=${key}`} className={rank === key ? "text-blue no-underline" : "text-mute no-underline hover-fine:text-blue"}>
+                {label}
+              </Link>
+            ))}
+          </p>
         </div>
         {cards.length === 0 ? (
         <p className="rounded-2xl bg-card p-8 text-sm text-mute">
@@ -145,14 +174,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       {pages > 1 ? (
         <nav aria-label="分页" className="mt-6 flex items-center justify-center gap-1.5 text-sm">
           {page > 1 ? (
-            <Link href={page === 2 ? "/" : `/?page=${page - 1}`} className="rounded-lg px-3 py-1.5 no-underline hover-fine:bg-card">
+            <Link href={homeHref(page - 1)} className="rounded-lg px-3 py-1.5 no-underline hover-fine:bg-card">
               上一页
             </Link>
           ) : null}
           {Array.from({ length: pages }, (_, index) => index + 1).map((n) => (
             <Link
               key={n}
-              href={n === 1 ? "/" : `/?page=${n}`}
+              href={homeHref(n)}
               aria-current={n === page ? "page" : undefined}
               className={`num min-w-9 rounded-lg px-3 py-1.5 text-center no-underline ${n === page ? "bg-ink font-semibold text-white" : "hover-fine:bg-card"}`}
             >
@@ -160,7 +189,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             </Link>
           ))}
           {page < pages ? (
-            <Link href={`/?page=${page + 1}`} className="rounded-lg px-3 py-1.5 no-underline hover-fine:bg-card">
+            <Link href={homeHref(page + 1)} className="rounded-lg px-3 py-1.5 no-underline hover-fine:bg-card">
               下一页
             </Link>
           ) : null}

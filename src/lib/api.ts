@@ -24,6 +24,8 @@ export type Claim = {
   interest_note?: string | null;
   // 改期合并 (formula v1.3): restatements of one commitment share a thread.
   thread_id?: string | null;
+  kind?: "promise" | "forecast" | "uncertain" | string;
+  kind_reason?: string | null;
   // 更正通道: counter-evidence is waiting for review.
   disputed?: boolean;
   curation?: string | null;
@@ -99,6 +101,8 @@ export type Score = {
   formula_version: string;
   // 证据不足 in this domain: void, not scored.
   voided?: number;
+  promise?: AccuracyPart | null;
+  forecast?: AccuracyPart | null;
 };
 
 // SPEC 人物画像与综合分: per domain, composite = accuracy + consistency, every part listed.
@@ -106,6 +110,11 @@ export type ProfileRow = {
   domain: string;
   composite: { value: number | null; low: number | null; high: number | null; used: string[] };
   accuracy: { value: number | null; low: number | null; high: number | null; n: number; weight: number };
+  fulfillment?: {
+    all: AccuracyPart & { deprecated?: boolean };
+    promise: AccuracyPart;
+    forecast: AccuracyPart;
+  };
   consistency: { status: "not_collected"; weight: number };
   interests: { status: "not_collected" } | { status: "collected"; related: AccuracyPart; unrelated: AccuracyPart };
 };

@@ -88,7 +88,7 @@ function yearSpan(claim: Claim) {
 
 export default function PersonPage(props: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ domain?: string; show?: string; year?: string; month?: string }>;
+  searchParams: Promise<{ domain?: string; show?: string; year?: string; month?: string; rank?: string }>;
 }) {
   return (
     <Suspense fallback={<Loading />}>
@@ -102,10 +102,11 @@ async function PersonBody({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ domain?: string; show?: string; year?: string; month?: string }>;
+  searchParams: Promise<{ domain?: string; show?: string; year?: string; month?: string; rank?: string }>;
 }) {
   const { id } = await params;
-  const { domain: domainFilter, show, year: rawYear, month: rawMonth } = await searchParams;
+  const { domain: domainFilter, show, year: rawYear, month: rawMonth, rank: rankParam } = await searchParams;
+  const rank = rankParam === "forecast" || rankParam === "all" ? rankParam : "promise";
   const yearFilter = rawYear && /^\d{4}$/.test(rawYear) ? rawYear : undefined;
   const monthFilter = rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) ? rawMonth : undefined;
   const [data, history] = await Promise.all([
@@ -194,8 +195,9 @@ async function PersonBody({
   const mcpConfig = `{ "mcpServers": { "prior": { "url": "${PUBLIC_API_URL}/mcp" } } }`;
 
   // Profile rows: composites with a score first; larger samples first.
-  const cstage = (row: ProfileRow) => (row.composite.value != null ? 1 : 0);
-  const profile = [...(data.profile ?? [])].sort((a, b) => cstage(b) - cstage(a) || b.accuracy.n - a.accuracy.n);
+  const partOf = (row: ProfileRow) => (rank === "forecast" ? row.fulfillment?.forecast : rank === "all" ? row.fulfillment?.all : row.fulfillment?.promise) ?? row.accuracy;
+  const cstage = (row: ProfileRow) => (partOf(row).value != null ? 1 : 0);
+  const profile = [...(data.profile ?? [])].sort((a, b) => cstage(b) - cstage(a) || (partOf(b).n ?? 0) - (partOf(a).n ?? 0));
   const top = profile[0];
   const pct = (w: number) => `${Math.round(w * 100)}%`;
   const fmtPart = (part: { value: number | null; low: number | null; high: number | null }) =>
@@ -293,12 +295,25 @@ async function PersonBody({
         <h2 className="flex items-baseline justify-between text-[15px] font-bold">
           人物画像
           <span className="text-xs font-normal text-mute">
-            综合分只在领域内合成，不跨领域平均 ·{" "}
+            综合分只在领域内合成，不跨领域平均 · 领域默认按靠谱度排 ·{" "}
             <Link href="/method" className="text-blue no-underline">
               怎么算
             </Link>
           </span>
         </h2>
+        <p className="mt-2 flex gap-3 text-xs">
+          {(
+            [
+              ["promise", "靠谱度"],
+              ["forecast", "判断力"],
+              ["all", "全部（旧）"],
+            ] as const
+          ).map(([key, label]) => (
+            <Link key={key} href={key === "promise" ? `/p/${id}` : `/p/${id}?rank=${key}`} className={rank === key ? "text-blue no-underline" : "text-mute no-underline hover-fine:text-blue"}>
+              {label}
+            </Link>
+          ))}
+        </p>
         <div className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_2fr]">
           <div className="rounded-[14px] bg-card p-5">
             <p className="text-xs text-mute">
@@ -324,11 +339,19 @@ async function PersonBody({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-[14px] bg-card p-4">
-              <p className="flex items-center justify-between text-xs text-mute">
-                兑现率<span>权重 {pct(top?.accuracy.weight ?? 0.7)}</span>
+              <p className="text-xs text-mute">靠谱度 · 承诺兑现率</p>
+              <p className="num mt-1.5 text-lg font-bold">{top?.fulfillment ? fmtPart(top.fulfillment.promise) : "—"}</p>
+              <p className="mt-1 text-[11px] leading-4 text-mute">
+                结果在他或他当时的机构控制之内。{top?.fulfillment ? `已判定 ${top.fulfillment.promise.n} 条。` : ""}
+                {top?.fulfillment?.promise.n ? "" : "这一侧样本不足。"}
               </p>
-              <p className="num mt-1.5 text-lg font-bold">{top ? fmtPart(top.accuracy) : "—"}</p>
-              <p className="mt-1 text-[11px] leading-4 text-mute">带期限的预测和承诺，到期核对。{top ? `已判定 ${top.accuracy.n} 条。` : ""}</p>
+              <p className="mt-3 text-xs text-mute">判断力 · 预测兑现率</p>
+              <p className="num mt-1.5 text-lg font-bold">{top?.fulfillment ? fmtPart(top.fulfillment.forecast) : "—"}</p>
+              <p className="mt-1 text-[11px] leading-4 text-mute">
+                结果不在他控制之内。{top?.fulfillment ? `已判定 ${top.fulfillment.forecast.n} 条。` : ""}
+                {top?.fulfillment?.forecast.n ? "" : "这一侧样本不足。"}
+              </p>
+              <p className="mt-2 text-[11px] leading-4 text-mute">全部兑现率 {top ? fmtPart(top.accuracy) : "—"} 是旧口径，承诺和预测混在一起，不再当作主分数。</p>
             </div>
             <div className="rounded-[14px] border border-dashed border-line bg-card/60 p-4">
               <p className="flex items-center justify-between text-xs text-mute">
@@ -397,7 +420,7 @@ async function PersonBody({
                 <tr className="border-b border-line text-left text-[11px] text-mute">
                   <th className="py-2 pr-2 pl-4 font-medium">领域</th>
                   <th className="px-2 font-medium">综合分</th>
-                  <th className="px-2 font-medium">兑现率 · {pct(profile[0].accuracy.weight)}</th>
+                  <th className="px-2 font-medium">靠谱度 / 判断力</th>
                   <th className="px-2 font-medium">可信度 · {pct(profile[0].consistency.weight)}</th>
                   <th className="py-2 pr-4 pl-2 font-medium">合成说明</th>
                 </tr>
@@ -410,7 +433,10 @@ async function PersonBody({
                       <ScoreBadge value={row.composite.value} n={row.accuracy.n} low={row.composite.low} high={row.composite.high} size="sm" />
                     </td>
                     <td className="num px-2 text-xs">
-                      {fmtPart(row.accuracy)} <span className="text-mute">· {row.accuracy.n} 条</span>
+                      {fmtPart(row.fulfillment?.promise ?? row.accuracy)} <span className="text-mute">· {row.fulfillment?.promise.n ?? row.accuracy.n}</span>
+                      <span className="mt-0.5 block text-mute">
+                        {fmtPart(row.fulfillment?.forecast ?? { value: null, low: null, high: null })} · {row.fulfillment?.forecast.n ?? 0}
+                      </span>
                     </td>
                     <td className="px-2 text-xs text-mute">尚未收集</td>
                     <td className="py-2 pr-4 pl-2 text-[11px] text-mute">
@@ -673,6 +699,11 @@ async function PersonBody({
                     )}
                     {claim.quote_kind === "reported" ? (
                       <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">转述</span>
+                    ) : null}
+                    {claim.kind === "promise" || claim.kind === "forecast" || claim.kind === "uncertain" ? (
+                      <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">
+                        {claim.kind === "promise" ? "承诺" : claim.kind === "forecast" ? "预测" : "类别存疑"}
+                      </span>
                     ) : null}
                     {claim.disputed ? (
                       <span title="有人提交了反证，正在复核" className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">

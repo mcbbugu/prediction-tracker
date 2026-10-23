@@ -16,6 +16,7 @@ async function homeStyleCards() {
     SELECT DISTINCT ON (person_id, domain)
       person_id, domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence, formula_version, voided
     FROM score_snapshots
+    WHERE slice = 'all'
     ORDER BY person_id, domain, computed_at DESC
   `;
   const scores = snapshots.filter((score) => score.confidence !== "已移除");
@@ -93,8 +94,15 @@ describe("peopleSummary 的计数", () => {
     expect(scored.length).toBeGreaterThan(0);
     for (const person of people) {
       expect(person.domains.length).toBeLessThanOrEqual(4);
-      expect(person.domains).toEqual(expected.get(person.id)?.domains ?? []);
+      const core = (rows: { domain: string; value: number | null; low: number | null; high: number | null; n: number }[]) =>
+        rows.map(({ domain, value, low, high, n }) => ({ domain, value, low, high, n }));
+      expect(core(person.domains)).toEqual(core(expected.get(person.id)?.domains ?? []));
     }
+    const musk = people.find((person) => person.id === "musk");
+    const driving = musk?.domains.find((row) => row.domain === "自动驾驶");
+    expect(driving?.promise?.n).toBeGreaterThan(0);
+    expect(typeof driving?.promise?.value).toBe("number");
+    expect(typeof driving?.forecast?.value).toBe("number");
   });
 });
 

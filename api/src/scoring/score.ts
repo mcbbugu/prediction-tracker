@@ -28,6 +28,7 @@ export type ScoredRow = {
   deadline: string;
   evidence_count: number;
   thread_id?: string | null;
+  kind?: string | null;
 };
 
 // 证据不足: the deadline passed but the outcome cannot be established from sources. Void, not scored.
@@ -219,6 +220,21 @@ function accuracyPart(rows: ScoredRow[]) {
   return { value: scored.value, low: scored.low, high: scored.high, n: scored.n };
 }
 
+export type FulfillmentPart = { value: number | null; low: number | null; high: number | null; n: number; deprecated?: boolean };
+
+// all 是承诺和预测混在一起的旧兑现率，接口仍返回，标 deprecated。uncertain 两边都不计。
+export function fulfillmentSplit(rows: ScoredRow[], now = new Date()) {
+  const pack = (list: ScoredRow[]) => {
+    const scored = scoreDomain(list, now);
+    return { value: scored.value, low: scored.low, high: scored.high, n: scored.n };
+  };
+  return {
+    all: { ...pack(rows), deprecated: true as const },
+    promise: pack(rows.filter((row) => row.kind === "promise")),
+    forecast: pack(rows.filter((row) => row.kind === "forecast")),
+  };
+}
+
 // Per-domain profile from published claims. Consistency has no data pipeline yet (P13).
 // Interests (P12) never enter the composite; when collected, accuracy is split into related / unrelated claims.
 export function personProfile(rows: (ScoredRow & { related?: boolean })[], interestsCollected = false) {
@@ -226,6 +242,7 @@ export function personProfile(rows: (ScoredRow & { related?: boolean })[], inter
   for (const row of rows) byDomain.set(row.category, [...(byDomain.get(row.category) ?? []), row]);
   return [...byDomain].map(([domain, list]) => {
     const accuracy = scoreDomain(list);
+    const fulfillment = fulfillmentSplit(list);
     const parts: Part[] = [
       { key: "accuracy", alpha: accuracy.alpha, beta: accuracy.beta, n: accuracy.n, exact: { value: accuracy.value, low: accuracy.low, high: accuracy.high } },
     ];
@@ -233,6 +250,7 @@ export function personProfile(rows: (ScoredRow & { related?: boolean })[], inter
       domain,
       composite: compositeScore(parts),
       accuracy: { value: accuracy.value, low: accuracy.low, high: accuracy.high, n: accuracy.n, weight: COMPOSITE_WEIGHTS.accuracy },
+      fulfillment,
       consistency: { status: "not_collected" as const, weight: COMPOSITE_WEIGHTS.consistency },
       interests: interestsCollected
         ? {
@@ -269,7 +287,8 @@ export async function recomputeScores(
            status,
            to_char(deadline, 'YYYY-MM-DD') AS deadline,
            jsonb_array_length(evidence) AS evidence_count,
-           thread_id
+           thread_id,
+           kind
     FROM claims
     WHERE person_id = ${personId} AND publication = 'published'
   `;
@@ -282,6 +301,7 @@ export async function recomputeScores(
   const latest = await sql<
     {
       domain: string;
+      slice: string;
       value: number | null;
       low: number | null;
       high: number | null;
@@ -292,59 +312,71 @@ export async function recomputeScores(
       voided: number;
     }[]
   >`
-    SELECT DISTINCT ON (domain) domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence,
+    SELECT DISTINCT ON (domain, slice) domain, coalesce(slice, 'all') AS slice,
+           value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence,
            formula_version, basis, voided
     FROM score_snapshots
     WHERE person_id = ${personId}
-    ORDER BY domain, computed_at DESC
+    ORDER BY domain, slice, computed_at DESC
   `;
-  const previous = new Map(latest.map((row) => [row.domain, row]));
+  const previous = new Map(latest.map((row) => [`${row.domain}|${row.slice}`, row]));
   // A domain that no longer has any published claim (e.g. after a remap) gets a closing n=0 snapshot.
-  for (const [domain, before] of previous) {
+  for (const [key, before] of previous) {
+    const domain = key.slice(0, key.lastIndexOf("|"));
     if (byDomain.has(domain) || before.confidence === "已移除") continue;
+    const slice = key.slice(key.lastIndexOf("|") + 1);
     await sql`
-      INSERT INTO score_snapshots (person_id, domain, value, n, confidence, formula_version, trigger_claim_id, trigger_action)
-      VALUES (${personId}, ${domain}, ${null}, 0, '已移除', ${FORMULA_VERSION}, ${trigger.claim_id ?? null}, ${trigger.action ?? null})
+      INSERT INTO score_snapshots (person_id, domain, slice, value, n, confidence, formula_version, trigger_claim_id, trigger_action)
+      VALUES (${personId}, ${domain}, ${slice}, ${null}, 0, '已移除', ${FORMULA_VERSION}, ${trigger.claim_id ?? null}, ${trigger.action ?? null})
     `;
   }
   // Snapshots are append-only: a new row is written when the value, the sample, the set of counted claims
   // (basis) or the formula version changes. basis lets the site say which claims moved the score.
+  // all 是旧的合并兑现率；promise / forecast 分开计，uncertain 不进任何一边。
   for (const [domain, domainRows] of byDomain) {
-    const scored = scoreDomain(domainRows);
-    const basis = domainRows
-      .filter((row) => row.status in OUTCOME)
-      .map((row) => ({ id: row.id, status: row.status }))
-      .sort((a, b) => a.id.localeCompare(b.id));
-    const before = previous.get(domain);
-    if (
-      before &&
-      before.confidence !== "已移除" &&
-      before.formula_version === FORMULA_VERSION &&
-      before.n === scored.n &&
-      before.voided === scored.voided &&
-      (before.value ?? null) === scored.value &&
-      (before.low ?? null) === scored.low &&
-      (before.high ?? null) === scored.high &&
-      JSON.stringify(before.basis ?? null) === JSON.stringify(basis)
-    )
-      continue;
-    await sql`
-      INSERT INTO score_snapshots (person_id, domain, value, low, high, n, confidence, formula_version, trigger_claim_id, trigger_action, basis, voided)
-      VALUES (
-        ${personId},
-        ${domain},
-        ${scored.value},
-        ${scored.low},
-        ${scored.high},
-        ${scored.n},
-        ${scored.confidence},
-        ${FORMULA_VERSION},
-        ${trigger.claim_id ?? null},
-        ${trigger.action ?? null},
-        ${sql.json(basis)},
-        ${scored.voided}
+    const slices = [
+      ["all", domainRows],
+      ["promise", domainRows.filter((row) => row.kind === "promise")],
+      ["forecast", domainRows.filter((row) => row.kind === "forecast")],
+    ] as const;
+    for (const [slice, rows] of slices) {
+      const scored = scoreDomain(rows);
+      const basis = rows
+        .filter((row) => row.status in OUTCOME)
+        .map((row) => ({ id: row.id, status: row.status }))
+        .sort((a, b) => a.id.localeCompare(b.id));
+      const before = previous.get(`${domain}|${slice}`);
+      if (
+        before &&
+        before.confidence !== "已移除" &&
+        before.formula_version === FORMULA_VERSION &&
+        before.n === scored.n &&
+        before.voided === scored.voided &&
+        (before.value ?? null) === scored.value &&
+        (before.low ?? null) === scored.low &&
+        (before.high ?? null) === scored.high &&
+        JSON.stringify(before.basis ?? null) === JSON.stringify(basis)
       )
-    `;
+        continue;
+      await sql`
+        INSERT INTO score_snapshots (person_id, domain, slice, value, low, high, n, confidence, formula_version, trigger_claim_id, trigger_action, basis, voided)
+        VALUES (
+          ${personId},
+          ${domain},
+          ${slice},
+          ${scored.value},
+          ${scored.low},
+          ${scored.high},
+          ${scored.n},
+          ${scored.confidence},
+          ${FORMULA_VERSION},
+          ${trigger.claim_id ?? null},
+          ${trigger.action ?? null},
+          ${sql.json(basis)},
+          ${scored.voided}
+        )
+      `;
+    }
   }
 }
 

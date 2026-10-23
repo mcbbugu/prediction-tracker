@@ -22,6 +22,8 @@ export type PersonDomainScore = {
   low: number | null;
   high: number | null;
   n: number;
+  promise?: { value: number | null; low: number | null; high: number | null; n: number } | null;
+  forecast?: { value: number | null; low: number | null; high: number | null; n: number } | null;
 };
 
 export type PersonSummary = {
@@ -108,7 +110,7 @@ export async function peopleSummary(options: { limit?: number; offset?: number; 
           SELECT DISTINCT ON (person_id, domain)
             person_id, domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence
           FROM score_snapshots
-          WHERE person_id IN ${sql(ids)}
+          WHERE person_id IN ${sql(ids)} AND slice = 'all'
           ORDER BY person_id, domain, computed_at DESC
         ),
         ranked AS (
@@ -130,6 +132,22 @@ export async function peopleSummary(options: { limit?: number; offset?: number; 
   const byPerson = new Map<string, PersonDomainScore[]>(ids.map((id) => [id, []]));
   for (const score of scores) {
     byPerson.get(score.person_id)?.push({ domain: score.domain, value: score.value, low: score.low, high: score.high, n: score.n });
+  }
+  if (ids.length) {
+    const parts = await sql<{ person_id: string; domain: string; slice: string; value: number | null; low: number | null; high: number | null; n: number }[]>`
+      SELECT DISTINCT ON (person_id, domain, slice)
+        person_id, domain, slice, value::float8 AS value, low::float8 AS low, high::float8 AS high, n
+      FROM score_snapshots
+      WHERE person_id IN ${sql(ids)} AND slice IN ('promise', 'forecast')
+      ORDER BY person_id, domain, slice, computed_at DESC
+    `;
+    for (const part of parts) {
+      const domain = byPerson.get(part.person_id)?.find((row) => row.domain === part.domain);
+      if (!domain) continue;
+      const packed = { value: part.value, low: part.low, high: part.high, n: part.n };
+      if (part.slice === "promise") domain.promise = packed;
+      else domain.forecast = packed;
+    }
   }
 
   const people: PersonSummary[] = rows.map((row) => ({ ...row, domains: byPerson.get(row.id) ?? [] }));
