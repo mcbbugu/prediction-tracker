@@ -619,5 +619,11 @@ export async function runAnalyzeJob(jobId: string) {
     `;
     // Not this person's fault (outage, budget, access): let the worker put the job back and pause.
     if (error instanceof ArkStopped) throw error;
+  } finally {
+    const [row] = await sql<{ runner: string }[]>`SELECT runner FROM jobs WHERE id = ${jobId}`;
+    if (row?.runner === "api") {
+      const { pumpApiQueue } = await import("../jobs/analyze-limit");
+      await pumpApiQueue();
+    }
   }
 }

@@ -63,6 +63,7 @@ export function JobView({ id }: { id: string }) {
   const [job, setJob] = useState<Job | null>(null);
   const [events, setEvents] = useState<JobEvent[]>([]);
   const [error, setError] = useState("");
+  const [queuePosition, setQueuePosition] = useState(0);
   const [now, setNow] = useState(() => new Date().toISOString());
 
   useEffect(() => {
@@ -76,6 +77,7 @@ export function JobView({ id }: { id: string }) {
         if (stop) return;
         setJob(body.job);
         setEvents(body.events);
+        setQueuePosition(Number(body.queue_position) || 0);
         setError("");
         if (ACTIVE.has(body.job.state)) timer = setTimeout(poll, 2000);
       } catch (reason) {
@@ -110,7 +112,7 @@ export function JobView({ id }: { id: string }) {
 
   const kept = (events.find((event) => event.step === "核对原话" && event.status === "done")?.data.kept ?? []) as KeptClaim[];
   const statusLabel =
-    job?.state === "queued" ? "排队中" : job?.state === "running" ? "进行中" : job?.state === "done" ? "已完成" : job?.state === "rejected" ? "不在收录范围" : "未完成";
+    job?.state === "queued" ? `排队中，前面还有 ${queuePosition} 个` : job?.state === "running" ? "进行中" : job?.state === "done" ? "已完成" : job?.state === "rejected" ? "不在收录范围" : "未完成";
   const elapsed = job ? elapsedLabel(job.created_at, running ? now : job.updated_at) : "";
   const items = useMemo(() => toActivity(events, finished, running), [events, finished, running]);
   const summary = traceSummary(events, elapsed);
@@ -151,7 +153,7 @@ export function JobView({ id }: { id: string }) {
 
       <div className="mt-8">
         <AgentActivity
-          items={items.length > 0 ? items : [{ id: "wait", type: "text", content: job.state === "queued" ? "排队中" : "正在开始" }]}
+          items={items.length > 0 ? items : [{ id: "wait", type: "text", content: job.state === "queued" ? `排队中，前面还有 ${queuePosition} 个` : "正在开始" }]}
           status={running ? "working" : "complete"}
           duration={job ? seconds(job.created_at, running ? now : job.updated_at) : 0}
           collapseOnComplete={false}

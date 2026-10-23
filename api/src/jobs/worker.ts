@@ -67,7 +67,7 @@ async function claimNext() {
     UPDATE jobs SET state = 'running', runner = 'worker', attempts = attempts + 1, updated_at = now()
     WHERE id = (
       SELECT id FROM jobs
-      WHERE state = 'queued' AND run_after <= now()
+      WHERE state = 'queued' AND runner = 'worker' AND run_after <= now()
       ORDER BY run_after, created_at
       FOR UPDATE SKIP LOCKED
       LIMIT 1

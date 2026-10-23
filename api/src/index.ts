@@ -6,7 +6,7 @@ import { handleMcp } from "./queries/mcp";
 import { PriorError, priorAsOf } from "./queries/prior";
 import { consultPrior } from "./queries/consult";
 import { ChallengeError, decideChallenge, pendingChallenges, submitChallenge } from "./claims/challenges";
-import { runAnalyzeJob } from "./claims/discover";
+import { clientAddress, hashClientIp, ipAnalyzeAllowed, pumpApiQueue, queuePosition, recentAnalyzeCount } from "./jobs/analyze-limit";
 import { remapStrayDomains } from "./claims/remap-domains";
 import { arkConfigured } from "./core/ark";
 import { assertSafeToStart, corsOrigin } from "./core/env";
@@ -37,7 +37,6 @@ if (arkConfigured()) {
   );
 }
 
-const MAX_RUNNING_JOBS = Number(process.env.ANALYZE_MAX_RUNNING || 2);
 const DAILY_JOB_LIMIT = Number(process.env.ANALYZE_DAILY_LIMIT || 30);
 
 function authorized(request: Request) {
@@ -593,7 +592,7 @@ const app = new Elysia()
   )
   .post(
     "/v1/analyze",
-    async ({ body, set }) => {
+    async ({ body, set, request, server }) => {
       const query = (body.query || "").trim().slice(0, 60);
       if (query.length < 2) {
         set.status = 400;
@@ -610,21 +609,22 @@ const app = new Elysia()
         ORDER BY created_at DESC LIMIT 1
       `;
       if (same[0]) return { job_id: same[0].id, reused: true };
-      const [running] = await sql<{ n: number }[]>`SELECT count(*)::int AS n FROM jobs WHERE state IN ('queued', 'running') AND runner = 'api'`;
-      if (running.n >= MAX_RUNNING_JOBS) {
-        set.status = 429;
-        return { error: `同时最多运行 ${MAX_RUNNING_JOBS} 个分析任务，请稍后再试` };
-      }
       const [today] = await sql<{ n: number }[]>`SELECT count(*)::int AS n FROM jobs WHERE created_at > now() - interval '1 day' AND runner = 'api'`;
       if (today.n >= DAILY_JOB_LIMIT) {
         set.status = 429;
         return { error: `今天的分析次数已用完（${DAILY_JOB_LIMIT} 次）` };
       }
+      const rawIp = clientAddress(request.headers, process.env.TRUST_PROXY === "1", server?.requestIP(request)?.address ?? "");
+      const clientIp = hashClientIp(rawIp, process.env.IP_HASH_SALT ?? "");
+      if (!ipAnalyzeAllowed(await recentAnalyzeCount(sql, clientIp))) {
+        set.status = 429;
+        return { error: "每天最多发起 3 次新分析，已收录的人物可以随便看" };
+      }
       const [job] = await sql<{ id: string }[]>`
-        INSERT INTO jobs (kind, query) VALUES ('analyze_person', ${query}) RETURNING id
+        INSERT INTO jobs (kind, query, runner, client_ip) VALUES ('analyze_person', ${query}, 'api', ${clientIp}) RETURNING id
       `;
-      // The job row records its own failure (including an Ark outage); nothing to do with the rejection here.
-      void runAnalyzeJob(job.id).catch(() => {});
+      // Full concurrency leaves the row queued; pump starts it when a running analysis finishes.
+      await pumpApiQueue();
       return { job_id: job.id, reused: false };
     },
     { body: t.Object({ query: t.String() }) },
@@ -647,7 +647,7 @@ const app = new Elysia()
     const events = await sql`
       SELECT id, step, status, message, data, created_at FROM job_events WHERE job_id = ${params.id} ORDER BY id
     `;
-    return { job: jobs[0], events };
+    return { job: jobs[0], events, queue_position: await queuePosition(sql, params.id) };
   })
   .get("/v1/people/:id/history", async ({ params }) => {
     const [snapshots, events] = await Promise.all([
