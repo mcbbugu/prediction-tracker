@@ -24,6 +24,7 @@
 | [032](032-expand-name-lists.md) | 扩大人物名单，把每天的 AFP 用起来 | Cursor | P0 | 进行中 | |
 | [022](022-promise-vs-forecast.md) | 承诺与预测分开计分（019、020 依赖它） | Cursor | P0 | 已完成 | c80a209 |
 | [019](019-delay-survival.md) | 生存分析：延迟系数与兑现时间预测（依赖 022；030 的 C 组要用） | Cursor | P0 | 待办 | |
+| [033](033-copy-and-terms.md) | 文案与术语统一（首页、人物页、全站） | Cursor | P1 | 待办 | |
 | [028](028-fix-structured-sources.md) | 修好结构化来源：字幕、8-K、播客（需先装 yt-dlp） | Cursor | P1 | 待办 | |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 已完成 | dd9dcc0 |
 | [031](031-downstream-benchmark.md) | 下游对照实验做成常设基准，≥50 题带区间（#3） | Cursor | P1 | 待办 | |
