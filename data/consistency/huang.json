@@ -1,0 +1,215 @@
+{
+  "person_id": "huang",
+  "collected_by": "cursor",
+  "collected_at": "2026-10-23",
+  "topics": [
+    { "topic": "摩尔定律已终结", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["huang-c001"] },
+    { "topic": "给毕业生的建议：承受痛苦与挫折", "domain": "其他科技", "result": "pair", "pairs": ["huang-c002"] },
+    { "topic": "AI 不会抢走工作，会用 AI 的人会", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["huang-c003"] },
+    { "topic": "不做一对一、信息对全员公开的管理方式", "domain": "公司经营与财务", "result": "pair", "pairs": ["huang-c004"] },
+    { "topic": "不必学编程，人人都是程序员", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["huang-c005"] },
+    { "topic": "加密货币与区块链会长期存在", "domain": "加密货币", "result": "pair", "pairs": ["huang-c006"] },
+    { "topic": "战略性撤退：懂得放弃才是成功的核心", "domain": "公司经营与财务", "result": "pair", "pairs": ["huang-c007"] },
+    { "topic": "去做「零十亿美元市场」：没有客户的地方也没有竞争者", "domain": "公司经营与财务", "result": "pair", "pairs": ["huang-c008"] },
+    {
+      "topic": "量子计算还要多久才真正有用",
+      "domain": "其他科技",
+      "result": "excluded",
+      "note": "2025-01 说「15 年算早的」、2025-03 GTC 量子日公开承认说错，这组对照的 a 侧本身是带期限的预测，按规则归兑现率，不进可信度。"
+    },
+    {
+      "topic": "对华芯片出口与「中国会赢得 AI 竞赛」的表态反复",
+      "domain": "AI 芯片与算力",
+      "result": "excluded",
+      "note": "2025-11 在 FT 峰会说「China will win the AI race」、次日改口，整组表态都围绕美国出口管制政策，属政府政策相关立场，不收。"
+    },
+    {
+      "topic": "NVIDIA 不做云服务商、不跟自己的客户抢生意",
+      "domain": "云与企业软件",
+      "result": "no_counterpart",
+      "note": "只找到 2024 年「We're not a cloud computing company」的表述，但该页自述是把回答「boiled down for clarity」的整理稿，不能当逐字原话；另一侧（Dwarkesh 访谈「as much as needed, as little as possible」）只有视频转录镜像站，找不到第二处相隔一年以上、逐字可核的本人原话。"
+    },
+    {
+      "topic": "很少开除员工，宁可「把人折磨到伟大」",
+      "domain": "公司经营与财务",
+      "result": "no_counterpart",
+      "note": "这句话流传很广，但检索到的出处只有 LinkedIn 帖子、Reddit 转贴和二手媒体复述，没有可逐字核对的文字实录或官方页面，因此拿不出合规的 a 侧。"
+    },
+    {
+      "topic": "公司「离倒闭只有三十天」的内部口号",
+      "domain": "公司经营与财务",
+      "result": "no_counterpart",
+      "note": "各家报道（The New Yorker、The Atlantic 等）都把它写成记者转述的公司口号，找不到本人把这句话说出来的文字实录，不符合原话要求。"
+    }
+  ],
+  "pairs": [
+    {
+      "id": "huang-c001",
+      "kind": "reaffirm",
+      "domain": "AI 芯片与算力",
+      "topic": "摩尔定律已终结",
+      "a": {
+        "quote": "It is accepted now that GPU accelerated computing is the path forward as Moore's law has ended",
+        "quote_zh": "现在大家已经接受，由于摩尔定律已经终结，GPU 加速计算就是前进的方向。",
+        "date": "2019-12-18",
+        "url": "https://blogs.nvidia.com/blog/ai-baidu-alibaba-accelerate/"
+      },
+      "b": {
+        "quote": "Moore's Law is dead. The ability for Moore's Law to deliver twice the performance at the same cost, or the same performance [for] half the cost in every year and a half, it's over. It's completely over.",
+        "quote_zh": "摩尔定律已经死了。摩尔定律每一年半以同样成本带来两倍性能、或者以一半成本带来同样性能的能力，已经结束了。彻底结束了。",
+        "date": "2022-09-20",
+        "url": "https://gamesbeat.com/jensen-huang-qa-why-moores-law-is-dead-and-smart-design-is-replacing-it/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔近三年的两次公开表态都认定摩尔定律已经终结，并据此论证加速计算路线，立场一致。"
+    },
+    {
+      "id": "huang-c002",
+      "kind": "reaffirm",
+      "domain": "其他科技",
+      "topic": "给毕业生的建议：承受痛苦与挫折",
+      "a": {
+        "quote": "You will have the humility to confront failure, admit a mistake, and ask for help. You will endure pain and suffering needed to realize your dreams.",
+        "quote_zh": "你会有谦卑去直面失败、承认错误、开口求助。你会承受实现梦想所需要的痛苦与煎熬。",
+        "date": "2023-05-27",
+        "url": "https://www.businessinsider.tw/article/1230"
+      },
+      "b": {
+        "quote": "I hope you will see setbacks as new opportunities. Your pain and suffering will strengthen your character, your resilience and agility",
+        "quote_zh": "我希望你们能把挫折看成新的机会。你们的痛苦与煎熬会强化你的品格、你的韧性和敏捷。",
+        "date": "2024-06-14",
+        "url": "https://singjupost.com/jensen-huangs-speech-at-caltech-2024-commencement-transcript/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔一年多的两场毕业典礼演讲给出同一条建议：主动承受痛苦与挫折，把它当成品格和韧性的来源。"
+    },
+    {
+      "id": "huang-c003",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "AI 不会抢走工作，会用 AI 的人会",
+      "a": {
+        "quote": "While some worry that AI may take their jobs, someone who expert with AI will. We are at the beginning of a major technology era",
+        "quote_zh": "有些人担心 AI 会抢走他们的工作，但真正会抢走的是精通 AI 的人。我们正处在一个重大技术时代的开端。",
+        "date": "2023-05-27",
+        "url": "https://www.businessinsider.tw/article/1230"
+      },
+      "b": {
+        "quote": "You're not going to lose your job to an AI, but you're going to lose your job to someone who uses AI.",
+        "quote_zh": "你不会把工作输给 AI，但你会把工作输给一个用 AI 的人。",
+        "date": "2025-05-06",
+        "url": "https://www.cnbc.com/2025/05/28/nvidia-ceo-jensen-huang-youll-lose-your-job-to-somebody-who-uses-ai.html"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2023 年台大演讲和 2025 年 Milken 大会相隔两年，讲的是同一个意思：威胁不是 AI 本身，而是会用 AI 的同行。"
+    },
+    {
+      "id": "huang-c004",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "不做一对一、信息对全员公开的管理方式",
+      "a": {
+        "quote": "I don't do 1-on-1s, and almost everything I say, I say to everybody all the time. I don't really believe there's any information that I operate on that only one or two people should hear about",
+        "quote_zh": "我不做一对一，几乎所有我要说的话，我都同时说给所有人听。我真的不认为我手上有什么信息是只该让一两个人听到的。",
+        "date": "2024-05-30",
+        "url": "https://www.startuparchive.org/p/nvidia-ceo-jensen-huang-i-really-discourage-1-on-1s"
+      },
+      "b": {
+        "quote": "My direct staff is 60 people. You know, I don't have one-on-ones with 'em because it's impossible.",
+        "quote_zh": "我的直接下属有 60 个人。你知道，我不跟他们做一对一，因为那根本不可能。",
+        "date": "2026-03-23",
+        "url": "https://lexfridman.com/jensen-huang-transcript/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔近两年仍坚持同一套做法：数十人直接汇报、不设一对一、信息一次讲给所有人听。"
+    },
+    {
+      "id": "huang-c005",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "不必学编程，人人都是程序员",
+      "a": {
+        "quote": "It is our job to create computing technology such that nobody has to program. And that the programming language is human.",
+        "quote_zh": "我们的工作就是把计算技术做到没有人需要编程。而编程语言就是人类的语言。",
+        "date": "2024-02-12",
+        "url": "https://www.tomshardware.com/tech-industry/artificial-intelligence/jensen-huang-advises-against-learning-to-code-leave-it-up-to-ai"
+      },
+      "b": {
+        "quote": "I think we just went from 30 million to probably 1 billion. And so every carpenter in the future will be a coder",
+        "quote_zh": "我认为我们刚刚从 3000 万人变成了大概 10 亿人。所以未来每一个木匠都会是程序员。",
+        "date": "2026-03-23",
+        "url": "https://lexfridman.com/jensen-huang-transcript/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2024 年主张「把技术做到没人需要编程、人类语言就是编程语言」，两年后仍主张会编程的人从 3000 万扩大到 10 亿、连木匠都是程序员，立场一致。"
+    },
+    {
+      "id": "huang-c006",
+      "kind": "reaffirm",
+      "domain": "加密货币",
+      "topic": "加密货币与区块链会长期存在",
+      "a": {
+        "quote": "Cryptocurrency will be here. The ability for the world to have a very low-friction, low-cost way of exchanging value is going to be here for a long time",
+        "quote_zh": "加密货币会一直存在。让世界拥有一种极低摩擦、极低成本的价值交换方式的能力，会长期存在下去。",
+        "date": "2018-03-29",
+        "url": "https://www.cnbc.com/2018/03/29/nvidia-ceo-jensen-huang-cryptocurrency-blockchain-are-here-to-stay.html"
+      },
+      "b": {
+        "quote": "You need that blockchain to have some fundamental value, and that fundamental value could be mined. Cryptocurrency is going to be here to stay.",
+        "quote_zh": "你需要那条区块链具备某种基本价值，而这种基本价值可以被挖出来。加密货币会长期存在下去。",
+        "date": "2021-06-01",
+        "url": "https://gamesbeat.com/nvidia-ceo-jensen-huang-weighs-in-on-the-metaverse-blockchain-chip-shortage-arm-deal-and-competition/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2018 年和 2021 年两次受访都坚持加密货币与区块链会长期存在，中间经历挖矿行情起落也没有改口。"
+    },
+    {
+      "id": "huang-c007",
+      "kind": "walk",
+      "domain": "公司经营与财务",
+      "topic": "战略性撤退：懂得放弃才是成功的核心",
+      "a": {
+        "quote": "Retreat does not come easily to the brightest and most successful people like yourself.…Yet, strategic retreat, sacrifice, deciding what to give up, is that a core, the very core of success?",
+        "quote_zh": "对你们这样最聪明、最成功的人来说，撤退并不容易。但战略性撤退、牺牲、决定放弃什么，难道不正是成功的核心吗？",
+        "date": "2023-05-27",
+        "url": "https://www.businessinsider.tw/article/1230"
+      },
+      "b": {
+        "quote": "today announced the termination of the previously announced transaction whereby NVIDIA would acquire Arm Limited",
+        "quote_zh": "今天宣布终止此前公布的、由 NVIDIA 收购 Arm Limited 的交易。",
+        "date": "2022-02-07",
+        "url": "https://nvidianews.nvidia.com/news/nvidia-and-softbank-group-announce-termination-of-nvidias-acquisition-of-arm-limited"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他对毕业生讲「战略性撤退和放弃才是成功的核心」，而就在演讲前 15 个月，他本人拍板放弃了 400 亿美元的 Arm 收购、宁可认下 13.6 亿美元损失，言行方向一致。"
+    },
+    {
+      "id": "huang-c008",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "去做「零十亿美元市场」：没有客户的地方也没有竞争者",
+      "a": {
+        "quote": "At the time, this was a zero billion dollar market. To retreat from a giant phone market to create a zero billion dollar robotics market.",
+        "quote_zh": "当时那是一个「零十亿美元」的市场。从巨大的手机市场撤退，去开创一个零十亿美元的机器人市场。",
+        "date": "2023-05-27",
+        "url": "https://www.businessinsider.tw/article/1230"
+      },
+      "b": {
+        "quote": "we decided to build something where we are sure there are no customers, because one of the things you can definitely guarantee is where there are no customers, there are also no competitors, and nobody cares about you. And so we chose a market with no customers, a $0 billion market, and it was robotics.",
+        "quote_zh": "我们决定去做一件确定没有客户的事，因为有一件事可以百分之百保证：没有客户的地方，也没有竞争者，没有人在意你。于是我们选了一个没有客户的市场，一个零十亿美元的市场，那就是机器人。",
+        "date": "2024-06-14",
+        "url": "https://singjupost.com/jensen-huangs-speech-at-caltech-2024-commencement-transcript/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔一年多的两场演讲都把「去没有客户、也就没有竞争者的零十亿美元市场」当成核心方法论，并都以机器人为例，立场一致。"
+    }
+  ]
+}

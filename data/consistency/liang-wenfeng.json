@@ -1,0 +1,253 @@
+{
+  "person_id": "liang-wenfeng",
+  "collected_by": "cursor",
+  "collected_at": "2026-10-23",
+  "topics": [
+    { "topic": "只做基础模型研究、不做应用", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["liang-wenfeng-c001", "liang-wenfeng-c002"] },
+    { "topic": "开源还是闭源", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["liang-wenfeng-c003", "liang-wenfeng-c004"] },
+    { "topic": "要不要融资", "domain": "公司经营与财务", "result": "pair", "pairs": ["liang-wenfeng-c005"] },
+    { "topic": "招人看能力不看经验", "domain": "公司经营与财务", "result": "pair", "pairs": ["liang-wenfeng-c006"] },
+    { "topic": "创新型组织的管理方式", "domain": "公司经营与财务", "result": "pair", "pairs": ["liang-wenfeng-c007"] },
+    { "topic": "创新的成本与前提条件", "domain": "公司经营与财务", "result": "pair", "pairs": ["liang-wenfeng-c008"] },
+    { "topic": "API 定价原则与普惠", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["liang-wenfeng-c009"] },
+    { "topic": "量化基金的规模与对外募集", "domain": "公司经营与财务", "result": "pair", "pairs": ["liang-wenfeng-c010"] },
+    { "topic": "AGI 路线图押注的方向", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["liang-wenfeng-c011"] },
+    { "topic": "中国 AI 要做原创而不是模仿", "domain": "AI 模型与 AGI", "result": "no_counterpart", "note": "这是他 2024 年 7 月访谈里讲得最多的立场，但 2023 年 5 月那次访谈没有同题表述，2024 年 7 月之后他也再没有公开受访，找不到相隔一年以上的重申，也找不到可以逐字核对的对照行动。" },
+    { "topic": "算力储备与显卡折旧", "domain": "AI 芯片与算力", "result": "no_counterpart", "note": "只找到 2023 年 5 月这一次表态（「对算力的渴求是永无止境的」）。幻方和 DeepSeek 此后都没有公开披露新的采购或集群规模，没有可逐字核对的行动证据。" },
+    { "topic": "AGI 还要多久实现", "domain": "AI 模型与 AGI", "result": "excluded", "note": "「可能是2年、5年或者10年」是带期限的预测，按规则进兑现率而不进这里。" },
+    { "topic": "其他大模型创业公司的终局", "domain": "AI 模型与 AGI", "result": "excluded", "note": "「可能活下来2到3家」是对未来结果的预测，不是立场，按规则不收。" }
+  ],
+  "pairs": [
+    {
+      "id": "liang-wenfeng-c001",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "只做基础模型研究、不做应用",
+      "a": {
+        "quote": "我们的目标也很明确，就是不做垂类和应用，而是做研究，做探索。",
+        "quote_zh": "我们的目标也很明确，就是不做垂类和应用，而是做研究，做探索。",
+        "date": "2023-05-24",
+        "url": "https://news.qq.com/rain/a/20230524A04F3300"
+      },
+      "b": {
+        "quote": "我们认为当前阶段是技术创新的爆发期，而不是应用的爆发期…如果能形成完整的产业上下游，我们就没必要自己做应用",
+        "quote_zh": "我们认为当前阶段是技术创新的爆发期，而不是应用的爆发期……如果能形成完整的产业上下游，我们就没必要自己做应用。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2023 年 5 月刚成立深度求索时说目标就是不做垂类和应用、只做研究，14 个月后再次受访仍然说当前是技术创新的爆发期而不是应用的爆发期、没必要自己做应用，立场没变。"
+    },
+    {
+      "id": "liang-wenfeng-c002",
+      "kind": "walk",
+      "domain": "AI 模型与 AGI",
+      "topic": "只做基础模型研究、不做应用",
+      "a": {
+        "quote": "我们只负责基础模型和前沿的创新，然后其它公司在DeepSeek 的基础上构建toB、toC的业务",
+        "quote_zh": "我们只负责基础模型和前沿的创新，然后其它公司在 DeepSeek 的基础上构建 toB、toC 的业务。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "b": {
+        "quote": "1月27日，由国产大模型公司杭州深度求索开发的Deepseek应用登顶苹果中国地区和美国地区应用商店免费APP下载排行榜，在美区下载榜上超越了ChatGPT。",
+        "quote_zh": "1 月 27 日，由国产大模型公司杭州深度求索开发的 DeepSeek 应用登顶苹果中国地区和美国地区应用商店免费 APP 下载排行榜，在美区下载榜上超越了 ChatGPT。",
+        "date": "2025-01-27",
+        "url": "https://www.thepaper.cn/newsDetail_forward_30041291"
+      },
+      "explanation": null,
+      "proposed_label": "inconsistent",
+      "rationale": "他说 toC 的业务应该留给别的公司、DeepSeek 只做基础模型，半年后公司自己推出的消费级 App 却登顶了中美两国 App Store 免费榜，成了全公司最出名的产品。同一段话里他留了「如果需要，我们做应用也没障碍」的余地，但他并没有说明这个「需要」何时发生、为什么改做。"
+    },
+    {
+      "id": "liang-wenfeng-c003",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "开源还是闭源",
+      "a": {
+        "quote": "我们现在想的是，后边可以把我们的训练结果大部分公开共享，这样可以跟商业化有所结合。我们希望更多人，哪怕一个小 app都可以低成本去用上大模型，而不是技术只掌握在一部分人和公司手中，形成垄断。",
+        "quote_zh": "我们现在想的是，后边可以把我们的训练结果大部分公开共享，这样可以跟商业化有所结合。我们希望更多人，哪怕一个小 app 都可以低成本去用上大模型，而不是技术只掌握在一部分人和公司手中，形成垄断。",
+        "date": "2023-05-24",
+        "url": "https://news.qq.com/rain/a/20230524A04F3300"
+      },
+      "b": {
+        "quote": "我们不会闭源。我们认为先有一个强大的技术生态更重要。",
+        "quote_zh": "我们不会闭源。我们认为先有一个强大的技术生态更重要。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2023 年说要把训练结果大部分公开共享、不让技术形成垄断，14 个月后在被问到会不会像 OpenAI 和 Mistral 那样转闭源时直接回答「我们不会闭源」，立场一致。"
+    },
+    {
+      "id": "liang-wenfeng-c004",
+      "kind": "walk",
+      "domain": "AI 模型与 AGI",
+      "topic": "开源还是闭源",
+      "a": {
+        "quote": "开源，发论文，其实并没有失去什么…其实，开源更像一个文化行为，而非商业行为",
+        "quote_zh": "开源、发论文，其实并没有失去什么……其实，开源更像一个文化行为，而非商业行为。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "b": {
+        "quote": "今天，我们正式发布 DeepSeek-R1，并同步开源模型权重…此次我们的开源仓库（包括模型权重）统一采用标准化、宽松的 MIT License，完全开源，不限制商用，无需申请",
+        "quote_zh": "今天，我们正式发布 DeepSeek-R1，并同步开源模型权重……此次我们的开源仓库（包括模型权重）统一采用标准化、宽松的 MIT License，完全开源，不限制商用，无需申请。",
+        "date": "2025-01-20",
+        "url": "https://api-docs.deepseek.com/zh-cn/news/news250120"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他把开源和发论文说成不吃亏的文化行为，半年后公司发布当时最受关注的 R1 时同步开源了权重、公开了训练方法，还把授权从自订的 DeepSeek License 换成更宽松的 MIT，言行相符。"
+    },
+    {
+      "id": "liang-wenfeng-c005",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "要不要融资",
+      "a": {
+        "quote": "感觉很多VC对做研究有顾虑，他们有退出需求，希望尽快做出产品商业化，而按照我们优先做研究的思路，很难从VC那里获得融资",
+        "quote_zh": "感觉很多 VC 对做研究有顾虑，他们有退出需求，希望尽快做出产品商业化，而按照我们优先做研究的思路，很难从 VC 那里获得融资。",
+        "date": "2023-05-24",
+        "url": "https://news.qq.com/rain/a/20230524A04F3300"
+      },
+      "b": {
+        "quote": "短期内没有融资计划，我们面临的问题从来不是钱",
+        "quote_zh": "短期内没有融资计划，我们面临的问题从来不是钱。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2023 年说优先做研究的路子很难从 VC 拿到钱，14 个月后被问到融资和拆分上市计划时仍然说短期内没有融资计划、问题从来不是钱，对外部资本的态度没有变。"
+    },
+    {
+      "id": "liang-wenfeng-c006",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "招人看能力不看经验",
+      "a": {
+        "quote": "不一定是做过这件事的人才能做这件事。幻方招人有条原则是，看能力，而不是看经验。我们的核心技术岗位，基本以应届和毕业一两年的人为主。",
+        "quote_zh": "不一定是做过这件事的人才能做这件事。幻方招人有条原则是，看能力，而不是看经验。我们的核心技术岗位，基本以应届和毕业一两年的人为主。",
+        "date": "2023-05-24",
+        "url": "https://news.qq.com/rain/a/20230524A04F3300"
+      },
+      "b": {
+        "quote": "并没有什么高深莫测的奇才，都是一些Top高校的应届毕业生、没毕业的博四、博五实习生，还有一些毕业才几年的年轻人。",
+        "quote_zh": "并没有什么高深莫测的奇才，都是一些 Top 高校的应届毕业生、没毕业的博四、博五实习生，还有一些毕业才几年的年轻人。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2023 年说招人看能力不看经验、核心技术岗以应届和毕业一两年的人为主，14 个月后介绍做出 V2 的团队时给出的还是同一套人员构成（应届生、在读博士实习生、毕业几年的年轻人），说法一致。"
+    },
+    {
+      "id": "liang-wenfeng-c007",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "创新型组织的管理方式",
+      "a": {
+        "quote": "我们的总结是，创新需要尽可能少的干预和管理，让每个人有自由发挥的空间和试错机会。创新往往都是自己产生的，不是刻意安排的，更不是教出来的。",
+        "quote_zh": "我们的总结是，创新需要尽可能少的干预和管理，让每个人有自由发挥的空间和试错机会。创新往往都是自己产生的，不是刻意安排的，更不是教出来的。",
+        "date": "2023-05-24",
+        "url": "https://news.qq.com/rain/a/20230524A04F3300"
+      },
+      "b": {
+        "quote": "DeepSeek也全是自下而上。而且我们一般不前置分工，而是自然分工。每个人有自己独特的成长经历，都是自带想法的，不需要push他。",
+        "quote_zh": "DeepSeek 也全是自下而上。而且我们一般不前置分工，而是自然分工。每个人有自己独特的成长经历，都是自带想法的，不需要 push 他。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "幻方时期说创新需要尽可能少的干预和管理，14 个月后被问到 AGI 这种不确定的前沿探索是否需要更多管理动作时，回答仍是全自下而上、不前置分工、不需要 push，管理主张没有变。"
+    },
+    {
+      "id": "liang-wenfeng-c008",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "创新的成本与前提条件",
+      "a": {
+        "quote": "创新就是昂贵且低效的，有时候伴随着浪费。所以经济发展到一定程度之后，才能够出现创新。",
+        "quote_zh": "创新就是昂贵且低效的，有时候伴随着浪费。所以经济发展到一定程度之后，才能够出现创新。",
+        "date": "2023-05-24",
+        "url": "https://news.qq.com/rain/a/20230524A04F3300"
+      },
+      "b": {
+        "quote": "创新的成本肯定不低，过去那种拿来主义的惯性也和过去的国情有关…我们创新缺的肯定不是资本，而是缺乏信心以及不知道怎么组织高密度的人才实现有效的创新",
+        "quote_zh": "创新的成本肯定不低，过去那种拿来主义的惯性也和过去的国情有关……我们创新缺的肯定不是资本，而是缺乏信心以及不知道怎么组织高密度的人才实现有效的创新。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2023 年说创新昂贵低效、要经济发展到一定程度才可能出现，14 个月后仍然说创新成本不低、过去的拿来主义和国情有关，并进一步说现在缺的不是资本而是信心，是同一个判断的延伸而不是反转。"
+    },
+    {
+      "id": "liang-wenfeng-c009",
+      "kind": "walk",
+      "domain": "AI 模型与 AGI",
+      "topic": "API 定价原则与普惠",
+      "a": {
+        "quote": "我们的原则是不贴钱，也不赚取暴利。这个价格也是在成本之上稍微有点利润…另一方面也觉得无论API,还是AI,都应该是普惠的、人人可以用得起的东西",
+        "quote_zh": "我们的原则是不贴钱，也不赚取暴利。这个价格也是在成本之上稍微有点利润……另一方面也觉得无论 API，还是 AI，都应该是普惠的、人人可以用得起的东西。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "b": {
+        "quote": "DeepSeek-R1 API 服务定价为每百万输入 tokens 1 元（缓存命中）/ 4 元（缓存未命中），每百万输出 tokens 16 元。",
+        "quote_zh": "DeepSeek-R1 API 服务定价为每百万输入 tokens 1 元（缓存命中）／4 元（缓存未命中），每百万输出 tokens 16 元。",
+        "date": "2025-01-20",
+        "url": "https://api-docs.deepseek.com/zh-cn/news/news250120"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他说 API 和 AI 都该是人人用得起的、公司只在成本之上留一点利润；半年后对标 OpenAI o1 的 R1 上线时，输出价格定为每百万 token 16 元，远低于同级闭源模型，并且同步公开思维链和开源权重，定价行为与他讲的原则一致。"
+    },
+    {
+      "id": "liang-wenfeng-c010",
+      "kind": "walk",
+      "domain": "公司经营与财务",
+      "topic": "量化基金的规模与对外募集",
+      "a": {
+        "quote": "但其实我们的量化基金已经基本不怎么对外募集了。",
+        "quote_zh": "但其实我们的量化基金已经基本不怎么对外募集了。",
+        "date": "2023-05-24",
+        "url": "https://news.qq.com/rain/a/20230524A04F3300"
+      },
+      "b": {
+        "quote": "近日，有消息称“当前幻方量化已经暂停渠道募资”。对此，10月26日，幻方量化市场人士回应称：“幻方量化当前的基金管理规模是400多亿元，这个规模目前来看是策略比较合适的规模。”",
+        "quote_zh": "近日，有消息称「当前幻方量化已经暂停渠道募资」。对此，10 月 26 日，幻方量化市场人士回应称：「幻方量化当前的基金管理规模是 400 多亿元，这个规模目前来看是策略比较合适的规模。」",
+        "date": "2023-10-26",
+        "url": "https://www.nbd.com.cn/articles/2023-10-26/3075025.html"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他在回应「量化基金做 AI 是为别的业务吹泡泡」的质疑时说幻方已经基本不怎么对外募集，五个月后幻方确认暂停了渠道募资、不再大幅增加规模，行动和说法相符。"
+    },
+    {
+      "id": "liang-wenfeng-c011",
+      "kind": "walk",
+      "domain": "AI 模型与 AGI",
+      "topic": "AGI 路线图押注的方向",
+      "a": {
+        "quote": "但我们确实押注了三个方向。一是数学和代码，二是多模态，三是自然语言本身。数学和代码是AGI天然的试验场，有点像围棋，是一个封闭的、可验证的系统",
+        "quote_zh": "但我们确实押注了三个方向。一是数学和代码，二是多模态，三是自然语言本身。数学和代码是 AGI 天然的试验场，有点像围棋，是一个封闭的、可验证的系统。",
+        "date": "2024-07-17",
+        "url": "https://news.qq.com/rain/a/20240722A02QRV00"
+      },
+      "b": {
+        "quote": "DeepSeek-R1 在后训练阶段大规模使用了强化学习技术，在仅有极少标注数据的情况下，极大提升了模型推理能力。在数学、代码、自然语言推理等任务上，性能比肩 OpenAI o1 正式版。",
+        "quote_zh": "DeepSeek-R1 在后训练阶段大规模使用了强化学习技术，在仅有极少标注数据的情况下，极大提升了模型推理能力。在数学、代码、自然语言推理等任务上，性能比肩 OpenAI o1 正式版。",
+        "date": "2025-01-20",
+        "url": "https://api-docs.deepseek.com/zh-cn/news/news250120"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他说押注数学和代码、多模态、自然语言三个方向，并把数学和代码称作 AGI 天然的试验场；半年后公司拿出的 R1 正是靠强化学习在数学、代码和自然语言推理上做出来的，和他给出的押注方向一致。"
+    }
+  ]
+}

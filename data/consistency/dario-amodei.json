@@ -1,0 +1,217 @@
+{
+  "person_id": "dario-amodei",
+  "collected_by": "cursor",
+  "collected_at": "2026-10-23",
+  "topics": [
+    { "topic": "在模型变得过于强大之前看懂它的内部（可解释性）", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["dario-amodei-c001", "dario-amodei-c006"] },
+    { "topic": "该不该主动放慢 AI 能力推进的速度", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["dario-amodei-c002"] },
+    { "topic": "AI 能力会沿指数继续提升、技术进步不可阻挡", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["dario-amodei-c003"] },
+    { "topic": "谈 AI 要避免末日论和宗教式、先知式的话语", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["dario-amodei-c004"] },
+    { "topic": "该不该拿海湾威权国家的主权资本", "domain": "公司经营与财务", "result": "pair", "pairs": ["dario-amodei-c005"] },
+    { "topic": "防止模型被用于生物、化学等大规模杀伤性滥用", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["dario-amodei-c007"] },
+    { "topic": "用「强大 AI」而不是「AGI」来描述要造的东西", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["dario-amodei-c008"] },
+    { "topic": "用「向上竞赛」逼同行跟进安全做法，而不是靠自己当好人", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["dario-amodei-c009"] },
+    { "topic": "前沿 AI 公司应接受第三方「嵌入式评估员」长期驻场", "domain": "AI 模型与 AGI", "result": "no_counterpart", "note": "只找到 2026-09《We Must Pace the Frontier》这一次表态（并在同一篇里宣布 Anthropic 单方面承诺）；没有找到相隔一年以上的本人重申，也没有找到公开可核对的落地证据或相反行动" },
+    { "topic": "不在中东建设大型训练数据中心", "domain": "AI 芯片与算力", "result": "no_counterpart", "note": "只找到 2025-07-20 内部备忘录里「只要我们不在那里建数据中心」这一次表态；此后公开检索到的只有 Bloomberg 关于他本人赴中东、与 G42 接触寻找算力的报道（仍是谈判阶段，且原文在付费墙/镜像站），没有 Anthropic 的官方公告，也没有找到他相隔一年以上的重申" },
+    { "topic": "对华芯片出口管制", "domain": "AI 芯片与算力", "result": "excluded", "note": "政府政策立场，按规则不收：2025-01《On DeepSeek and Export Controls》、2025-04《The Urgency of Interpretability》都主张加强对华芯片出口管制" },
+    { "topic": "立法强制前沿 AI 公司披露安全与安保做法", "domain": "AI 模型与 AGI", "result": "excluded", "note": "政府政策立场，按规则不收：2025-06 NYT 评论《AI Needs Basic Transparency Rules》与多篇文章都主张透明度立法与第三方审计" },
+    { "topic": "AI 能在 5–10 年内治愈大部分重大疾病", "domain": "生物科技与医疗", "result": "excluded", "note": "带期限的预测，应进兑现率而不是这里：2024-10《Machines of Loving Grace》与 2026-09《We Must Pace the Frontier》都给了 5–10 年的时限" },
+    { "topic": "AI 会在 1–5 年内取代一半入门级白领岗位", "domain": "宏观经济与市场", "result": "excluded", "note": "带期限的预测，应进兑现率而不是这里：2025 年的公开警告，他本人在 2026-01《The Adolescence of Technology》里复述为「in the next 1–5 years」" }
+  ],
+  "pairs": [
+    {
+      "id": "dario-amodei-c001",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "在模型变得过于强大之前看懂它的内部（可解释性）",
+      "a": {
+        "quote": "the tantalizing possibility, opened up by some recent advances, that we could succeed at interpretability … We therefore must move fast if we want interpretability to mature in time to matter.",
+        "quote_zh": "一个诱人的可能性，由最近的一些进展打开：我们可能真的能在可解释性上成功 …… 因此，如果希望可解释性能及时成熟到起作用，我们必须跑得快。",
+        "date": "2025-04-01",
+        "url": "https://www.darioamodei.com/post/the-urgency-of-interpretability"
+      },
+      "b": {
+        "quote": "The second thing we can do is develop the science of looking inside AI models to diagnose their behavior so that we can identify problems and fix them. This is the science of interpretability",
+        "quote_zh": "我们能做的第二件事，是发展「看进 AI 模型内部」以诊断其行为的科学，这样我们才能发现问题并修复它们。这就是可解释性这门科学",
+        "date": "2026-01-01",
+        "url": "https://www.darioamodei.com/essay/the-adolescence-of-technology"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔约一年零九个月，两次都把「看进模型内部、在模型过强之前搞懂它」列为应对 AI 风险的核心手段，立场没变。"
+    },
+    {
+      "id": "dario-amodei-c002",
+      "kind": "reversal",
+      "domain": "AI 模型与 AGI",
+      "topic": "该不该主动放慢 AI 能力推进的速度",
+      "a": {
+        "quote": "We can't stop the bus, but we can steer it. … I am in fact quite skeptical that any slowdown to address risk is possible even among companies within democratic countries, given the incredible economic value of AI. Fighting the market head-on like this feels like trying to stop a freight train with your toe.",
+        "quote_zh": "我们没法让这辆公交车停下，但我们可以给它掌舵。…… 事实上，考虑到 AI 巨大的经济价值，我很怀疑哪怕只在民主国家的公司之间，为了应对风险而放慢速度是否可能。像这样正面对抗市场，感觉就像想用脚趾头挡住一列货运火车。",
+        "date": "2025-04-01",
+        "url": "https://www.darioamodei.com/post/the-urgency-of-interpretability"
+      },
+      "b": {
+        "quote": "We must slow the pace at which we improve the capabilities of AI models. Progress will still seem fast, and we must make wise use of the time we gain.",
+        "quote_zh": "我们必须放慢提升 AI 模型能力的速度。进展看上去仍然会很快，而我们必须明智地使用由此换来的时间。",
+        "date": "2026-09-01",
+        "url": "https://www.darioamodei.com/post/we-must-pace-the-frontier"
+      },
+      "explanation": {
+        "quote": "The idea of pausing or slowing AI has been floated as far back as 2023, and I think it made little sense back then. The question was always: what would you do with the extra time? … Today, however, the picture is totally different. The current models are an almost endless gold mine of insight",
+        "quote_zh": "暂停或放慢 AI 的想法早在 2023 年就被提出过，我认为那时候它没什么道理。问题一直是：你拿多出来的时间去做什么？…… 但今天情况完全不同了。现在的模型几乎是一座取之不尽的洞见金矿",
+        "date": "2026-09-01",
+        "url": "https://www.darioamodei.com/post/we-must-pace-the-frontier"
+      },
+      "proposed_label": "consistent",
+      "rationale": "2025 年 4 月他说技术进步不可阻挡、怀疑任何放慢都做不到；2026 年 9 月改口说「我们必须放慢」。但他在同一篇里公开说明了改变理由：当年模型太弱、放慢也没事可做，而现在模型已能提供大量对齐研究素材，加上递归自我改进加速和 OAI-HF 事件，所以判断变了。"
+    },
+    {
+      "id": "dario-amodei-c003",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "AI 能力会沿指数继续提升、技术进步不可阻挡",
+      "a": {
+        "quote": "the progress of the underlying technology is inexorable, driven by forces too powerful to stop",
+        "quote_zh": "底层技术的进步是不可阻挡的，推动它的力量强大到无法停下",
+        "date": "2025-04-01",
+        "url": "https://www.darioamodei.com/post/the-urgency-of-interpretability"
+      },
+      "b": {
+        "quote": "AI's scaling laws, which predict an exponential increase in general cognitive capabilities with increasing computing power, now have over a decade of empirical evidence behind them.",
+        "quote_zh": "AI 的缩放定律——它预测通用认知能力会随算力增加而指数式提升——如今已有十多年的经验证据支撑。",
+        "date": "2026-06-01",
+        "url": "https://www.darioamodei.com/post/policy-on-the-ai-exponential"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔一年两个月，仍然主张 AI 能力沿缩放定律的指数曲线不断提升、这个进程不会自己停下，立场一致。"
+    },
+    {
+      "id": "dario-amodei-c004",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "谈 AI 要避免末日论和宗教式、先知式的话语",
+      "a": {
+        "quote": "I am often turned off by the way many AI risk public figures (not to mention AI company leaders) talk about the post-AGI world, as if it's their mission to single-handedly bring it about like a prophet leading their people to salvation. I think it's dangerous to view companies as unilaterally shaping the world, and dangerous to view practical technological goals in essentially religious terms.",
+        "quote_zh": "很多谈 AI 风险的公众人物（更不用说 AI 公司的领导人）谈论「AGI 之后的世界」的方式常让我反感，好像那是他们的使命，要像先知带领子民走向救赎一样靠一己之力把它实现。我认为把公司看成能单方面塑造世界是危险的，把实际的技术目标用本质上宗教性的措辞来看待也是危险的。",
+        "date": "2024-10-01",
+        "url": "https://www.darioamodei.com/essay/machines-of-loving-grace"
+      },
+      "b": {
+        "quote": "Here, I mean \"doomerism\" not just in the sense of believing doom is inevitable (which is both a false and self-fulfilling belief), but more generally, thinking about AI risks in a quasi-religious way.",
+        "quote_zh": "这里我说的「末日论」，不只是指相信毁灭不可避免（这既是错的，也是会自我实现的信念），更泛指用一种准宗教的方式去思考 AI 风险。",
+        "date": "2026-01-01",
+        "url": "https://www.darioamodei.com/essay/the-adolescence-of-technology"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔一年三个月，两次都明确反对用宗教式、先知式的框架谈 AI（不管是谈好处还是谈风险），要求用清醒、务实的方式讨论，立场一致。"
+    },
+    {
+      "id": "dario-amodei-c005",
+      "kind": "walk",
+      "domain": "公司经营与财务",
+      "topic": "该不该拿海湾威权国家的主权资本",
+      "a": {
+        "quote": "Unfortunately, I think 'No bad person should ever benefit from our success' is a pretty difficult principle to run a business on. … There is a truly giant amount of capital in the Middle East, easily $100B or more … If we want to stay on the frontier, we gain a very large benefit from having access to this capital.",
+        "quote_zh": "很遗憾，我认为「不该让任何坏人从我们的成功里获益」是一条很难用来经营企业的原则。…… 中东有极其庞大的资本，轻轻松松就有一千亿美元以上 …… 如果我们想留在前沿，能动用这笔资本会带来非常大的好处。",
+        "date": "2025-07-20",
+        "url": "https://www.wired.com/story/anthropic-dario-amodei-gulf-state-leaked-memo/"
+      },
+      "b": {
+        "quote": "The round was co-led by D. E. Shaw Ventures, Dragoneer, Founders Fund, ICONIQ, and MGX. … Qatar Investment Authority (QIA), Sands Capital, Sequoia Capital, Temasek, TowerBrook, TPG, Whale Rock Capital, and XN.",
+        "quote_zh": "本轮由 D. E. Shaw Ventures、Dragoneer、Founders Fund、ICONIQ 和 MGX 共同领投。…… 卡塔尔投资局（QIA）、Sands Capital、Sequoia Capital、Temasek、TowerBrook、TPG、Whale Rock Capital 和 XN。",
+        "date": "2026-02-12",
+        "url": "https://www.anthropic.com/news/anthropic-raises-30-billion-series-g-funding-380-billion-post-money-valuation"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他在内部备忘录里公开放弃「不让坏人从我们的成功里获益」这条原则、说为了留在前沿要去拿海湾的钱；七个月后 Anthropic 的 300 亿美元 G 轮里，阿布扎比国有的 MGX 成为共同领投方、卡塔尔投资局参与，说到做到。要注意的是这条「相符」指的是言行一致，不等于他此前关于不让威权政权从 AI 获益的主张没有被折损。"
+    },
+    {
+      "id": "dario-amodei-c006",
+      "kind": "walk",
+      "domain": "AI 模型与 AGI",
+      "topic": "在模型变得过于强大之前看懂它的内部（可解释性）",
+      "a": {
+        "quote": "This post makes the case for interpretability: what it is, why AI will go better if we have it, and what all of us can do to help it win the race.",
+        "quote_zh": "这篇文章为可解释性辩护：它是什么、有了它为什么 AI 会走得更好，以及我们所有人能做什么来帮它赢下这场赛跑。",
+        "date": "2025-04-01",
+        "url": "https://www.darioamodei.com/post/the-urgency-of-interpretability"
+      },
+      "b": {
+        "quote": "Today, we're open-sourcing the method so that anyone can build on our research.",
+        "quote_zh": "今天，我们把这个方法开源，让任何人都能在我们的研究上继续做下去。",
+        "date": "2025-05-29",
+        "url": "https://www.anthropic.com/research/open-source-circuit-tracing"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他 4 月呼吁整个领域一起加速可解释性、说「我们所有人」都该帮它赢下赛跑；不到两个月后他的公司把追踪模型内部思路的电路追踪工具开源给外部研究者，言行相符。"
+    },
+    {
+      "id": "dario-amodei-c007",
+      "kind": "walk",
+      "domain": "AI 模型与 AGI",
+      "topic": "防止模型被用于生物、化学等大规模杀伤性滥用",
+      "a": {
+        "quote": "worries about misuse of AI models—for example, that they might help malicious users to produce biological or cyber weapons, in ways that go beyond the information that can be found on today's internet",
+        "quote_zh": "对 AI 模型被滥用的担忧——比如它们可能以超出今天互联网上能找到的信息的方式，帮助恶意使用者制造生物武器或网络武器",
+        "date": "2025-04-01",
+        "url": "https://www.darioamodei.com/post/the-urgency-of-interpretability"
+      },
+      "b": {
+        "quote": "the corresponding Deployment Standard covers a narrowly targeted set of deployment measures designed to limit the risk of Claude being misused specifically for the development or acquisition of chemical, biological, radiological, and nuclear (CBRN) weapons.",
+        "quote_zh": "与之对应的部署标准覆盖一组范围很窄的部署措施，专门用来降低 Claude 被滥用于研发或获取化学、生物、放射性和核（CBRN）武器的风险。",
+        "date": "2025-05-22",
+        "url": "https://www.anthropic.com/news/activating-asl3-protections"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他把「模型可能帮人造出生化武器」列为必须堵住的核心滥用风险；一个多月后他的公司在发布 Claude Opus 4 时主动启用了专门针对 CBRN 的 ASL-3 部署与安保标准，言行相符。"
+    },
+    {
+      "id": "dario-amodei-c008",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "用「强大 AI」而不是「AGI」来描述要造的东西",
+      "a": {
+        "quote": "I find AGI to be an imprecise term that has gathered a lot of sci-fi baggage and hype. I prefer \"powerful AI\" or \"Expert-Level Science and Engineering\" which get at what I mean without the hype.",
+        "quote_zh": "我觉得 AGI 是个不精确的词，身上积了一大堆科幻包袱和炒作。我更愿意用「强大 AI」或者「专家级科学与工程」，它们能表达我的意思又不带炒作。",
+        "date": "2024-10-01",
+        "url": "https://www.darioamodei.com/essay/machines-of-loving-grace"
+      },
+      "b": {
+        "quote": "If these scaling laws continue for only a year or two longer, we are likely to get what I've called Powerful AI, or \"a country of geniuses in a datacenter\".",
+        "quote_zh": "如果这些缩放定律再继续一两年，我们很可能就会得到我所说的「强大 AI」，也就是「数据中心里的一个天才之国」。",
+        "date": "2026-06-01",
+        "url": "https://www.darioamodei.com/post/policy-on-the-ai-exponential"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔一年八个月，他仍然坚持用自己定义的「强大 AI / 数据中心里的天才之国」这套说法，而不是「AGI」，命名立场一致。"
+    },
+    {
+      "id": "dario-amodei-c009",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "用「向上竞赛」逼同行跟进安全做法，而不是靠自己当好人",
+      "a": {
+        "quote": "And we have a theory of change called Race to the Top. Race to the Top is about trying to push the other players to do the right thing by setting an example. It's not about being the good guy, it's about setting things up so that all of us can be the good guy.",
+        "quote_zh": "我们有一套叫「向上竞赛」的变革理论。向上竞赛是指通过以身作则，推动其他玩家去做对的事。它不是为了让自己当好人，而是为了把局面安排成我们所有人都能当好人。",
+        "date": "2024-11-11",
+        "url": "https://lexfridman.com/dario-amodei-transcript"
+      },
+      "b": {
+        "quote": "We have sought a middle way: to show that it's possible to build carefully and succeed commercially, and to make safety something on which AI companies compete. In other words, to create a race to the top.",
+        "quote_zh": "我们一直在寻找一条中间道路：证明既小心地造、又在商业上成功是可能的，并且让安全成为 AI 公司互相竞争的维度。换句话说，制造一场向上竞赛。",
+        "date": "2026-09-01",
+        "url": "https://www.darioamodei.com/post/we-must-pace-the-frontier"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔近两年，仍然把「向上竞赛」当成 Anthropic 的核心策略——靠以身作则把安全变成同行互相攀比的竞争维度，而不是自居道德高地，立场一致。"
+    }
+  ]
+}

@@ -1,0 +1,286 @@
+{
+  "person_id": "lisa-su",
+  "collected_by": "cursor",
+  "collected_at": "2026-10-23",
+  "topics": [
+    { "topic": "开放软件与开放生态优于封闭专有栈", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["lisa-su-c001"] },
+    { "topic": "没有一种计算适合所有场景，为正确的应用配正确的算力", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["lisa-su-c002"] },
+    { "topic": "半导体决策要以五年为尺度", "domain": "公司经营与财务", "result": "pair", "pairs": ["lisa-su-c003"] },
+    { "topic": "摩尔定律在放缓，靠先进封装与 chiplet 突破它的约束", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["lisa-su-c004"] },
+    { "topic": "AI 是过去 50 年最具变革性的技术", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["lisa-su-c005"] },
+    { "topic": "推理市场最终会大于训练", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["lisa-su-c006"] },
+    { "topic": "数据中心不是泡沫：长期还需要更多算力和电力", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["lisa-su-c007"] },
+    { "topic": "给毕业生的建议：去找世界上最难的问题，自己报名去解", "domain": "其他科技", "result": "pair", "pairs": ["lisa-su-c008"] },
+    { "topic": "主机游戏不会消亡，游戏会出现在每一种形态上", "domain": "其他科技", "result": "pair", "pairs": ["lisa-su-c009"] },
+    { "topic": "ARM 与 x86 双轨（ambidextrous computing）是未来的桥梁", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["lisa-su-c010"] },
+    { "topic": "靠把资源对准未来取胜，而不是靠削减成本取胜", "domain": "公司经营与财务", "result": "pair", "pairs": ["lisa-su-c011"] },
+    {
+      "topic": "对华芯片出口管制与把半导体制造搬回美国",
+      "domain": "AI 芯片与算力",
+      "result": "excluded",
+      "note": "她在斯坦福对谈里明确表态「我非常支持把更多半导体制造搬回美国」、并谈 CHIPS 法案与出口合规，整组表态都围绕政府政策，按规则不收。"
+    },
+    {
+      "topic": "AI 加速器市场规模（2027/2030 年的 TAM 判断）",
+      "domain": "AI 芯片与算力",
+      "result": "excluded",
+      "note": "她反复给出「2027 年 4000 亿、2030 年 1 万亿/2 万亿美元」这类数字，都是带期限、可检验的预测，按规则归兑现率而不进可信度。"
+    },
+    {
+      "topic": "不为并购而并购（I haven't been big on M&A）",
+      "domain": "公司经营与财务",
+      "result": "no_counterpart",
+      "note": "这句出自 2020-10-27 收购 Xilinx 的电话会（ir.amd.com 的 PDF 速记稿），但找不到相隔一年以上、针对「是否该做并购」再表态的逐字原话；同一场电话会里她已把 350 亿美元收购一并解释，拿同场的话当对照不成立。"
+    },
+    {
+      "topic": "不相信「护城河」（I'm not a believer in moats）",
+      "domain": "公司经营与财务",
+      "result": "no_counterpart",
+      "note": "2023-09 在 Code 大会说过「I'm not a believer in moats when the market is moving as fast as it is」，但检索不到她隔年以上再谈护城河的逐字文字实录，另一侧拿不出合规原话。"
+    },
+    {
+      "topic": "未来十年算力效率是第一优先级",
+      "domain": "能源",
+      "result": "no_counterpart",
+      "note": "2023-03 在 ISSCC 主题演讲里讲过「compute efficiency as the number-one priority」（nextplatform 转述其现场发言），但另一侧只找到 AMD 的 30x25 能效目标公告本身，那是带期限的目标数字，当对照会变成预测，因此不出 pair。"
+    }
+  ],
+  "pairs": [
+    {
+      "id": "lisa-su-c001",
+      "kind": "reaffirm",
+      "domain": "AI 芯片与算力",
+      "topic": "开放软件与开放生态优于封闭专有栈",
+      "a": {
+        "quote": "And the benefit of an open approach is that there's no one company that has all of the ideas. So the more we're able to bring the ecosystem together, we get to take advantage of all of those really, really smart developers who want to accelerate AI learning.",
+        "quote_zh": "开放路线的好处在于，没有任何一家公司能垄断所有的想法。所以我们越能把整个生态聚到一起，就越能用上那些想加速 AI 学习的聪明开发者。",
+        "date": "2023-09-29",
+        "url": "https://www.theverge.com/23894647/amd-ceo-lisa-su-ai-chips-nvidia-supply-chain-interview-decoder"
+      },
+      "b": {
+        "quote": "the open capability is just part of AMD's DNA. That's who we are. We believe in letting our customers and our partners choose what is the best component in each spot.",
+        "quote_zh": "开放这件事就是 AMD 基因的一部分。我们就是这样的公司。我们相信应该让客户和伙伴自己去选每个位置上最好的部件。",
+        "date": "2025-06-04",
+        "url": "https://www.gsb.stanford.edu/insights/dream-big-lisa-su-talks-chips-curiosity-chance"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2023 年 Code 大会和 2025 年斯坦福对谈相隔近两年，都把开放软件、让客户自选部件当成 AMD 的既定路线，并以此对比封闭专有栈，立场一致。"
+    },
+    {
+      "id": "lisa-su-c002",
+      "kind": "reaffirm",
+      "domain": "AI 芯片与算力",
+      "topic": "没有一种计算适合所有场景，为正确的应用配正确的算力",
+      "a": {
+        "quote": "I have this belief that there's no one computer that is the right one. You actually need the right computing for the right applications. So whether it's CPUs or GPUs or FPGAs or adaptive SoCs, you need all of those.",
+        "quote_zh": "我一直相信，没有哪一种计算机是唯一正确的。你真正需要的是为正确的应用配上正确的算力。所以不管是 CPU、GPU、FPGA 还是自适应 SoC，这些你都需要。",
+        "date": "2023-09-29",
+        "url": "https://www.theverge.com/23894647/amd-ceo-lisa-su-ai-chips-nvidia-supply-chain-interview-decoder"
+      },
+      "b": {
+        "quote": "I'm actually a believer in there's no one type of AI…You're going to see AI permeate every part of our lives…Our vision at AMD is that we can really create the right compute for each one of those environments",
+        "quote_zh": "我其实相信不存在只有一种 AI……你会看到 AI 渗透进我们生活的每一个部分……AMD 的愿景就是为上面每一种环境都造出合适的算力。",
+        "date": "2025-06-04",
+        "url": "https://www.gsb.stanford.edu/insights/dream-big-lisa-su-talks-chips-curiosity-chance"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "两次表态相隔近两年，都否认存在一种通吃的计算形态，主张按场景分别配置算力，2023 年讲 CPU/GPU/FPGA 并列，2025 年讲云端到端侧各配合适算力，立场一致。"
+    },
+    {
+      "id": "lisa-su-c003",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "半导体决策要以五年为尺度",
+      "a": {
+        "quote": "We are definitely designing for the five-plus-year cycle. I talked to you today about MI300. We made some of those architectural decisions four or five years ago.",
+        "quote_zh": "我们的设计确实是按五年以上的周期来做的。我今天跟你讲到 MI300，其中一些架构决策是我们四五年前做的。",
+        "date": "2023-09-29",
+        "url": "https://www.theverge.com/23894647/amd-ceo-lisa-su-ai-chips-nvidia-supply-chain-interview-decoder"
+      },
+      "b": {
+        "quote": "I think companies and people have a five-year trajectory. I used to say to people, \"Hey, don't tell me what you want to be in 20 years. What is a good milestone for you in five years?\"",
+        "quote_zh": "我认为公司和人都有一条五年的轨迹。我以前常跟人说：别告诉我你二十年后想成为什么，你五年内一个好的里程碑是什么？",
+        "date": "2025-06-04",
+        "url": "https://www.gsb.stanford.edu/insights/dream-big-lisa-su-talks-chips-curiosity-chance"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔近两年两次都主张以五年为规划尺度：2023 年说产品按五年以上周期设计，2025 年说公司和个人都该看五年里程碑而不是二十年，立场一致。"
+    },
+    {
+      "id": "lisa-su-c004",
+      "kind": "reaffirm",
+      "domain": "AI 芯片与算力",
+      "topic": "摩尔定律在放缓，靠先进封装与 chiplet 突破它的约束",
+      "a": {
+        "quote": "We're also very clear that packaging is key, that Moore's law is slowing down, that packaging is a way to break some of those constraints, that chiplets are great.",
+        "quote_zh": "我们也非常明确：封装是关键，摩尔定律正在放缓，封装是突破其中一些约束的办法，chiplet 很好用。",
+        "date": "2020-03-05",
+        "url": "https://stockanalysis.com/stocks/amd/transcripts/60814-financial-analyst-day-2020/"
+      },
+      "b": {
+        "quote": "Moore's Law was essentially slowing down, and there was going to be new technologies that would make a difference, and that's what we were going to bet on in terms of going forward.",
+        "quote_zh": "摩尔定律本质上已经在放缓，会有新技术带来差别，而那就是我们往前走要押注的东西。",
+        "date": "2025-06-04",
+        "url": "https://www.gsb.stanford.edu/insights/dream-big-lisa-su-talks-chips-curiosity-chance"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2020 年财务分析师日和 2025 年斯坦福对谈相隔五年多，都是同一判断：摩尔定律在放缓（不是终结），突破口在封装与新技术路线，并以此解释 AMD 的押注。"
+    },
+    {
+      "id": "lisa-su-c005",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "AI 是过去 50 年最具变革性的技术",
+      "a": {
+        "quote": "AI is the most transformational technology of the last 50 years and the future of computing.",
+        "quote_zh": "AI 是过去 50 年最具变革性的技术，也是计算的未来。",
+        "date": "2024-03-26",
+        "url": "https://www.prnewswire.com/news-releases/amd-chair--ceo-dr-lisa-su-to-deliver-opening-keynote-at-computex-2024-302098919.html"
+      },
+      "b": {
+        "quote": "AI is the most transformative technology of the last 50 years, and we are in the very early stages of the largest deployment of compute capacity in history.",
+        "quote_zh": "AI 是过去 50 年最具变革性的技术，而我们正处在历史上最大规模算力部署的非常早期阶段。",
+        "date": "2025-10-06",
+        "url": "https://stockanalysis.com/stocks/amd/transcripts/394762-partnership/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔一年半的两次公开表态用的是同一句判断：AI 是过去 50 年最具变革性的技术，口径没有变。"
+    },
+    {
+      "id": "lisa-su-c006",
+      "kind": "reaffirm",
+      "domain": "AI 芯片与算力",
+      "topic": "推理市场最终会大于训练",
+      "a": {
+        "quote": "But going forward, we actually think inference is going to be a larger market, and that plays well into some of what we've designed MI300 for.",
+        "quote_zh": "但往前看，我们其实认为推理会是一个更大的市场，这正好契合我们给 MI300 做的一部分设计。",
+        "date": "2023-09-29",
+        "url": "https://www.theverge.com/23894647/amd-ceo-lisa-su-ai-chips-nvidia-supply-chain-interview-decoder"
+      },
+      "b": {
+        "quote": "And those are for both training and inference workloads, although the largest deployments are for inference.",
+        "quote_zh": "这些部署既跑训练也跑推理，不过规模最大的那些部署是为推理做的。",
+        "date": "2026-05-06",
+        "url": "https://stockanalysis.com/stocks/amd/transcripts/551290-q1-2026/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2023 年她判断推理最终会是更大的市场并据此设计 MI300，两年半后在业绩电话会上说客户规模最大的部署确实都是推理，立场一致且被自己的业务数据印证。"
+    },
+    {
+      "id": "lisa-su-c007",
+      "kind": "walk",
+      "domain": "AI 芯片与算力",
+      "topic": "数据中心不是泡沫：长期还需要更多算力和电力",
+      "a": {
+        "quote": "I think on the longer timescale, we need more data centers and we need more power.…So I'm more of a bullish on that than not.",
+        "quote_zh": "我认为在更长的时间尺度上，我们需要更多数据中心，也需要更多电力。……所以这件事我更偏看多而不是看空。",
+        "date": "2025-06-04",
+        "url": "https://www.gsb.stanford.edu/insights/dream-big-lisa-su-talks-chips-curiosity-chance"
+      },
+      "b": {
+        "quote": "AMD (NASDAQ: AMD) and OpenAI today announced a 6 gigawatt agreement to power OpenAI's next-generation AI infrastructure across multiple generations of AMD Instinct GPUs.",
+        "quote_zh": "AMD（纳斯达克：AMD）与 OpenAI 今天宣布一项 6 吉瓦协议，为 OpenAI 下一代 AI 基础设施提供多代 AMD Instinct GPU。",
+        "date": "2025-10-06",
+        "url": "https://ir.amd.com/news-events/press-releases/detail/1260/amd-and-openai-announce-strategic-partnership-to-deploy-6-gigawatts-of-amd-gpus"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "她在被问到数据中心是否过建时公开表态「长期还需要更多数据中心和电力、我更看多」，四个月后本人拍板签下 6 吉瓦的 OpenAI 部署协议并发出 1.6 亿股权证，言行方向一致。"
+    },
+    {
+      "id": "lisa-su-c008",
+      "kind": "reaffirm",
+      "domain": "其他科技",
+      "topic": "给毕业生的建议：去找世界上最难的问题，自己报名去解",
+      "a": {
+        "quote": "So my favorite advice to graduates is to find the toughest problems in the world and volunteer to help solve them because this is really how you make your own luck.",
+        "quote_zh": "所以我最喜欢给毕业生的建议是：去找世界上最难的问题，主动报名去帮着解决，因为这才是你自己给自己造运气的方式。",
+        "date": "2017-06-01",
+        "url": "https://hyuninlee.com/2022/03/24/lisa-su-mit-ph-d-conferment-ceremony-address/"
+      },
+      "b": {
+        "quote": "And so that's what I view as the beauty of hard problems. You can work on anything in life, but when you work on a really hard problem, or in a company context, when you work on, let's call it the most important projects, you can garner an incredible amount of just resources, creativity, focus that will allow you to do something that you wouldn't imagine possible.",
+        "quote_zh": "这就是我眼里难题的美妙之处。人生里你可以做任何事，但当你做一个真正难的问题、或者在公司里做最重要的项目时，你能聚集起难以想象的资源、创造力和专注，让你做出原本以为不可能的事。",
+        "date": "2025-06-04",
+        "url": "https://www.gsb.stanford.edu/insights/dream-big-lisa-su-talks-chips-curiosity-chance"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2017 年 MIT 博士授帽典礼和 2025 年斯坦福对谈相隔八年，给出的是同一条建议：主动挑最难的问题去做，因为难题才会把资源、创造力和注意力聚过来。"
+    },
+    {
+      "id": "lisa-su-c009",
+      "kind": "walk",
+      "domain": "其他科技",
+      "topic": "主机游戏不会消亡，游戏会出现在每一种形态上",
+      "a": {
+        "quote": "Gaming is everywhere. Gaming is everywhere in every form factor. There's been this long conversation about: is this the end of console gaming? And I don't see it. I see PC gaming strong, I see console gaming strong, and I see cloud gaming also having legs.",
+        "quote_zh": "游戏无处不在，各种形态上都有游戏。关于「主机游戏是不是要终结了」这个话题已经讨论很久了，但我看不到这件事。我看到 PC 游戏很强，主机游戏很强，云游戏也有后劲。",
+        "date": "2023-09-29",
+        "url": "https://www.theverge.com/23894647/amd-ceo-lisa-su-ai-chips-nvidia-supply-chain-interview-decoder"
+      },
+      "b": {
+        "quote": "Xbox unveiled that it has entered into a strategic, multi-year partnership with AMD to co-engineer silicon across a portfolio of devices, including future first-party consoles and cloud.",
+        "quote_zh": "Xbox 公布，它已与 AMD 建立一项战略性的多年合作，共同设计覆盖一系列设备的芯片，包括未来的第一方主机和云。",
+        "date": "2025-06-19",
+        "url": "https://news.xbox.com/en-us/2025/06/19/xbox-amd-next-generation-xbox/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "她 2023 年公开否认主机游戏会终结、主张主机／PC／云三条线都站得住，不到两年后 AMD 与 Xbox 签下覆盖下一代主机、掌机、PC 与云的多年芯片合作，真金白银押的正是这个判断，言行一致。"
+    },
+    {
+      "id": "lisa-su-c010",
+      "kind": "reversal",
+      "domain": "AI 芯片与算力",
+      "topic": "ARM 与 x86 双轨（ambidextrous computing）是未来的桥梁",
+      "a": {
+        "quote": "The bridge to the future is having both ARM and x86 in [AMD's] portfolio",
+        "quote_zh": "通往未来的桥梁，就是在 AMD 的产品组合里同时拥有 ARM 和 x86。",
+        "date": "2014-05-05",
+        "url": "https://www.eweek.com/pc-hardware/amd-unveils-expanded-arm-chip-roadmap/"
+      },
+      "b": {
+        "quote": "I view it as a longer-term bet, so no question that server market is attractive, datacenter is attractive. But we are very focused on it from an X86 standpoint and we will continue our ARM efforts in a complementary way.",
+        "quote_zh": "我把它看作一个更长期的赌注，服务器市场当然有吸引力，数据中心也有吸引力。但我们现在非常聚焦于从 x86 的角度去做，ARM 方面会以互补的方式继续推进。",
+        "date": "2015-10-15",
+        "url": "https://www.nextplatform.com/compute/2015/11/02/arm-servers-what-can-amd-do-and-how-fast/1651132"
+      },
+      "explanation": {
+        "quote": "I think it is fair to say for all of us that it has been slower to adopt in the server market just due to the some of the software and the infrastructure.",
+        "quote_zh": "我想对我们所有人来说都可以这么说：由于软件和基础设施的一些原因，它在服务器市场的采用速度比预期慢。",
+        "date": "2015-10-15",
+        "url": "https://www.nextplatform.com/compute/2015/11/02/arm-servers-what-can-amd-do-and-how-fast/1651132"
+      },
+      "proposed_label": "consistent",
+      "rationale": "2014 年她把「ARM 与 x86 双轨」说成通往未来的桥梁，一年半后口径变成主攻 x86、ARM 只作互补（SkyBridge 取消、K12 搁置），立场确实翻转；但她在同一场电话会上公开给了理由——ARM 在服务器端因软件与基础设施不成熟而采用更慢，所以按规则记为说明了改变理由。"
+    },
+    {
+      "id": "lisa-su-c011",
+      "kind": "walk",
+      "domain": "公司经营与财务",
+      "topic": "靠把资源对准未来取胜，而不是靠削减成本取胜",
+      "a": {
+        "quote": "I call it more, you have to see where the future is going and try to align your resources and your focus with where the future is going.",
+        "quote_zh": "我更愿意把它说成：你必须看清未来往哪里走，然后把你的资源和注意力对准未来要去的地方。",
+        "date": "2025-06-04",
+        "url": "https://www.gsb.stanford.edu/insights/dream-big-lisa-su-talks-chips-curiosity-chance"
+      },
+      "b": {
+        "quote": "AMD has confirmed that it's laying off 4% of its workforce to focus on \"large growth opportunities.\"",
+        "quote_zh": "AMD 已确认裁减 4% 的员工，以便聚焦于「大的增长机会」。",
+        "date": "2024-11-13",
+        "url": "https://techcrunch.com/2024/11/13/amd-lays-off-4-of-its-workforce/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "同一场对谈里她先说科技业没有「靠砍自己成为赢家」这回事（这句含 such 一词会被查重程序误判为转述，故 a 侧取她紧接着给出的正面表述），主张要把资源对准未来的方向；半年前 AMD 那次裁员 4% 的公开理由正是把资源腾给 AI 这块最大增长机会，同期总人数与研发投入仍在扩张，属于「对准未来调配资源」而非靠削减成本求胜，方向一致。但毕竟是一次实打实的裁员，口号与动作之间的张力留给人审。"
+    }
+  ]
+}

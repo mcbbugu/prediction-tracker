@@ -1,0 +1,241 @@
+{
+  "person_id": "musk",
+  "collected_by": "cursor",
+  "collected_at": "2026-10-23",
+  "topics": [
+    { "topic": "远程办公", "domain": "公司经营与财务", "result": "pair", "pairs": ["musk-c001"] },
+    { "topic": "氢燃料电池", "domain": "能源", "result": "pair", "pairs": ["musk-c002"] },
+    { "topic": "激光雷达与纯视觉", "domain": "自动驾驶", "result": "pair", "pairs": ["musk-c003"] },
+    { "topic": "工厂自动化", "domain": "电动车与电池", "result": "pair", "pairs": ["musk-c004"] },
+    { "topic": "用比特币支付", "domain": "加密货币", "result": "pair", "pairs": ["musk-c005"] },
+    { "topic": "特斯拉投放广告", "domain": "公司经营与财务", "result": "pair", "pairs": ["musk-c006"] },
+    { "topic": "大学学历与招聘", "domain": "公司经营与财务", "result": "pair", "pairs": ["musk-c007"] },
+    { "topic": "人工智能的生存风险", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["musk-c008"] },
+    { "topic": "人口崩溃与出生率", "domain": "宏观经济与市场", "result": "pair", "pairs": ["musk-c009"] },
+    { "topic": "人类必须成为多行星物种", "domain": "航天", "result": "pair", "pairs": ["musk-c010"] },
+    { "topic": "做空与卖空机制", "domain": "宏观经济与市场", "result": "excluded", "note": "他在这个话题上的核心表态是「short selling should be illegal」，属于要求政府立法／监管的政策主张，按规则不收。" },
+    { "topic": "核电", "domain": "能源", "result": "excluded", "note": "找到的表态（「不该关闭核电站，已关的还该重开」）都是对各国能源政策的主张，属于政府政策范畴，按规则不收。" }
+  ],
+  "pairs": [
+    {
+      "id": "musk-c001",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "远程办公",
+      "a": {
+        "quote": "Anyone who wishes to do remote work must be in the office for a minimum (and I mean *minimum*) of 40 hours per week or depart Tesla. This is less than we ask of factory workers.",
+        "quote_zh": "任何想远程办公的人，每周必须到办公室至少（我说的是「至少」）40 小时，否则就离开特斯拉。这比我们对工厂工人的要求还少。",
+        "date": "2022-05-31",
+        "url": "https://arstechnica.com/tech-policy/2022/06/musk-to-tesla-and-spacex-workers-be-in-the-office-40-hours-a-week-or-quit/"
+      },
+      "b": {
+        "quote": "It's not just a productivity thing … I think it's morally wrong",
+        "quote_zh": "这不只是生产力的问题……我认为它在道德上是错的。",
+        "date": "2023-05-16",
+        "url": "https://www.cnbc.com/2023/05/16/elon-musk-work-from-home-morally-wrong-when-some-have-to-show-up.html"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2022 年他给全员下硬性坐班要求，一年后在 CNBC 访谈里仍然反对居家办公，并把理由从生产力升级到道德，立场没有变。"
+    },
+    {
+      "id": "musk-c002",
+      "kind": "reaffirm",
+      "domain": "能源",
+      "topic": "氢燃料电池",
+      "a": {
+        "quote": "If you're going to pick an energy storage mechanism, hydrogen is an incredibly dumb one to pick — you should just pick methane, that's much much easier, or propane",
+        "quote_zh": "如果你要挑一种储能方式，氢是一个蠢得离谱的选择——你直接挑甲烷就好，那容易得多，或者丙烷。",
+        "date": "2015-01-13",
+        "url": "https://www.businessinsider.com/elon-musk-hydrogen-cars-are-incredibly-dumb-2016-1"
+      },
+      "b": {
+        "quote": "the most dumb thing I could possibly imagine for energy storage … It's important to understand that if you want a means of energy storage, hydrogen is a bad choice",
+        "quote_zh": "（氢是）我能想到的用于储能的最蠢的东西……要明白一点，如果你想要一种储能手段，氢是个糟糕的选择。",
+        "date": "2022-05-10",
+        "url": "https://www.cnbc.com/2022/05/12/tesla-ceo-elon-musk-dismisses-hydrogen-as-tool-for-energy-storage.html"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2015 年在底特律说氢是蠢到离谱的储能选择，七年后在 FT 汽车峰会上用几乎同样的措辞重申，立场完全一致。"
+    },
+    {
+      "id": "musk-c003",
+      "kind": "reaffirm",
+      "domain": "自动驾驶",
+      "topic": "激光雷达与纯视觉",
+      "a": {
+        "quote": "Lidar is a fool's errand … Anyone relying on lidar is doomed. Doomed! [They are] expensive sensors that are unnecessary.",
+        "quote_zh": "激光雷达是白费功夫……任何依赖激光雷达的人都完蛋了。完蛋！（它们是）没有必要的昂贵传感器。",
+        "date": "2019-04-22",
+        "url": "https://techcrunch.com/2019/04/22/anyone-relying-on-lidar-is-doomed-elon-musk-says/"
+      },
+      "b": {
+        "quote": "Lidar and radar reduce safety due to sensor contention. If lidars/radars disagree with cameras, which one wins? This sensor ambiguity causes increased, not decreased, risk. That's why Waymos can't drive on highways. We turned off the radars in Teslas to increase safety. Cameras ftw",
+        "quote_zh": "激光雷达和毫米波雷达会因为传感器冲突而降低安全性。如果激光雷达／雷达和摄像头给出的结论不一致，听谁的？这种传感器歧义带来的是更高而不是更低的风险。这就是为什么 Waymo 的车不能上高速。我们关掉了特斯拉上的雷达来提升安全性。摄像头万岁。",
+        "date": "2025-08-25",
+        "url": "https://www.teslarati.com/elon-musk-lidar-radar-make-self-driving-cars-more-dangerous/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2019 年自动驾驶日说依赖激光雷达的人都完蛋，六年后回应 Uber CEO 时仍坚持纯视觉、反对激光雷达，理由升级为传感器冲突，立场未变。"
+    },
+    {
+      "id": "musk-c004",
+      "kind": "reversal",
+      "domain": "电动车与电池",
+      "topic": "工厂自动化",
+      "a": {
+        "quote": "You can't have people in the production line, otherwise you drop to people speed … So there will be no people in the production process itself. People will maintain the machines, upgrade them, and deal with anomalies.",
+        "quote_zh": "产线上不能有人，否则速度就会掉到人的速度……所以生产过程本身不会有人。人只负责维护机器、升级机器、处理异常。",
+        "date": "2016-08-03",
+        "url": "https://cleantechnica.com/2017/07/07/teslas-alien-dreadnought-special-day-model-3-production-begins/"
+      },
+      "b": {
+        "quote": "Yes, excessive automation at Tesla was a mistake. To be precise, my mistake. Humans are underrated.",
+        "quote_zh": "是的，特斯拉的过度自动化是个错误。准确地说，是我的错误。人被低估了。",
+        "date": "2018-04-13",
+        "url": "https://techcrunch.com/2018/04/13/elon-musk-says-humans-are-underrated-calls-teslas-excessive-automation-a-mistake/"
+      },
+      "explanation": {
+        "quote": "we had this crazy, complex network of conveyor belts….And it was not working, so we got rid of that whole thing",
+        "quote_zh": "我们搞了一套疯狂又复杂的传送带网络……它根本跑不起来，所以我们把整套东西拆掉了。",
+        "date": "2018-04-13",
+        "url": "https://techcrunch.com/2018/04/13/elon-musk-says-humans-are-underrated-calls-teslas-excessive-automation-a-mistake/"
+      },
+      "proposed_label": "consistent",
+      "rationale": "从「产线上不能有人」翻转到「过度自动化是个错误，人被低估了」，但他公开认错并说明了原因（传送带网络跑不通，拆掉了），属于说明了改变理由的翻转。"
+    },
+    {
+      "id": "musk-c005",
+      "kind": "reversal",
+      "domain": "加密货币",
+      "topic": "用比特币支付",
+      "a": {
+        "quote": "You can now buy a Tesla with Bitcoin … Bitcoin paid to Tesla will be retained as Bitcoin, not converted to fiat currency",
+        "quote_zh": "你现在可以用比特币买特斯拉了……支付给特斯拉的比特币会按比特币保留，不会兑换成法币。",
+        "date": "2021-03-24",
+        "url": "https://www.cbsnews.com/news/buy-tesla-bitcoin-cryptocurrency-elon-musk/"
+      },
+      "b": {
+        "quote": "Tesla has suspended vehicle purchases using Bitcoin",
+        "quote_zh": "特斯拉已暂停使用比特币购车。",
+        "date": "2021-05-12",
+        "url": "https://www.cnbc.com/2021/05/12/elon-musk-says-tesla-will-stop-accepting-bitcoin-for-car-purchases.html"
+      },
+      "explanation": {
+        "quote": "We are concerned about rapidly increasing use of fossil fuels for Bitcoin mining and transactions, especially coal, which has the worst emissions of any fuel",
+        "quote_zh": "我们担心比特币挖矿和交易中化石燃料使用量的快速上升，尤其是煤——它是所有燃料里排放最糟糕的。",
+        "date": "2021-05-12",
+        "url": "https://www.cnbc.com/2021/05/12/elon-musk-says-tesla-will-stop-accepting-bitcoin-for-car-purchases.html"
+      },
+      "proposed_label": "consistent",
+      "rationale": "三月宣布可以用比特币买车，五月又宣布暂停，是明确的翻转；但他同时给出了理由（挖矿的化石燃料消耗，尤其是煤），属于说明了改变理由。"
+    },
+    {
+      "id": "musk-c006",
+      "kind": "reversal",
+      "domain": "公司经营与财务",
+      "topic": "特斯拉投放广告",
+      "a": {
+        "quote": "It's hard to think of a similar product with such strong demand that it can generate more than $20 billion in revenue with zero advertising spend … to have the highest demand electric vehicle in the world with no advertising spend is I think quite remarkable",
+        "quote_zh": "很难想到还有哪个类似产品的需求强到可以在零广告支出的情况下做出超过 200 亿美元的收入……在零广告支出的前提下拥有全世界需求最高的电动车，我觉得这相当了不起。",
+        "date": "2020-01-29",
+        "url": "https://www.fool.com/earnings/call-transcripts/2020/01/30/tesla-inc-tsla-q4-2019-earnings-call-transcript.aspx"
+      },
+      "b": {
+        "quote": "We'll try out a little advertising and see how it goes",
+        "quote_zh": "我们会试着投一点广告，看看效果如何。",
+        "date": "2023-05-16",
+        "url": "https://www.businessinsider.com/elon-musk-tesla-will-try-advertising-first-time-2023-5"
+      },
+      "explanation": null,
+      "proposed_label": "inconsistent",
+      "rationale": "2020 年财报电话会上把「零广告支出」当成特斯拉产品力的证明来夸，2023 年股东会上改口要开始投广告，没有说明自己此前的判断哪里错了。"
+    },
+    {
+      "id": "musk-c007",
+      "kind": "walk",
+      "domain": "公司经营与财务",
+      "topic": "大学学历与招聘",
+      "a": {
+        "quote": "Well, first of all, you don't need college to learn stuff, OK? … Everything is available, basically for free. You can learn anything you want for free.",
+        "quote_zh": "首先，你不需要上大学来学东西，好吗？……所有东西基本上都是免费可得的。你想学什么都可以免费学。",
+        "date": "2020-03-09",
+        "url": "https://www.foxbusiness.com/technology/elon-musk-college"
+      },
+      "b": {
+        "quote": "many job postings at his company SpaceX require a bachelor's degree and say a master's degree is preferred",
+        "quote_zh": "他的公司 SpaceX 的很多招聘岗位要求学士学位，并注明硕士学位优先。",
+        "date": "2020-03-09",
+        "url": "https://www.theguardian.com/technology/2020/mar/10/elon-musk-college-for-fun-not-learning"
+      },
+      "explanation": null,
+      "proposed_label": "inconsistent",
+      "rationale": "他公开说不需要大学学历、自家招聘不该写「要求大学」，但同一场合被现场听众指出 SpaceX 的大量岗位仍然要求学士、优先硕士，言行相反。"
+    },
+    {
+      "id": "musk-c008",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "人工智能的生存风险",
+      "a": {
+        "quote": "Worth reading Superintelligence by Bostrom. We need to be super careful with AI. Potentially more dangerous than nukes.",
+        "quote_zh": "值得读一读波斯特洛姆的《超级智能》。我们对待 AI 必须极其小心。它可能比核武器更危险。",
+        "date": "2014-08-03",
+        "url": "https://www.theverge.com/2014/8/3/5965099/elon-musk-compares-artificial-intelligence-to-nukes"
+      },
+      "b": {
+        "quote": "it has the potential — however small one may regard that probability, but it is non-trivial — it has the potential of civilization destruction",
+        "quote_zh": "它有这种可能——不管你认为这个概率多小，但它并非微不足道——它有毁灭文明的可能。",
+        "date": "2023-04-17",
+        "url": "https://www.cnn.com/2023/04/17/tech/elon-musk-ai-warning-tucker-carlson"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2014 年说 AI 可能比核武器更危险，九年后仍然说 AI 有毁灭文明的可能，对 AI 生存风险的判断一以贯之。"
+    },
+    {
+      "id": "musk-c009",
+      "kind": "reaffirm",
+      "domain": "宏观经济与市场",
+      "topic": "人口崩溃与出生率",
+      "a": {
+        "quote": "The world's population is accelerating towards collapse, but few seem to notice or care",
+        "quote_zh": "全世界人口正在加速走向崩溃，但似乎很少有人注意到或在意。",
+        "date": "2017-12-26",
+        "url": "https://www.businessinsider.com/elon-musk-twins-children-underpopulation-crisis-birth-rate-shivon-zilis-2022-7"
+      },
+      "b": {
+        "quote": "Doing my best to help the underpopulation crisis … A collapsing birth rate is the biggest danger civilization faces by far",
+        "quote_zh": "我在尽我所能缓解人口不足的危机……出生率崩塌是文明面临的最大危险，没有之一。",
+        "date": "2022-07-07",
+        "url": "https://www.dailywire.com/news/doing-my-best-to-help-the-underpopulation-crisis-elon-musk-tweets-just-after-secret-twin-birth-revealed"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2017 年说世界人口在加速走向崩溃，2022 年仍称出生率崩塌是文明面临的最大危险，立场一致且措辞更强。"
+    },
+    {
+      "id": "musk-c010",
+      "kind": "reaffirm",
+      "domain": "航天",
+      "topic": "人类必须成为多行星物种",
+      "a": {
+        "quote": "The alternative is to become a space-faring civilization and a multi-planet species, which I hope you agree that is the right way to go.",
+        "quote_zh": "另一条路是成为一个跨星际的文明、一个多行星物种，我希望你们同意这才是该走的路。",
+        "date": "2016-09-27",
+        "url": "https://patricknielson.com/elon/talks/2016-09-27-making-humans-a-multiplanetary-species-mexico-city"
+      },
+      "b": {
+        "quote": "we don't want to be one of those lame one planet civilizations. I mean, we want to be a multi planet civilization, ultimately be a multi stellar civilization",
+        "quote_zh": "我们不想成为那种逊毙了的单行星文明。我是说，我们想成为多行星文明，最终成为跨恒星系的文明。",
+        "date": "2024-04-04",
+        "url": "https://elonmuskarchive.org/video/spacex-making-life-multiplanetary-2024-04-04"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2016 年 IAC 演讲把「成为多行星物种」当作人类该走的路，2024 年星舰发布会上仍用同样的理由（单行星文明会消亡）重申，立场八年不变。"
+    }
+  ]
+}

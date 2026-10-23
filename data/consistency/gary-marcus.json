@@ -1,0 +1,192 @@
+{
+  "person_id": "gary-marcus",
+  "collected_by": "cursor",
+  "collected_at": "2026-10-23",
+  "topics": [
+    { "topic": "神经符号／混合 AI 路线", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["gary-marcus-c001", "gary-marcus-c002"] },
+    { "topic": "靠扩大规模（scaling）能否通向 AGI", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["gary-marcus-c003"] },
+    { "topic": "大模型的幻觉与可靠性", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["gary-marcus-c004"] },
+    { "topic": "图灵测试作为智能标准", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["gary-marcus-c005"] },
+    { "topic": "自动驾驶的长尾（edge case）难题", "domain": "自动驾驶", "result": "pair", "pairs": ["gary-marcus-c006"] },
+    { "topic": "AI 导致人类灭绝的概率", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["gary-marcus-c007"] },
+    { "topic": "机器需要先天结构（innateness）", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["gary-marcus-c008"] },
+    { "topic": "AI 的首要风险是坏人滥用而非机器自主作恶", "domain": "AI 模型与 AGI", "result": "no_counterpart", "note": "2023 年 Marketplace 访谈里他明确说「更担心恶意的人而不是机器变恶意」，但后来相同口径的重申只找到播客／视频页面（castro.fm、exa.ai 的播客转录、YouTube），按规则不能用作出处，文字实录里没有找到相隔一年以上的同口径表态。" },
+    { "topic": "是否需要设立 AI 监管机构与国际治理", "domain": "AI 模型与 AGI", "result": "excluded", "note": "他在这个话题上的表态（「There's no question that we need regulation」、2023 年参议院作证、呼吁国际 AI 治理机构）都是对政府立法与监管政策的主张，按规则不收。" },
+    { "topic": "生成式 AI 泡沫会破裂", "domain": "宏观经济与市场", "result": "excluded", "note": "他关于「泡沫会破」「2024 年不会有 GPT-5」的说法都带可检验的时间期限，属于预测，应进兑现率而不是一致性。" }
+  ],
+  "pairs": [
+    {
+      "id": "gary-marcus-c001",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "神经符号／混合 AI 路线",
+      "a": {
+        "quote": "For at least four reasons, hybrid AI, not deep learning alone (nor symbols alone) seems the best way forward",
+        "quote_zh": "至少有四个理由说明，混合式 AI——而不是单靠深度学习（也不是单靠符号）——看起来是最好的前进方向。",
+        "date": "2022-03-10",
+        "url": "https://nautil.us/deep-learning-is-hitting-a-wall-238440/"
+      },
+      "b": {
+        "quote": "Let's bring in the cognitive scientists, and stop fantasizing that data and compute will solve all our problems. The time for neurosymbolic AI and world models and causality is now.",
+        "quote_zh": "让我们请认知科学家进场，别再幻想数据和算力能解决我们所有的问题。神经符号 AI、世界模型和因果性的时代，就是现在。",
+        "date": "2025-12-08",
+        "url": "https://garymarcus.substack.com/p/breaking-news-scale-is-all-you-need"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2022 年在 Nautilus 长文里主张混合式 AI 是最佳路径，三年九个月后在自己的 Substack 上仍然说「神经符号 AI、世界模型和因果性的时代就是现在」，立场完全一致。"
+    },
+    {
+      "id": "gary-marcus-c002",
+      "kind": "walk",
+      "domain": "AI 模型与 AGI",
+      "topic": "神经符号／混合 AI 路线",
+      "a": {
+        "quote": "I present ten concerns for deep learning, and suggest that deep learning must be supplemented by other techniques if we are to reach artificial general intelligence",
+        "quote_zh": "我提出了对深度学习的十点担忧，并指出：如果我们想达到通用人工智能，深度学习必须由其他技术来补充。",
+        "date": "2018-01-02",
+        "url": "https://arxiv.org/abs/1801.00631"
+      },
+      "b": {
+        "quote": "We will be synthesizing a wide range of advances in AI, including both deep learning and classical approaches, with a focus on building machines with a toolbox for common sense",
+        "quote_zh": "我们会综合 AI 领域各种各样的进展，既包括深度学习也包括经典方法，重点是造出带有一套常识工具箱的机器。",
+        "date": "2019-06-06",
+        "url": "https://techcrunch.com/2019/06/06/robust-ai-launches-to-build-an-industrial-grade-cognitive-platform-for-robots/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他 2018 年劝整个领域「深度学习必须由其他技术补充」，一年半后自己出来创业，Robust.AI 发布时公开说明公司要同时综合深度学习和经典（符号）方法来做常识工具箱，建议和自己的行动相符。"
+    },
+    {
+      "id": "gary-marcus-c003",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "靠扩大规模（scaling）能否通向 AGI",
+      "a": {
+        "quote": "More data makes for a better, more fluent approximation to language; it does not make for trustworthy intelligence.",
+        "quote_zh": "更多数据会让系统对语言的近似更好、更流畅；但它不会带来值得信赖的智能。",
+        "date": "2020-08-22",
+        "url": "https://www.technologyreview.com/2020/08/22/1007539/gpt3-openai-language-generator-artificial-intelligence-ai-opinion/"
+      },
+      "b": {
+        "quote": "First, the new scaling \"laws\" are very much like the first - they are empirical generalizations, not physical laws. Like the first generalization, the new ones will eventually run out.",
+        "quote_zh": "第一，新的那些扩展「定律」和第一条非常像——它们是经验性的概括，不是物理定律。和第一条概括一样，新的这些最终也会走到尽头。",
+        "date": "2024-11-24",
+        "url": "https://garymarcus.substack.com/p/a-new-ai-scaling-law-shell-game"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2020 年评 GPT-3 时就说加数据只会让语言近似更流畅、不会带来可信的智能，四年后业界改口谈「推理时扩展」，他仍然说这些扩展律只是经验概括、终会走到尽头，对 scaling 的判断没有变。"
+    },
+    {
+      "id": "gary-marcus-c004",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "大模型的幻觉与可靠性",
+      "a": {
+        "quote": "My fundamental view is that right now AI is not reliable. It's not something that you can use in an open-ended world.",
+        "quote_zh": "我的基本看法是，现在的 AI 并不可靠。它不是你能拿到一个开放世界里去用的东西。",
+        "date": "2019-02-15",
+        "url": "https://syncedreview.com/2019/02/15/ai-hasnt-found-its-isaac-newton-gary-marcus-on-deep-learning-defects-frenemy-yann-lecun/"
+      },
+      "b": {
+        "quote": "Hallucinations are still here, and aren't going away, anytime soon. LLMs still can't sanity check their own work",
+        "quote_zh": "幻觉还在，而且短期内不会消失。大语言模型仍然没法对自己的产出做基本的合理性核查。",
+        "date": "2025-05-24",
+        "url": "https://garymarcus.substack.com/p/ai-literacy-hallucinations-and-the"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2019 年接受采访时说现在的 AI 不可靠、不能放到开放世界里用，六年后在 Substack 上仍然说幻觉没有消失、大模型连自查都做不到，对可靠性问题的判断一以贯之。"
+    },
+    {
+      "id": "gary-marcus-c005",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "图灵测试作为智能标准",
+      "a": {
+        "quote": "allow me to propose a Turing Test for the twenty-first century: build a computer program that can watch any arbitrary TV program or YouTube video and answer questions about its content",
+        "quote_zh": "容我提出一个二十一世纪版的图灵测试：造一个能看任意电视节目或 YouTube 视频、并回答关于其内容的问题的程序。",
+        "date": "2014-06-09",
+        "url": "https://www.newyorker.com/tech/annals-of-technology/what-comes-after-the-turing-test"
+      },
+      "b": {
+        "quote": "Few people in the AI community take the Turing Test seriously, and few people should. … Fooling people for a few minutes is not the measure of intelligence, and never was.",
+        "quote_zh": "AI 圈里很少有人把图灵测试当真，也本该很少有人当真。……骗过人几分钟不是智能的衡量标准，从来都不是。",
+        "date": "2025-04-02",
+        "url": "https://garymarcus.substack.com/p/ai-has-sort-of-passed-the-turing"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2014 年在《纽约客》上说图灵测试该被一个「看视频答问题」的理解力挑战取代，十一年后大模型「通过」图灵测试时，他仍然说图灵测试不值得当真、骗过人几分钟不算智能，立场未变。"
+    },
+    {
+      "id": "gary-marcus-c006",
+      "kind": "reaffirm",
+      "domain": "自动驾驶",
+      "topic": "自动驾驶的长尾（edge case）难题",
+      "a": {
+        "quote": "Driverless cars are like a scientific experiment where we don't know the answer … They're leaning on the big data because that's the crutch that they have, but there's no proof that ever gets you to the level of precision that we need.",
+        "quote_zh": "无人驾驶汽车就像一个我们还不知道答案的科学实验……他们靠大数据，因为那是他们手上的拐杖，但没有任何证据表明那样能达到我们需要的精度。",
+        "date": "2018-07-03",
+        "url": "https://www.theverge.com/2018/7/3/17530232/self-driving-ai-winter-full-autonomy-waymo-tesla-uber"
+      },
+      "b": {
+        "quote": "That problem, which I have emphasized dozens of times over the last several years, is edge cases, out-of-the-ordinary circumstances that often confound machine learning algorithms. … Nobody has yet figured out how to build a driverless car that can deal with that fact.",
+        "quote_zh": "这个问题，就是我过去几年里强调过几十次的长尾情形——那些常常让机器学习算法失手的非常规状况。……还没有人想出怎么造一辆能应对这个现实的无人驾驶汽车。",
+        "date": "2023-08-19",
+        "url": "https://garymarcus.substack.com/p/face-it-self-driving-cars-still-havent"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2018 年他说无人驾驶是答案未知的科学实验、靠大数据这根拐杖到不了所需精度，五年后仍然说长尾情形是没被解决的核心问题、没人造出能应对它的车，立场一致。"
+    },
+    {
+      "id": "gary-marcus-c007",
+      "kind": "reversal",
+      "domain": "AI 模型与 AGI",
+      "topic": "AI 导致人类灭绝的概率",
+      "a": {
+        "quote": "I am not all that worried about humans going extinct anytime very soon. It's hard for me to construct a realistic scenario of literal, full-on extinction that I take seriously.",
+        "quote_zh": "我并不怎么担心人类在很近的将来灭绝。我很难构造出一个我自己会当真的、字面意义上彻底灭绝的现实场景。",
+        "date": "2023-08-27",
+        "url": "https://garymarcus.substack.com/p/d28"
+      },
+      "b": {
+        "quote": "My p(doom) is still lower than most industry people's. I am at maybe 3% now, much higher than a month ago",
+        "quote_zh": "我的 p(doom) 仍然比业内大多数人低。我现在大概是 3%，比一个月前高出很多。",
+        "date": "2025-07-15",
+        "url": "https://garymarcus.substack.com/p/why-my-pdoom-has-risen-dramatically"
+      },
+      "explanation": {
+        "quote": "But a number of connected events over the last several days have caused me to update my beliefs.",
+        "quote_zh": "但过去几天里一连串相互关联的事件，让我更新了自己的判断。",
+        "date": "2025-07-15",
+        "url": "https://garymarcus.substack.com/p/why-my-pdoom-has-risen-dramatically"
+      },
+      "proposed_label": "consistent",
+      "rationale": "2023 年他说灭绝风险「微乎其微」、自己构造不出当真的灭绝场景，2025 年把 p(doom) 上调到 3%、承认存在真实风险，是明确的转向；但他在同一篇文章里公开说明了改变理由（最近一连串事件让他更新了判断），属于说明了理由的翻转。"
+    },
+    {
+      "id": "gary-marcus-c008",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "机器需要先天结构（innateness）",
+      "a": {
+        "quote": "I close by arguing that artificial intelligence needs greater attention to innateness, and I point to some proposals about what that innateness might look like",
+        "quote_zh": "最后我论证说，人工智能需要更重视先天性，并给出了关于这种先天性可能是什么样子的一些设想。",
+        "date": "2018-01-17",
+        "url": "https://arxiv.org/abs/1801.05667"
+      },
+      "b": {
+        "quote": "I have long argued that models need to innately be more structured than pure multilayer perceptions, even prior to learning.",
+        "quote_zh": "我长期以来一直主张，模型在学习之前就需要在先天上比纯粹的多层感知机更有结构。",
+        "date": "2024-06-04",
+        "url": "https://garymarcus.substack.com/p/open-letter-responding-to-yann-lecun"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2018 年的论文结论就是「AI 需要更重视先天性」，六年后给 LeCun 的公开信里仍然说模型在学习之前就该有更多先天结构，立场一致。"
+    }
+  ]
+}

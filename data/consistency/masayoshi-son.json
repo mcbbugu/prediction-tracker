@@ -1,0 +1,219 @@
+{
+  "person_id": "masayoshi-son",
+  "collected_by": "cursor",
+  "collected_at": "2026-10-23",
+  "topics": [
+    { "topic": "把 LTV 控制在 25% 以下的财务纪律", "domain": "公司经营与财务", "result": "pair", "pairs": ["masayoshi-son-c001", "masayoshi-son-c002"] },
+    { "topic": "市场下行时转入防守、囤积现金", "domain": "公司经营与财务", "result": "pair", "pairs": ["masayoshi-son-c003"] },
+    { "topic": "60 多岁把经营交给接班人", "domain": "公司经营与财务", "result": "pair", "pairs": ["masayoshi-son-c004"] },
+    { "topic": "信息革命／AI 革命才刚开始，不是泡沫", "domain": "宏观经济与市场", "result": "pair", "pairs": ["masayoshi-son-c005"] },
+    { "topic": "2019 年卖掉英伟达股份是个错误", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["masayoshi-son-c006"] },
+    { "topic": "Arm 是集团的核心资产", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["masayoshi-son-c007"] },
+    { "topic": "ASI 时代要押注机器人（物理 AI）", "domain": "机器人", "result": "pair", "pairs": ["masayoshi-son-c008"] },
+    { "topic": "全部身家押在 ASI 与 OpenAI 上", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["masayoshi-son-c009"] },
+    { "topic": "AI 需要立规矩来防止滥用", "domain": "AI 模型与 AGI", "result": "excluded", "note": "2023 年 CEO 寄语主张「the world needs to discuss regulation to prevent such abuse」，属于政府监管政策立场，按规则不收" },
+    { "topic": "把软银设计成能持续成长 300 年的组织", "domain": "公司经营与财务", "result": "no_counterpart", "note": "只在 2021 年 CEO 寄语里找到本人这一次明确表态（SBG can continue to grow for 300 years）；官网可持续发展页有署名的同类表述但页面没有可核验的日期，2022 年之后的 CEO 寄语里再没出现过 300 年的说法，无法构成可定日期的前后对照" },
+    { "topic": "阿里巴巴被低估、内在价值更高", "domain": "互联网平台", "result": "no_counterpart", "note": "2022-08-08 电话会上他说过「Alibaba is oversold, I think」，但此后软银减持至几乎清仓的过程只在财报附注和媒体报道里，没有找到能逐字核对、且明确对应这次减持动作的官方页面原句，故不出对照" }
+  ],
+  "pairs": [
+    {
+      "id": "masayoshi-son-c001",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "把 LTV 控制在 25% 以下的财务纪律",
+      "a": {
+        "quote": "Our financial policy is to keep the LTV ratio below 25% in normal times with an upper threshold of 35% in times of emergency.",
+        "quote_zh": "我们的财务政策是：平时把 LTV（贷款价值比）保持在 25% 以下，紧急时期的上限是 35%。",
+        "date": "2022-07-27",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2022/message/son"
+      },
+      "b": {
+        "quote": "We remain committed to our benchmark for financial health, which is to keep Loan to Value…below 25% during normal market conditions.",
+        "quote_zh": "我们仍然坚持衡量财务健康的那条标准：在正常市场环境下，把贷款价值比（LTV）保持在 25% 以下。",
+        "date": "2024-06-21",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2024/message/son"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔近两年，两次给股东的 CEO 寄语里讲的是同一条自设财务纪律：正常情况下 LTV 不超过 25%，立场没变。"
+    },
+    {
+      "id": "masayoshi-son-c002",
+      "kind": "walk",
+      "domain": "公司经营与财务",
+      "topic": "把 LTV 控制在 25% 以下的财务纪律",
+      "a": {
+        "quote": "We will take a dynamic approach, accepting that the journey will not be entirely smooth. We will never skimp on risk management.",
+        "quote_zh": "我们会用一种动态的打法，接受这条路不会一帆风顺。但我们在风险管理上绝不会打折扣。",
+        "date": "2024-06-21",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2024/message/son"
+      },
+      "b": {
+        "quote": "Given that our pro forma LTV as of today has improved to around 15%, we believe SoftBank Group has meaningful debt capacity.",
+        "quote_zh": "鉴于我们今天的备考 LTV 已经改善到 15% 左右，我们认为软银集团还有相当可观的举债空间。",
+        "date": "2026-05-13",
+        "url": "https://group.softbank/media/Project/sbg/sbg/pdf/ir/presentations/2025/earnings-conference-call_q4fy2025_01_en.pdf"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他说绝不在风险管理上打折扣、要把 LTV 压在 25% 以下；在 OpenAI、ABB、数据中心等大额投入之后，公司 2026 年 5 月披露的备考 LTV 仍只有 15% 左右，言行相符。"
+    },
+    {
+      "id": "masayoshi-son-c003",
+      "kind": "reversal",
+      "domain": "公司经营与财务",
+      "topic": "市场下行时转入防守、囤积现金",
+      "a": {
+        "quote": "We are in the defense mode, meaning we have to pile up cash. That's my defense move.",
+        "quote_zh": "我们正处在防守模式，意思是我们必须把现金堆起来。这就是我的防守动作。",
+        "date": "2022-08-08",
+        "url": "https://group.softbank/media/Project/sbg/sbg/pdf/ir/presentations/2022/earnings-conference-call_q1fy2022_01.pdf"
+      },
+      "b": {
+        "quote": "As such, the time has come for our Group to go on the offensive. We could not be more ready.",
+        "quote_zh": "因此，集团转入进攻的时候到了。我们已经再准备不过了。",
+        "date": "2023-07-27",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2023/message/son"
+      },
+      "explanation": {
+        "quote": "In fiscal 2022, we took a defensive stance by monetizing assets and massively curtailing investments.…In other words, we now have the solid financial footing we need to play offense.",
+        "quote_zh": "2022 财年我们采取了防守姿态，变现资产并大幅收缩投资。……换句话说，我们现在已经有了打进攻所需要的稳固财务基础。",
+        "date": "2023-07-27",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2023/message/son"
+      },
+      "proposed_label": "consistent",
+      "rationale": "2022 年 8 月他说要防守、囤现金；不到一年后改口说该转入进攻。他在同一篇寄语里公开交代了理由：防守一年之后现金超过 5 万亿日元、LTV 降到 11%，已经具备进攻的财务基础，属于说明了改变原因的翻转。"
+    },
+    {
+      "id": "masayoshi-son-c004",
+      "kind": "reversal",
+      "domain": "公司经营与财务",
+      "topic": "60 多岁把经营交给接班人",
+      "a": {
+        "quote": "I believe that I must identify a successor candidate during my 60s who will gradually take over the management of the company.",
+        "quote_zh": "我认为我必须在六十多岁这十年里找到接班人人选，由他逐步接手公司的经营。",
+        "date": "2021-07-01",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2021/message/son"
+      },
+      "b": {
+        "quote": "I have decided to update my 50-year life plan to continue taking on challenges into my 70s.",
+        "quote_zh": "我已经决定更新我的五十年人生计划，把挑战继续做到七十多岁。",
+        "date": "2026-06-24",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2026/message/son"
+      },
+      "explanation": {
+        "quote": "But now, at the age of 68, I find myself wanting to do more. I believe I have more to give to the growth of SBG and can continue working hard for another 10 or 15 years.",
+        "quote_zh": "但现在，六十八岁的我发现自己还想做更多。我相信我还能为软银集团的成长出更多力，还能再拼十到十五年。",
+        "date": "2026-06-24",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2026/message/son"
+      },
+      "proposed_label": "consistent",
+      "rationale": "2021 年他说必须在六十多岁找到接班人并逐步交棒；2026 年他明说要把人生计划改到七十多岁继续干。翻转是明确的，但他自己承认改了计划并给出了理由（还想做更多、还能再干十到十五年）。"
+    },
+    {
+      "id": "masayoshi-son-c005",
+      "kind": "reaffirm",
+      "domain": "宏观经济与市场",
+      "topic": "信息革命／AI 革命才刚开始，不是泡沫",
+      "a": {
+        "quote": "This is the third major stock price correction, but I have no doubt the market will grow again. My beliefs and vision have not budged one bit.",
+        "quote_zh": "这是第三次大的股价回调，但我毫不怀疑市场会再次成长。我的信念和愿景一分一毫都没有动摇。",
+        "date": "2022-07-27",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2022/message/son"
+      },
+      "b": {
+        "quote": "Some people say there is an AI bubble. I disagree. The AI revolution has only just begun.",
+        "quote_zh": "有人说现在有 AI 泡沫。我不同意。AI 革命才刚刚开始。",
+        "date": "2026-06-24",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2026/message/son"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔近四年，一次是在 2022 年科技股大跌时说信念没动摇、市场还会长，一次是在 2026 年泡沫论最响时说自己不同意、革命才刚开始，是同一立场的重申。"
+    },
+    {
+      "id": "masayoshi-son-c006",
+      "kind": "walk",
+      "domain": "AI 芯片与算力",
+      "topic": "2019 年卖掉英伟达股份是个错误",
+      "a": {
+        "quote": "I had to tearfully sell the shares…The fish that got away was big.",
+        "quote_zh": "我是含着泪把那些股票卖掉的……逃掉的那条鱼很大。",
+        "date": "2024-06-21",
+        "url": "https://fortune.com/2024/06/21/nvidia-stock-ai-chips-softbank-vision-fund/"
+      },
+      "b": {
+        "quote": "Regarding the sale of NVIDIA shares, this was utilized to secure funds for our various initiatives, especially our significant $30 billion investment in OpenAI.",
+        "quote_zh": "关于出售英伟达股份，这笔钱是用来为我们的各项计划筹资的，尤其是我们那笔 300 亿美元的 OpenAI 投资。",
+        "date": "2025-11-11",
+        "url": "https://group.softbank/media/Project/sbg/sbg/pdf/ir/presentations/2025/earnings-conference-call_q2fy2025_01_en.pdf"
+      },
+      "explanation": null,
+      "proposed_label": "inconsistent",
+      "rationale": "2024 年 6 月他在股东大会上把 2019 年清仓英伟达说成含泪卖出、逃掉的大鱼；一年多后软银又把重新建起来的英伟达持股全部卖光。公司给出的理由是为 OpenAI 的 300 亿美元投资筹钱，但行动方向与他公开表达的悔意相反。"
+    },
+    {
+      "id": "masayoshi-son-c007",
+      "kind": "reaffirm",
+      "domain": "AI 芯片与算力",
+      "topic": "Arm 是集团的核心资产",
+      "a": {
+        "quote": "I believe Arm will be at the very core of the Group.",
+        "quote_zh": "我相信 Arm 会处在集团最核心的位置。",
+        "date": "2022-07-27",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2022/message/son"
+      },
+      "b": {
+        "quote": "Arm has overwhelming strength in semiconductor design intellectual property, the core technology for CPUs.",
+        "quote_zh": "Arm 在半导体设计知识产权——也就是 CPU 的核心技术——上有压倒性的优势。",
+        "date": "2026-06-24",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2026/message/son"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔四年，他仍把 Arm 放在集团战略的核心位置，2026 年进一步说 Arm 在 CPU 核心技术上有压倒性优势，立场一致。"
+    },
+    {
+      "id": "masayoshi-son-c008",
+      "kind": "walk",
+      "domain": "机器人",
+      "topic": "ASI 时代要押注机器人（物理 AI）",
+      "a": {
+        "quote": "One day, ASI-powered smart robots will perform all kinds of physical tasks on our behalf, including manufacturing, transportation, construction, and housework.",
+        "quote_zh": "总有一天，由 ASI 驱动的智能机器人会替我们完成各种体力工作，包括制造、运输、建筑和家务。",
+        "date": "2024-06-21",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2024/message/son"
+      },
+      "b": {
+        "quote": "SBG plans to acquire, through a subsidiary, all shares of this holding company from ABB for a total purchase price of USD 5.375 billion.",
+        "quote_zh": "软银集团计划通过一家子公司，以总计 53.75 亿美元的价格从 ABB 手中收购这家控股公司的全部股份。",
+        "date": "2025-10-08",
+        "url": "https://group.softbank/en/news/press/20251008"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他 2024 年说 ASI 驱动的机器人会接管各类体力工作、集团正在投机器人；一年多后软银真的拿出 53.75 亿美元买下 ABB 的工业机器人业务，言行相符。"
+    },
+    {
+      "id": "masayoshi-son-c009",
+      "kind": "walk",
+      "domain": "AI 模型与 AGI",
+      "topic": "全部身家押在 ASI 与 OpenAI 上",
+      "a": {
+        "quote": "I am going all in—staking everything on the world of ASI.",
+        "quote_zh": "我要全押——把一切都压在 ASI 这个世界上。",
+        "date": "2025-06-27",
+        "url": "https://group.softbank/en/ir/financials/annual_reports/2025/message/son"
+      },
+      "b": {
+        "quote": "As of July, we completed $20B in follow-on investment as part of our latest $30B commitment. By October, this commitment will be fulfilled, taking our total ownership stake to around 13%.",
+        "quote_zh": "截至 7 月，作为最新那笔 300 亿美元承诺的一部分，我们已经完成了 200 亿美元的追加投资。到 10 月这笔承诺将全部兑现，我们的总持股比例将达到 13% 左右。",
+        "date": "2026-08-06",
+        "url": "https://group.softbank/media/Project/sbg/sbg/pdf/ir/presentations/2026/transcript_cfo_ciso_q1fy2026_en.pdf"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他 2025 年说要把一切都押在 ASI 上、把 OpenAI 和 Arm 当两台引擎；到 2026 年 8 月软银已经实际付掉 200 亿美元追加投资、年内兑现 300 亿美元承诺并把 OpenAI 持股推到约 13%，言行相符。"
+    }
+  ]
+}

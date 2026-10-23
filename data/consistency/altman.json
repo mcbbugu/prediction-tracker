@@ -1,0 +1,209 @@
+{
+  "person_id": "altman",
+  "collected_by": "cursor",
+  "collected_at": "2026-10-23",
+  "topics": [
+    { "topic": "超级机器智能的生存性风险", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["altman-c001"] },
+    { "topic": "AI 把智能与商品成本推向极低", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["altman-c002"] },
+    { "topic": "算力是未来的货币，应大举投入", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["altman-c003"] },
+    { "topic": "把资源集中在少数高确信度的赌注上", "domain": "公司经营与财务", "result": "pair", "pairs": ["altman-c004"] },
+    { "topic": "ChatGPT 的商业模式与广告", "domain": "互联网平台", "result": "pair", "pairs": ["altman-c005"] },
+    { "topic": "让人不停下刷的推荐流", "domain": "互联网平台", "result": "pair", "pairs": ["altman-c006"] },
+    { "topic": "继续把模型做大（scaling）", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["altman-c007"] },
+    { "topic": "开放权重模型", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["altman-c008"] },
+    { "topic": "聚变是能源问题的答案", "domain": "能源", "result": "pair", "pairs": ["altman-c009"] },
+    { "topic": "靠拥有资产变富，而不是出卖时间", "domain": "公司经营与财务", "result": "no_counterpart", "note": "只找到 2019-01-24《How To Be Successful》第 12 条这一次明确表态；此后公开检索到的都是媒体对同一篇文章的转载与摘要（Forbes 2023、HT Tech 2024 等），没有找到相隔一年以上的本人重申，也没找到与之相反的表态或行动" },
+    { "topic": "政府应如何监管 AI、以及如何分配 AI 带来的财富", "domain": "AI 模型与 AGI", "result": "excluded", "note": "政府政策立场，按规则不收：2015《Machine intelligence, part 2》主张政府立法监管 SMI；2021《Moore's Law for Everything》主张资本税 + 全民分红（American Equity Fund）" }
+  ],
+  "pairs": [
+    {
+      "id": "altman-c001",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "超级机器智能的生存性风险",
+      "a": {
+        "quote": "Development of superhuman machine intelligence (SMI) [1] is probably the greatest threat to the continued existence of humanity.",
+        "quote_zh": "超人类机器智能（SMI）的发展，很可能是人类能否继续存在所面临的最大威胁。",
+        "date": "2015-02-25",
+        "url": "https://blog.samaltman.com/machine-intelligence-part-1"
+      },
+      "b": {
+        "quote": "It will not all go well. The fear and anxiety about AI is justified; we are in the process of witnessing the largest change to society in a long time, and perhaps ever. We have to get safety right",
+        "quote_zh": "事情不会全都顺利。对 AI 的恐惧和焦虑是有道理的；我们正在见证社会很长时间以来、也许是有史以来最大的一次变化。我们必须把安全这件事做对",
+        "date": "2026-04-10",
+        "url": "https://blog.samaltman.com/2279512"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔十一年，仍然公开认为 AI 带来的风险是真实且严重的、安全必须做对，立场方向没变（强度上 2015 年更极端）。"
+    },
+    {
+      "id": "altman-c002",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "AI 把智能与商品成本推向极低",
+      "a": {
+        "quote": "AI will lower the cost of goods and services, because labor is the driving cost at many levels of the supply chain.",
+        "quote_zh": "AI 会降低商品和服务的成本，因为在供应链的许多环节上，劳动力都是主要成本。",
+        "date": "2021-03-16",
+        "url": "https://moores.samaltman.com/"
+      },
+      "b": {
+        "quote": "As datacenter production gets automated, the cost of intelligence should eventually converge to near the cost of electricity.",
+        "quote_zh": "随着数据中心的生产被自动化，智能的成本最终应该会收敛到接近电力的成本。",
+        "date": "2025-06-10",
+        "url": "https://blog.samaltman.com/the-gentle-singularity"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔四年多，两次都主张 AI 会把成本（商品服务、智能本身）压到极低，是同一立场的重申。"
+    },
+    {
+      "id": "altman-c003",
+      "kind": "reaffirm",
+      "domain": "AI 芯片与算力",
+      "topic": "算力是未来的货币，应大举投入",
+      "a": {
+        "quote": "Look, I think compute is going to be the currency of the future. I think it will be maybe the most precious commodity in the world, and I think we should be investing heavily to make a lot more compute.",
+        "quote_zh": "听着，我认为算力会成为未来的货币。我认为它可能会是世界上最珍贵的商品，而且我认为我们应该大举投资，造出多得多的算力。",
+        "date": "2024-03-18",
+        "url": "https://lexfridman.com/sam-altman-2-transcript"
+      },
+      "b": {
+        "quote": "Our vision is simple: we want to create a factory that can produce a gigawatt of new AI infrastructure every week.",
+        "quote_zh": "我们的愿景很简单：我们想建一座工厂，每周能产出一吉瓦的新 AI 基础设施。",
+        "date": "2025-09-23",
+        "url": "https://blog.samaltman.com/abundant-intelligence"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔一年半，仍然主张要极大规模地增加算力供给，立场一致。"
+    },
+    {
+      "id": "altman-c004",
+      "kind": "reaffirm",
+      "domain": "公司经营与财务",
+      "topic": "把资源集中在少数高确信度的赌注上",
+      "a": {
+        "quote": "Most people get bogged down in linear opportunities. Be willing to let small opportunities go to focus on potential step changes.",
+        "quote_zh": "大多数人都被线性的机会拖住了。要愿意放掉小机会，去专注那些可能带来阶跃式变化的事。",
+        "date": "2019-01-24",
+        "url": "https://blog.samaltman.com/how-to-be-successful"
+      },
+      "b": {
+        "quote": "Concentrate your resources on a small number of high-conviction bets; this is easy to say but evidently hard to do.",
+        "quote_zh": "把资源集中在少数几个高确信度的赌注上；这话说起来容易，但显然很难做到。",
+        "date": "2023-12-21",
+        "url": "https://blog.samaltman.com/what-i-wish-someone-had-told-me"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "相隔近五年，给创业者的建议还是同一条：舍弃小机会、把资源压在少数高确信度的大赌注上。"
+    },
+    {
+      "id": "altman-c005",
+      "kind": "walk",
+      "domain": "互联网平台",
+      "topic": "ChatGPT 的商业模式与广告",
+      "a": {
+        "quote": "I kind of hate ads just as an aesthetic choice. I think ads needed to happen on the internet for a bunch of reasons, to get it going, but it's a momentary industry.",
+        "quote_zh": "单纯从审美上说，我挺讨厌广告的。我认为出于一堆原因，广告在互联网上必须出现过，好让互联网跑起来，但它是个阶段性的行业。",
+        "date": "2024-03-18",
+        "url": "https://lexfridman.com/sam-altman-2-transcript"
+      },
+      "b": {
+        "quote": "Today, we're beginning to test ads in ChatGPT in the U.S.",
+        "quote_zh": "今天，我们开始在美国测试 ChatGPT 里的广告。",
+        "date": "2026-02-09",
+        "url": "https://openai.com/index/testing-ads-in-chatgpt/"
+      },
+      "explanation": null,
+      "proposed_label": "inconsistent",
+      "rationale": "他说讨厌广告、认为广告是阶段性行业，还说不靠广告也能养得起算力开销；不到两年后他掌管的 OpenAI 就在 ChatGPT 里开始投放广告。"
+    },
+    {
+      "id": "altman-c006",
+      "kind": "walk",
+      "domain": "互联网平台",
+      "topic": "让人不停下刷的推荐流",
+      "a": {
+        "quote": "social media feeds are an example of misaligned AI; the algorithms that power those are incredible at getting you to keep scrolling and clearly understand your short-term preferences",
+        "quote_zh": "社交媒体的信息流就是错位 AI 的一个例子；驱动它们的算法极其擅长让你不停往下刷，并且清楚地理解你的短期偏好",
+        "date": "2025-06-10",
+        "url": "https://blog.samaltman.com/the-gentle-singularity"
+      },
+      "b": {
+        "quote": "We are launching a new app called Sora. This is a combination of a new model called Sora 2, and a new product that makes it easy to create, share, and view videos.",
+        "quote_zh": "我们正在推出一个叫 Sora 的新应用。它是一个叫 Sora 2 的新模型，加上一个让人能轻松创作、分享和观看视频的新产品的组合。",
+        "date": "2025-09-30",
+        "url": "https://blog.samaltman.com/sora-2"
+      },
+      "explanation": null,
+      "proposed_label": "inconsistent",
+      "rationale": "六月他把「让你不停下刷」的社交信息流当成错位 AI 的典型反例，九月他的公司就上线了以 AI 视频信息流为核心的 Sora 应用；他在发布文里确实预先承认了「slop feed」的风险并列了若干原则，但行动方向与此前的批评相反。"
+    },
+    {
+      "id": "altman-c007",
+      "kind": "reversal",
+      "domain": "AI 模型与 AGI",
+      "topic": "继续把模型做大（scaling）",
+      "a": {
+        "quote": "I think we're at the end of the era where it's gonna be these giant models, and we'll make them better in other ways",
+        "quote_zh": "我认为我们已经走到那个时代的尾声了——靠这些巨型模型的时代；我们会用别的方式把它们做得更好。",
+        "date": "2023-04-13",
+        "url": "https://techcrunch.com/2023/04/14/sam-altman-size-of-llms-wont-matter-as-much-moving-forward/"
+      },
+      "b": {
+        "quote": "It appears that you can spend arbitrary amounts of money and get continuous and predictable gains; the scaling laws that predict this are accurate over many orders of magnitude.",
+        "quote_zh": "看起来你可以投入任意多的钱，并得到连续且可预测的收益；预测这一点的缩放定律在很多个数量级上都是准确的。",
+        "date": "2025-02-09",
+        "url": "https://blog.samaltman.com/three-observations"
+      },
+      "explanation": null,
+      "proposed_label": "inconsistent",
+      "rationale": "2023 年他说靠堆规模的时代已经结束、要换别的办法变强；2025 年他改口说只要砸钱堆资源就能持续且可预测地变强、缩放定律跨多个数量级都成立。没有公开说明自己为什么改变看法。"
+    },
+    {
+      "id": "altman-c008",
+      "kind": "walk",
+      "domain": "AI 模型与 AGI",
+      "topic": "开放权重模型",
+      "a": {
+        "quote": "I personally think we have been on the wrong side of history here and need to figure out a different open source strategy",
+        "quote_zh": "我个人认为我们在这件事上一直站在了历史错误的一边，需要想出一个不同的开源策略。",
+        "date": "2025-01-31",
+        "url": "https://simonwillison.net/2025/Feb/2/sam-altman/"
+      },
+      "b": {
+        "quote": "OpenAI announced Tuesday the launch of two open-weight AI reasoning models with similar capabilities to its o-series",
+        "quote_zh": "OpenAI 周二宣布推出两个开放权重的 AI 推理模型，能力与其 o 系列相近",
+        "date": "2025-08-05",
+        "url": "https://techcrunch.com/2025/08/05/openai-launches-two-open-ai-reasoning-models/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他 1 月说自己站错了队、要换一个开源策略；半年后 OpenAI 真的放出了两个可自由下载的开放权重模型（gpt-oss），言行相符。"
+    },
+    {
+      "id": "altman-c009",
+      "kind": "walk",
+      "domain": "能源",
+      "topic": "聚变是能源问题的答案",
+      "a": {
+        "quote": "I think Helion's doing the best work, but I'm happy there's a race for fusion right now. Nuclear fission, I think, is also quite amazing, and I hope as a world we can re-embrace that.",
+        "quote_zh": "我认为 Helion 做得最好，但我很高兴现在有一场聚变竞赛。我觉得核裂变也相当了不起，希望全世界能重新接纳它。",
+        "date": "2024-03-18",
+        "url": "https://lexfridman.com/sam-altman-2-transcript"
+      },
+      "b": {
+        "quote": "existing investors including Sam Altman, Mithril Capital, Capricorn Investment Group, Dustin Moskovitz through Good Ventures Foundation, and Nucor",
+        "quote_zh": "参与的老股东包括 Sam Altman、Mithril Capital、Capricorn Investment Group、通过 Good Ventures Foundation 参与的 Dustin Moskovitz，以及 Nucor",
+        "date": "2025-01-28",
+        "url": "https://www.helionenergy.com/newsroom/helion-announces-425m-series-f-investment-to-scale-commercialized-fusion-power"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他公开说聚变是能源问题的答案、Helion 做得最好；十个月后 Helion 的 4.25 亿美元 F 轮里他本人作为老股东继续出资，言行相符。"
+    }
+  ]
+}

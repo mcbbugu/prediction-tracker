@@ -1,0 +1,232 @@
+{
+  "person_id": "ray-kurzweil",
+  "collected_by": "cursor",
+  "collected_at": "2026-10-23",
+  "topics": [
+    { "topic": "技术进步是指数级的（加速回报定律）", "domain": "AI 芯片与算力", "result": "pair", "pairs": ["ray-kurzweil-c001"] },
+    { "topic": "反对大范围放弃或叫停先进技术研发", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["ray-kurzweil-c002"] },
+    { "topic": "人类应把大脑新皮层与云端／AI 融合", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["ray-kurzweil-c003"] },
+    { "topic": "「人类对抗 AI」是错误的叙事", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["ray-kurzweil-c004"] },
+    { "topic": "靠每天大量服用营养补充剂「重编程生化」", "domain": "生物科技与医疗", "result": "pair", "pairs": ["ray-kurzweil-c005", "ray-kurzweil-c006"] },
+    { "topic": "人体冷冻作为备选方案", "domain": "生物科技与医疗", "result": "pair", "pairs": ["ray-kurzweil-c007"] },
+    { "topic": "用逝者留下的文字重建逝者", "domain": "AI 模型与 AGI", "result": "pair", "pairs": ["ray-kurzweil-c008"] },
+    { "topic": "世界在变好，技术大幅改善了人类处境", "domain": "宏观经济与市场", "result": "pair", "pairs": ["ray-kurzweil-c009"] },
+    { "topic": "膳食脂肪该占多少热量", "domain": "生物科技与医疗", "result": "pair", "pairs": ["ray-kurzweil-c010"] },
+    { "topic": "碱性水、绿茶等日常养生做法", "domain": "生物科技与医疗", "result": "no_counterpart", "note": "只在 2004—2005 年《Fantastic Voyage》前后的报道里找到他本人描述这套做法（每天 8—10 杯碱性水、10 杯绿茶），之后二十年没有找到他本人再次表态，也没有找到相反的公开行动。" },
+    { "topic": "纳米机器人进入血液、连接大脑与云端", "domain": "生物科技与医疗", "result": "no_counterpart", "note": "他关于纳米机器人的表述基本都带时间点（「2030 年代」「2020 年代」），属于带期限的预测；剥掉时间点后剩下的部分与「人类应把新皮层与云端融合」是同一个话题，已在 c003 里记录，这里不重复出一条对照。" },
+    { "topic": "2029 年通过图灵测试、2045 年奇点", "domain": "AI 模型与 AGI", "result": "excluded", "note": "带可检验后果和明确期限，属于预测，按规则不收。" },
+    { "topic": "太阳能将满足人类全部能源需求", "domain": "能源", "result": "excluded", "note": "他的表述一律带期限（「十年内超过 100%」「满足 2030 年的能源需求」），属于预测，按规则不收。" }
+  ],
+  "pairs": [
+    {
+      "id": "ray-kurzweil-c001",
+      "kind": "reaffirm",
+      "domain": "AI 芯片与算力",
+      "topic": "技术进步是指数级的（加速回报定律）",
+      "a": {
+        "quote": "This phenomenon, which I call the \u201Claw of accelerating returns,\u201D does not rely on a mere assumption of the continuation of Moore\u2019s Law, which predicts, in effect, the quadrupling of computer power every 24 months.",
+        "quote_zh": "这个现象，我称之为「加速回报定律」，它并不只是建立在摩尔定律会延续下去这个假设之上——摩尔定律预言的实际上是计算机算力每 24 个月翻两番。",
+        "date": "2000-10-23",
+        "url": "https://www.cs.ucdavis.edu/~rogaway/classes/188/materials/kurzweil.pdf"
+      },
+      "b": {
+        "quote": "Regardless of what we were increasing\u2014relay speeds or vacuum tube speeds or integrated circuits\u2014it increased by the same amount every year for 80 years\u2026But economists still do not understand that technology progresses exponentially, which is amazing, because it\u2019s right there, and it really is animating everything we do.",
+        "quote_zh": "不管我们当时在提升什么——继电器速度、真空管速度还是集成电路——它连续 80 年每年都以同样的幅度增长……可是经济学家至今仍然不理解技术是指数级前进的，这很惊人，因为它就摆在那儿，而且它确实在驱动我们做的每一件事。",
+        "date": "2024-03-11",
+        "url": "https://www.bvp.com/atlas/ai-escape-velocity-a-conversation-with-ray-kurzweil"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2000 年回应 Bill Joy 的文章里提出「加速回报定律」，说技术变化至少是指数级的、并不依赖摩尔定律；24 年后在 Bessemer 的对谈里仍用同一张算力曲线讲同一件事，立场未变。"
+    },
+    {
+      "id": "ray-kurzweil-c002",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "反对大范围放弃或叫停先进技术研发",
+      "a": {
+        "quote": "Nevertheless, I do reject Joy\u2019s call for relinquishing broad areas of technology\u2014for example, nanotechnology.\u2026Abandonment of broad areas of technology will only push these technologies underground where development would continue unimpeded by ethics or regulation.",
+        "quote_zh": "不过，我确实不接受 Joy 那种放弃大片技术领域的主张——比如纳米技术。……放弃大片技术领域只会把这些技术逼入地下，在那里研发会继续进行，而且不受伦理和监管的约束。",
+        "date": "2000-10-23",
+        "url": "https://www.cs.ucdavis.edu/~rogaway/classes/188/materials/kurzweil.pdf"
+      },
+      "b": {
+        "quote": "Regarding the open letter to \u201Cpause\u201D research on AI \u201Cmore powerful than GPT-4,\u201D this criterion is too vague to be practical.\u2026And the proposal faces a serious coordination problem: those that agree to a pause may fall far behind corporations or nations that disagree.",
+        "quote_zh": "关于那封要求「暂停」研发「比 GPT-4 更强大」的 AI 的公开信，这个标准太含糊，没法落地。……而且这个提议面临严重的协调难题：同意暂停的一方，可能会被不同意的公司或国家远远甩在后面。",
+        "date": "2023-05-08",
+        "url": "https://www.searchenginejournal.com/ray-kurzweil-rebuts-calls-to-pause-ai-research/486315/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2000 年他拒绝 Bill Joy「放弃大片技术领域」的主张，理由是放弃只会把研发逼入地下、让不守规矩的人占优；2023 年他拒绝「暂停强于 GPT-4 的 AI 研发」的公开信，给出的仍是同一套理由（不可落地、同意者会被不同意者甩开），立场一致。"
+    },
+    {
+      "id": "ray-kurzweil-c003",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "人类应把大脑新皮层与云端／AI 融合",
+      "a": {
+        "quote": "Intelligent nanorobots will be deeply integrated in our bodies, our brains, and our environment, overcoming pollution and poverty, providing vastly extended longevity\u2026The result will be an intimate merger between the technology-creating species and the technological evolutionary process it spawned.",
+        "quote_zh": "智能纳米机器人将深度整合进我们的身体、大脑和环境，克服污染与贫困，带来大幅延长的寿命……其结果将是「创造技术的物种」与「它所催生的技术演化进程」之间的一次亲密融合。",
+        "date": "2005-11-09",
+        "url": "https://www.thekurzweillibrary.com/online-chat-with-ray-kurzweil-and-european-schoolnet"
+      },
+      "b": {
+        "quote": "My idea is to actually merge our neocortex with the cloud. We have a fixed capacity in our neocortex.\u2026So we\u2019ve got to be able to merge our biological neocortex with an artificial neocortex.",
+        "quote_zh": "我的想法是真的把我们的新皮层和云端合并起来。我们的新皮层容量是固定的。……所以我们必须能够把生物的新皮层和人造的新皮层融合在一起。",
+        "date": "2024-03-11",
+        "url": "https://www.bvp.com/atlas/ai-escape-velocity-a-conversation-with-ray-kurzweil"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2005 年他把「创造技术的物种与技术本身亲密融合」当作奇点的核心含义，2024 年仍主张要把生物新皮层与人造新皮层／云端合并，主张十九年未变。"
+    },
+    {
+      "id": "ray-kurzweil-c004",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "「人类对抗 AI」是错误的叙事",
+      "a": {
+        "quote": "There are certainly concerns about \u201Cstrong AI\u201D run amok, but a war between those eschewing technology and those embracing it does not make sense.",
+        "quote_zh": "对「强 AI」失控的担忧当然是存在的，但是一场「拒绝技术的人」对「拥抱技术的人」的战争，讲不通。",
+        "date": "2005-11-09",
+        "url": "https://www.thekurzweillibrary.com/online-chat-with-ray-kurzweil-and-european-schoolnet"
+      },
+      "b": {
+        "quote": "People are very concerned about us versus AI, as if it is an intelligence that comes from another planet. But it\u2019s created by human beings. It\u2019s based on human thought and it amplifies who we are.",
+        "quote_zh": "人们非常担心「我们对抗 AI」，好像它是一种来自别的星球的智能。但它是人类创造的。它建立在人类的思想之上，它放大的是我们自己。",
+        "date": "2024-03-11",
+        "url": "https://www.bvp.com/atlas/ai-escape-velocity-a-conversation-with-ray-kurzweil"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2005 年他就驳斥 de Garis「拥抱技术者与拒绝技术者开战」的设想，2024 年仍然说「我们 vs AI」的框架是错的、AI 是人类思想的放大，对这个叙事的否定一以贯之。"
+    },
+    {
+      "id": "ray-kurzweil-c005",
+      "kind": "reaffirm",
+      "domain": "生物科技与医疗",
+      "topic": "靠每天大量服用营养补充剂「重编程生化」",
+      "a": {
+        "quote": "I do take a lot of supplements (about 250 pills a day) to \u201Creprogram\u201D my biochemistry. I take a lot of tests (50 or 60 blood levels) every few months to see how I\u2019m doing.",
+        "quote_zh": "我确实服用大量补充剂（每天大约 250 片）来「重编程」我的生化状态。我每隔几个月做很多项检查（50 到 60 项血液指标）来看自己的情况。",
+        "date": "2005-11-09",
+        "url": "https://www.thekurzweillibrary.com/online-chat-with-ray-kurzweil-and-european-schoolnet"
+      },
+      "b": {
+        "quote": "I\u2019ve written three books on how to stay healthy. I take about 80 pills a day, different injections, and so on.",
+        "quote_zh": "我写过三本关于怎样保持健康的书。我每天吃大约 80 片药，还有各种注射，等等。",
+        "date": "2024-03-11",
+        "url": "https://www.bvp.com/atlas/ai-escape-velocity-a-conversation-with-ray-kurzweil"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2005 年他说自己每天吃约 250 片补充剂来「重编程生化」，19 年后仍在每天吃约 80 片并配合注射，片数减少但「靠大量补充剂主动干预自己生化状态」这个立场和做法没有变。"
+    },
+    {
+      "id": "ray-kurzweil-c006",
+      "kind": "walk",
+      "domain": "生物科技与医疗",
+      "topic": "靠每天大量服用营养补充剂「重编程生化」",
+      "a": {
+        "quote": "For young people in their 20s and 30s, they only need to stay reasonably healthy and perhaps take a good multivitamin. But for my contemporaries, people in their 50s and 60s, if they really want to be in good shape when we have these dramatic new technologies from biotech and nanotech, then they need to be aggressive to reprogram their biochemistry now.",
+        "quote_zh": "对二三十岁的年轻人来说，他们只需要保持大致健康，也许再吃一片好的复合维生素。但对我的同龄人、也就是五六十岁的人来说，如果他们真想在生物技术和纳米技术带来那些剧变时身体状态良好，那他们现在就得积极地去重编程自己的生化状态。",
+        "date": "2005-11-09",
+        "url": "https://www.thekurzweillibrary.com/online-chat-with-ray-kurzweil-and-european-schoolnet"
+      },
+      "b": {
+        "quote": "As part of his daily routine, Kurzweil ingests 250 supplements, eight to 10 glasses of alkaline water and 10 cups of green tea. He also periodically tracks 40 to 50 fitness indicators, down to his \u201Ctactile sensitivity.\u201D",
+        "quote_zh": "作为日常作息的一部分，库兹韦尔每天摄入 250 份补充剂、8 到 10 杯碱性水和 10 杯绿茶。他还定期跟踪 40 到 50 项身体指标，细到他的「触觉敏感度」。",
+        "date": "2005-02-12",
+        "url": "https://www.wired.com/2005/02/never-say-die-live-forever/"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "他劝五六十岁的人「现在就要积极重编程自己的生化状态」，同期《连线》对他日常作息的报道显示他本人每天摄入 250 份补充剂、还定期跟踪 40—50 项指标，言行相符。"
+    },
+    {
+      "id": "ray-kurzweil-c007",
+      "kind": "reaffirm",
+      "domain": "生物科技与医疗",
+      "topic": "人体冷冻作为备选方案",
+      "a": {
+        "quote": "I am an Alcor member, signed up in 2005 so that in the unfortunate event my body comes to meet the criteria of legal death, they will preserve it in liquid nitrogen until the advance of technology is sufficient to allow my reanimation in one form or another.",
+        "quote_zh": "我是 Alcor 的会员，2005 年签的约，这样万一不幸我的身体达到了法律死亡的标准，他们会把它保存在液氮里，直到技术进步到足以让我以某种形式复活。",
+        "date": "2012-10-24",
+        "url": "https://www.thekurzweillibrary.com/report-from-the-alcor-40-conference"
+      },
+      "b": {
+        "quote": "I\u2019m signed up for it. If you\u2019re going to die, there\u2019s no alternative. For those that are burnt after death or so on, they obviously have no ways of reanimating their bodies. Cryonics just gives you a possibility.",
+        "quote_zh": "我已经签了。如果你终究要死，这没有别的选择。那些死后被火化之类的人，显然没有任何办法让身体复活。人体冷冻只是给你一个可能性。",
+        "date": "2024-03-11",
+        "url": "https://www.bvp.com/atlas/ai-escape-velocity-a-conversation-with-ray-kurzweil"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2012 年他在 Alcor 40 周年会议的文章里主动披露自己 2005 年就签了人体冷冻合约，2024 年被问到时仍说「我已经签了」，并给出同样的理由（反正要死，冷冻至少给一个可能性），立场一致。"
+    },
+    {
+      "id": "ray-kurzweil-c008",
+      "kind": "reaffirm",
+      "domain": "AI 模型与 AGI",
+      "topic": "用逝者留下的文字重建逝者",
+      "a": {
+        "quote": "You can certainly argue that, philosophically, that is not your father\u2026That is a replica, but I can actually make a strong case that it would be more like my father than my father would be, were he to live.",
+        "quote_zh": "你当然可以争辩说，从哲学上讲那不是你父亲……那是一个复制品，但我其实能给出很强的理由说明：它会比我父亲本人（如果他还活着）更像我父亲。",
+        "date": "2011-08-09",
+        "url": "https://abcnews.com/Technology/futurist-ray-kurzweil-bring-dead-father-back-life/story?id=14267712"
+      },
+      "b": {
+        "quote": "So I created a technology that seemed like talking to him. You could ask him anything, and he would actually answer something similar to what I remember he would have said.",
+        "quote_zh": "所以我做了一个技术，用起来就像在跟他说话。你可以问他任何问题，他真的会给出跟我记忆里他会说的话差不多的回答。",
+        "date": "2023-10-19",
+        "url": "https://text.npr.org/2023/10/19/1205898776/new-yorker-cartoonist-amy-kurzweils-graphic-memoir-artificial-a-love-story"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2011 年他说要用父亲留下的文件造一个 avatar，并坚称那个复制品会比父亲本人更像父亲；2023 年他在 NPR 上介绍自己真的做出了这个东西（Fredbot），说法和评价都没有变。"
+    },
+    {
+      "id": "ray-kurzweil-c009",
+      "kind": "reaffirm",
+      "domain": "宏观经济与市场",
+      "topic": "世界在变好，技术大幅改善了人类处境",
+      "a": {
+        "quote": "how many people in the year 2000 would really want to go back to the short, disease-filled, poverty-stricken, disaster-prone lives that 99 percent of the human race struggled through a couple of centuries ago?",
+        "quote_zh": "在 2000 年，又有多少人真的愿意回到两百年前那种短命、疾病缠身、贫困潦倒、动辄遭灾的生活？那是当时 99% 的人类挣扎着过的日子。",
+        "date": "2000-10-23",
+        "url": "https://www.cs.ucdavis.edu/~rogaway/classes/188/materials/kurzweil.pdf"
+      },
+      "b": {
+        "quote": "People tend to have a negative view of the future. They think things are getting worse. They are actually getting dramatically better.",
+        "quote_zh": "人们往往对未来持负面看法。他们以为事情在变糟。实际上事情在大幅变好。",
+        "date": "2024-03-11",
+        "url": "https://www.bvp.com/atlas/ai-escape-velocity-a-conversation-with-ray-kurzweil"
+      },
+      "explanation": null,
+      "proposed_label": "consistent",
+      "rationale": "2000 年他用「没人真想回到两百年前的生活」来论证技术让人类处境大幅改善，2024 年仍在用贫困率、收入、识字率等 50 张图讲同一件事：人们以为在变糟，其实在大幅变好。"
+    },
+    {
+      "id": "ray-kurzweil-c010",
+      "kind": "reversal",
+      "domain": "生物科技与医疗",
+      "topic": "膳食脂肪该占多少热量",
+      "a": {
+        "quote": "I am suggesting eliminating the added fats: oils, butter, margarine, mayonnaise, whole-milk and cream-based sauces and dressings, and so on.\u2026Otherwise, I strongly recommend 10 percent of calories from fat. The incidence of all the degenerative diseases is substantially less at 10 percent fat than at 20 percent.",
+        "quote_zh": "我主张的是去掉额外添加的脂肪：各种油、黄油、人造黄油、蛋黄酱、全脂奶和奶油做的酱汁与沙拉酱，等等。……除此之外，我强烈建议脂肪只占热量的 10%。所有退行性疾病的发病率在脂肪占 10% 时都明显低于占 20% 时。",
+        "date": "1993-01-01",
+        "url": "https://web.archive.org/web/20130112005251id_/http://www.kurzweilai.net/articles/art0438.html"
+      },
+      "b": {
+        "quote": "To summarize some of the recommendations, for example, in nutrition, it\u2019s not a matter of eating low carb and low fat but to eat healthy carbs and healthy fats.\u2026Anti-inflammatory fats like fish oil, extra virgin olive oil, the mono unsaturated fat found in nuts, and avocado are anti-inflammatory and are healthy.",
+        "quote_zh": "把其中一些建议总结一下，比如在营养上，关键不是吃低碳水、低脂肪，而是吃健康的碳水和健康的脂肪。……抗炎的脂肪，比如鱼油、特级初榨橄榄油、坚果里的单不饱和脂肪、牛油果，它们是抗炎的，是健康的。",
+        "date": "2010-04-02",
+        "url": "https://web.archive.org/web/20120407095437id_/http://techland.time.com/2010/04/02/an-interview-with-ray-kurzweil/2/"
+      },
+      "explanation": null,
+      "proposed_label": "inconsistent",
+      "rationale": "1993 年《The 10% Solution》里他强烈建议脂肪只占热量 10%，并点名要去掉油（包括橄榄油）、黄油等一切添加脂肪；2010 年他改口说「关键不是吃低脂」，并把特级初榨橄榄油、坚果里的脂肪列为健康食物。这是明确翻转，但他在这次访谈里只讲了新结论的炎症机制，没有提自己此前的 10% 建议哪里错了。"
+    }
+  ]
+}
