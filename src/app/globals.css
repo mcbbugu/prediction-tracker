@@ -139,6 +139,39 @@ body {
   }
 }
 
+/* Home: the live verdict ticker scrolls left forever; hovering pauses it so a row can be read and clicked. */
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-track {
+  animation: ticker 80s linear infinite;
+}
+
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+/* Home: a faint ledger grid behind the pipeline, fading out at the edges. */
+.ledger-grid {
+  background-image:
+    linear-gradient(to right, rgba(47, 63, 196, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(47, 63, 196, 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
 /* Plain CSS variables some beUI components read directly (e.g. text shimmer gradients). */
 :root {
   --foreground: #0d0d0d;
