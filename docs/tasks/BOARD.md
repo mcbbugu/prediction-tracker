@@ -22,10 +22,10 @@
 | [030](030-downstream-experiment-v2.md) | 下游对照实验第二版：排除答案泄露（#3） | Cursor | P0 | 已完成 | 59c4895 |
 | [029](029-daily-expansion.md) | 每日扩库：多出「有分数的人」 | Cursor | P0 | 已完成 | 95ff9d5 |
 | [032](032-expand-name-lists.md) | 扩大人物名单，把每天的 AFP 用起来 | Cursor | P0 | 进行中 | |
-| [034](034-consistency-import-score.md) | 可信度：已有 9 人核对入库、计分、页面展示 | Cursor | P0 | 待办 | |
+| [034](034-consistency-import-score.md) | 可信度：已有 9 人核对入库、计分、页面展示 | Cursor（入库计分接口）→ Claude（页面） | P0 | 待办 | |
 | [022](022-promise-vs-forecast.md) | 承诺与预测分开计分（019、020 依赖它） | Cursor | P0 | 已完成 | c80a209 |
 | [019](019-delay-survival.md) | 生存分析：延迟系数与兑现时间预测（依赖 022；030 的 C 组要用） | Cursor | P0 | 已完成 | 9057773 |
-| [033](033-copy-and-terms.md) | 文案与术语统一（首页、人物页、全站） | Cursor | P1 | 待办 | |
+| [033](033-copy-and-terms.md) | 文案与术语统一（首页、人物页、全站） | Claude（前端）+ Cursor（提示词、quote_zh 回填） | P1 | 待办 | |
 | [035](035-consistency-auto-collect.md) | 可信度接进每日扩库，新人物自动采集（依赖 034） | Cursor | P1 | 待办 | |
 | [028](028-fix-structured-sources.md) | 修好结构化来源：字幕、8-K、播客（需先装 yt-dlp） | Cursor | P1 | 待办 | |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 已完成 | dd9dcc0 |
@@ -36,7 +36,7 @@
 | [020](020-difficulty-hierarchical.md) | 难度调整技能分 + 分层贝叶斯，公式 v2.0（依赖 012） | Cursor | P0 | 待办 | |
 | [021](021-commitment-strength.md) | 承诺强度与本人校准（依赖 012） | Cursor | P1 | 待办 | |
 | [024](024-vague-claims.md) | 模糊表述按多种定义判定（依赖 012） | Cursor | P1 | 待办 | |
-| [025](025-growing-lists-pages.md) | 长列表进子页（变化原因、全部主张）+ 服务端分页 | Cursor | P1 | 待办 | |
+| [025](025-growing-lists-pages.md) | 长列表进子页（变化原因、全部主张）+ 服务端分页 | Cursor（接口）→ Claude（页面） | P1 | 待办 | |
 | [018](018-event-study-baseline.md) | 事件研究与同类基准（依赖 012） | Cursor | P2 | 待办 | |
 | [023](023-prediction-powered-inference.md) | 预测驱动推断：少量人工给出有效区间（#4，先验证代理变量） | Cursor | P2 | 暂缓 | |
 | [H01](H01-blind-calibration.md) | 盲标 49 条校准判定（近期版本不做） | 人工 | P2 | 待办 | — |
