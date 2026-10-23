@@ -135,7 +135,7 @@ async function PersonBody({
   const yearFilter = rawYear && /^\d{4}$/.test(rawYear) ? rawYear : undefined;
   const monthFilter = rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) ? rawMonth : undefined;
   const [data, history] = await Promise.all([
-    getJson<{ person: Person; analysis_job_id?: string | null; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators; delay?: DelayProfile[] }>(`/v1/people/${id}`),
+    getJson<{ person: Person; analysis_job_id?: string | null; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators; delay?: DelayProfile[]; consistency?: { total: number; recent: { id: string; topic: string; kind: string; label: string }[] } }>(`/v1/people/${id}`),
     getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history`).catch(() => ({ snapshots: [] as Snapshot[] })),
   ]);
   const today = new Date().toISOString().slice(0, 10);
@@ -224,6 +224,7 @@ async function PersonBody({
   const cstage = (row: ProfileRow) => (partOf(row).value != null ? 1 : 0);
   const profile = [...(data.profile ?? [])].sort((a, b) => cstage(b) - cstage(a) || (partOf(b).n ?? 0) - (partOf(a).n ?? 0));
   const top = profile[0];
+  const pct = (w: number) => `${Math.round(w * 100)}%`;
   const fmtPart = (part: { value: number | null; low: number | null; high: number | null }) =>
     part.value != null ? `${part.value.toFixed(1)}（${part.low}–${part.high}）` : "样本不足";
 
@@ -350,7 +351,11 @@ async function PersonBody({
             )}
             <p className="mt-2 text-xs leading-5 text-mute">
               {top?.composite.low != null ? `80% 区间 ${top.composite.low}–${top.composite.high}，基于 ${top.accuracy.n} 条已判定。` : ""}
-              {top && top.composite.used.length === 1 ? "目前只含兑现率：可信度还没有数据，不参与合成。" : null}
+              {top && top.composite.used.length === 1
+                ? top.consistency.status === "examples_only"
+                  ? "目前只含兑现率：这个领域的对照还不足 5 条，不参与合成。"
+                  : "目前只含兑现率：可信度还没有数据，不参与合成。"
+                : null}
               {profile.length > 1 ? `综合分按领域分开算，不跨领域平均；其余 ${profile.length - 1} 个领域见下表。` : null}
               {!top || top.composite.used.length === 0 ? "有一条主张被判定后就会出分。" : null}
             </p>
@@ -371,12 +376,43 @@ async function PersonBody({
               </p>
               <p className="mt-2 text-[11px] leading-4 text-mute">合并兑现率 {top ? fmtPart(top.accuracy) : "—"}：承诺和预测合在一起算，综合分用的是它。</p>
             </div>
-            <div className="rounded-[14px] border border-dashed border-line bg-card/60 p-4">
+            <div className={`rounded-[14px] bg-card p-4 ${top?.consistency.status === "scored" ? "" : "border border-dashed border-line bg-card/60"}`}>
               <p className="flex items-center justify-between text-xs text-mute">
                 可信度（一致性）
+                {top?.consistency.status === "scored" ? <span>权重 {pct(top.consistency.weight)}</span> : null}
               </p>
-              <p className="mt-1.5 text-lg font-bold text-mute">还在收集</p>
-              <p className="mt-1 text-[11px] leading-4 text-mute">建议和立场的前后对照、言行对照。暂不计入综合分。</p>
+              {top?.consistency.status === "scored" ? (
+                <>
+                  <p className="num mt-1.5 text-lg font-bold">{fmtPart(top.consistency)}</p>
+                  <p className="mt-1 text-[11px] leading-4 text-mute">已对照 {top.consistency.n} 条，判定由 AI 完成。</p>
+                </>
+              ) : top?.consistency.status === "examples_only" ? (
+                <>
+                  <p className="mt-1.5 text-lg font-bold text-mute">对照不足 5 条</p>
+                  <p className="mt-1 text-[11px] leading-4 text-mute">只有 {top.consistency.n} 条，只列例子，不计入综合分。</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1.5 text-lg font-bold text-mute">还在收集</p>
+                  <p className="mt-1 text-[11px] leading-4 text-mute">建议和立场的前后对照、言行对照。暂不计入综合分。</p>
+                </>
+              )}
+              {data.consistency && data.consistency.recent.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-[11px] text-mute">
+                  {data.consistency.recent.map((row) => (
+                    <li key={row.id}>
+                      {row.kind === "reversal" ? "前后翻转" : row.kind === "walk" ? "言行对照" : "前后重申"} · {row.topic} · {row.label === "consistent" ? "一致" : "不一致"}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {data.consistency && data.consistency.total > 0 ? (
+                <p className="mt-2 text-[11px]">
+                  <Link href={`/p/${id}/consistency`} className="text-blue no-underline">
+                    查看全部 {data.consistency.total} 条 →
+                  </Link>
+                </p>
+              ) : null}
             </div>
             <div className="rounded-[14px] border border-dashed border-line bg-card/60 p-4">
               <p className="flex items-center justify-between text-xs text-mute">
@@ -465,9 +501,11 @@ async function PersonBody({
                         {fmtPart(row.fulfillment?.forecast ?? { value: null, low: null, high: null })} · {row.fulfillment?.forecast.n ?? 0}
                       </span>
                     </td>
-                    <td className="px-2 text-xs text-mute">尚未收集</td>
+                    <td className="px-2 text-xs text-mute">
+                      {row.consistency.status === "scored" ? `${fmtPart(row.consistency)} · ${row.consistency.n}` : row.consistency.status === "examples_only" ? `不足 5 条 · ${row.consistency.n}` : "尚未收集"}
+                    </td>
                     <td className="py-2 pr-4 pl-2 text-[11px] text-mute">
-                      {row.composite.used.length === 0 ? "还没有已判定的主张" : "只含兑现率"}
+                      {row.composite.used.includes("consistency") ? "兑现率 70% + 可信度 30%" : row.composite.used.length === 0 ? "还没有已判定的主张" : "只含兑现率"}
                     </td>
                   </tr>
                 ))}

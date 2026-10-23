@@ -120,13 +120,13 @@ async function main() {
     if (!ok || !doImport) continue;
     const strip = ({ problem: _problem, ...side }: CheckedSide) => side;
     const rows = await sql`
-      INSERT INTO consistency_pairs (id, person_id, domain, topic, kind, a, b, explanation, proposed_label, rationale, provenance)
+      INSERT INTO consistency_pairs (id, person_id, domain, topic, kind, a, b, explanation, proposed_label, rationale, provenance, publication)
       VALUES (${pair.id}, ${personId}, ${pair.domain}, ${pair.topic}, ${pair.kind}, ${sql.json(strip(a))}, ${sql.json(strip(b))},
-              ${explanation ? sql.json(strip(explanation)) : null}, ${pair.proposed_label}, ${pair.rationale ?? ""}, ${provenance})
+              ${explanation ? sql.json(strip(explanation)) : null}, ${pair.proposed_label}, ${pair.rationale ?? ""}, ${provenance}, 'published')
       ON CONFLICT (id) DO UPDATE SET
         domain = EXCLUDED.domain, topic = EXCLUDED.topic, kind = EXCLUDED.kind, a = EXCLUDED.a, b = EXCLUDED.b,
         explanation = EXCLUDED.explanation, proposed_label = EXCLUDED.proposed_label, rationale = EXCLUDED.rationale,
-        updated_at = now()
+        publication = 'published', updated_at = now()
       WHERE consistency_pairs.reviewed_at IS NULL
       RETURNING id
     `;

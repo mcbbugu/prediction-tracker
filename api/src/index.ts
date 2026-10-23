@@ -60,6 +60,29 @@ async function hasPublishedDuplicate(personId: string, quoteEn: string, deadline
   return rows.length > 0;
 }
 
+type ConsistencySide = { quote?: string; quote_zh?: string; date?: string; url?: string };
+
+async function publishedConsistency(personId: string) {
+  return sql<{ id: string; domain: string; topic: string; kind: string; proposed_label: string; label: string | null; rationale: string; a: ConsistencySide; b: ConsistencySide; explanation: ConsistencySide | null }[]>`
+    SELECT id, domain, topic, kind, proposed_label, label, rationale, a, b, explanation
+    FROM consistency_pairs
+    WHERE person_id = ${personId} AND publication = 'published'
+    ORDER BY b->>'date' DESC, id
+  `;
+}
+
+function consistencyInputs(rows: { domain: string; proposed_label: string; label: string | null; b: ConsistencySide }[]) {
+  return rows.map((row) => ({
+    domain: row.domain,
+    consistent: (row.label ?? row.proposed_label) === "consistent",
+    date: String(row.b?.date ?? "").slice(0, 10) || "1970-01-01",
+  }));
+}
+
+function consistencyTier(label: string | null) {
+  return label ? "human" : "machine";
+}
+
 const app = new Elysia()
   .use(cors({ origin: corsOrigin(), allowedHeaders: ["Content-Type", "x-review-token"] }))
   .get("/health", () => ({ ok: true }))
@@ -200,7 +223,8 @@ const app = new Elysia()
       kind: claim.kind,
       related: claim.interest_note !== null,
     }));
-    const profile = personProfile(rows, interests.collected);
+    const compared = await publishedConsistency(person.id);
+    const profile = personProfile(rows, interests.collected, consistencyInputs(compared));
     return {
       person,
       analysis_job_id: analysisJobs[0]?.id ?? null,
@@ -216,6 +240,20 @@ const app = new Elysia()
         ...(interests.collected ? interestSplit(rows) : {}),
       },
       delay: await latestDelay(person.id),
+      consistency: {
+        total: compared.length,
+        recent: compared.slice(0, 3).map((row) => ({
+          id: row.id,
+          topic: row.topic,
+          kind: row.kind,
+          domain: row.domain,
+          label: row.label ?? row.proposed_label,
+          verdict_tier: consistencyTier(row.label),
+          rationale: row.rationale,
+          a: row.a,
+          b: row.b,
+        })),
+      },
     };
   })
   .get("/v1/people/:id/interests", async ({ params, set }) => {
@@ -225,6 +263,22 @@ const app = new Elysia()
       return { error: "未找到该人物" };
     }
     return personInterestAtlas(params.id);
+  })
+  .get("/v1/people/:id/consistency", async ({ params, set }) => {
+    const people = await sql<{ id: string; name: string }[]>`SELECT id, name FROM people WHERE id = ${params.id} LIMIT 1`;
+    if (!people[0]) {
+      set.status = 404;
+      return { error: "未找到该人物" };
+    }
+    const pairs = await publishedConsistency(params.id);
+    return {
+      person: people[0],
+      pairs: pairs.map((row) => ({
+        ...row,
+        label: row.label ?? row.proposed_label,
+        verdict_tier: consistencyTier(row.label),
+      })),
+    };
   })
   .get("/v1/people/:id/claims/:claimId", async ({ params, set }) => {
     const claim = await oneClaim(params.id, params.claimId);

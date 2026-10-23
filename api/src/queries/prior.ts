@@ -6,6 +6,7 @@
 // 「到那天为止，他到期的话兑现得怎么样」，不是「当年的人会怎么看」。
 import { sql } from "../core/db";
 import { FORMULA_VERSION, fulfillmentSplit, latestDelay, scoreDomain } from "../scoring/score";
+import { scoreConsistency } from "../scoring/consistency";
 import { indicators, type IndicatorClaim } from "../scoring/indicators";
 import { publishedClaims, personInterests, type ClaimRow } from "./records";
 import { DISCLOSURE, eventsByClaim, tallyTiers, verdictTier } from "./verdict-tier";
@@ -151,6 +152,19 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
 
   const picked = input.domain ? [input.domain] : domains;
   const delayRows = await latestDelay(person.id);
+  const pairs = await sql<{ id: string; domain: string; topic: string; proposed_label: string; label: string | null; date: string | null }[]>`
+    SELECT id, domain, topic, proposed_label, label, b->>'date' AS date
+    FROM consistency_pairs
+    WHERE person_id = ${person.id} AND publication = 'published'
+  `;
+  const consistencyFor = (domain: string) => {
+    const rows = pairs.filter((row) => row.domain === domain);
+    const scored = scoreConsistency(rows.map((row) => ({ domain, consistent: (row.label ?? row.proposed_label) === "consistent", date: row.date ?? "1970-01-01" })));
+    return {
+      ...scored,
+      comparisons: rows.map((row) => ({ id: row.id, topic: row.topic, label: row.label ?? row.proposed_label, verdict_tier: row.label ? "human" : "machine" })),
+    };
+  };
   const compact = (domain: string) => {
     const row = delayRows.find((item) => item.domain === domain) ?? delayRows.find((item) => item.domain === "");
     if (!row) return null;
@@ -176,6 +190,7 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
           ),
           claims_url: `${SITE}/p/${person.id}?domain=${encodeURIComponent(d)}#claims`,
           delay: compact(d),
+          consistency: consistencyFor(d),
         },
       ]),
     ),

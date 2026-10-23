@@ -115,7 +115,10 @@ export type ProfileRow = {
     promise: AccuracyPart;
     forecast: AccuracyPart;
   };
-  consistency: { status: "not_collected"; weight: number };
+  consistency:
+    | { status: "not_collected"; weight: number }
+    | { status: "examples_only"; n: number; weight: number }
+    | { status: "scored"; value: number | null; low: number | null; high: number | null; n: number; weight: number };
   interests: { status: "not_collected" } | { status: "collected"; related: AccuracyPart; unrelated: AccuracyPart };
 };
 

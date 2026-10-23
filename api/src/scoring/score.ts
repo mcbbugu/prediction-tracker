@@ -1,4 +1,5 @@
 import { sql } from "../core/db";
+import { scoreConsistency, type ConsistencyRow } from "./consistency";
 import { DELAY_VERSION, delaySentence, estimateDelay, promiseObservations, type SurvivalClaim } from "./survival";
 
 // v1.1 (2026-10-21): same formula; a score and its 80% interval show from the first judged claim (no 3/8 tiers).
@@ -236,23 +237,35 @@ export function fulfillmentSplit(rows: ScoredRow[], now = new Date()) {
   };
 }
 
-// Per-domain profile from published claims. Consistency has no data pipeline yet (P13).
+export const COMPOSITE_VERSION = "v1.4";
+
+// Per-domain profile from published claims.
 // Interests (P12) never enter the composite; when collected, accuracy is split into related / unrelated claims.
-export function personProfile(rows: (ScoredRow & { related?: boolean })[], interestsCollected = false) {
+// Consistency (P13) joins the composite only when that domain has at least 5 published comparisons.
+export function personProfile(rows: (ScoredRow & { related?: boolean })[], interestsCollected = false, consistency: ConsistencyRow[] = []) {
   const byDomain = new Map<string, (ScoredRow & { related?: boolean })[]>();
   for (const row of rows) byDomain.set(row.category, [...(byDomain.get(row.category) ?? []), row]);
   return [...byDomain].map(([domain, list]) => {
     const accuracy = scoreDomain(list);
     const fulfillment = fulfillmentSplit(list);
+    const compared = scoreConsistency(consistency.filter((row) => row.domain === domain));
     const parts: Part[] = [
       { key: "accuracy", alpha: accuracy.alpha, beta: accuracy.beta, n: accuracy.n, exact: { value: accuracy.value, low: accuracy.low, high: accuracy.high } },
     ];
+    if (compared.status === "scored") {
+      parts.push({ key: "consistency", alpha: compared.alpha, beta: compared.beta, n: compared.n, exact: { value: compared.value, low: compared.low, high: compared.high } });
+    }
+    const consistencyView = compared.status === "scored"
+      ? { status: "scored" as const, value: compared.value, low: compared.low, high: compared.high, n: compared.n, weight: COMPOSITE_WEIGHTS.consistency }
+      : compared.n > 0
+        ? { status: "examples_only" as const, n: compared.n, weight: COMPOSITE_WEIGHTS.consistency }
+        : { status: "not_collected" as const, weight: COMPOSITE_WEIGHTS.consistency };
     return {
       domain,
       composite: compositeScore(parts),
       accuracy: { value: accuracy.value, low: accuracy.low, high: accuracy.high, n: accuracy.n, weight: COMPOSITE_WEIGHTS.accuracy },
       fulfillment,
-      consistency: { status: "not_collected" as const, weight: COMPOSITE_WEIGHTS.consistency },
+      consistency: consistencyView,
       interests: interestsCollected
         ? {
             status: "collected" as const,

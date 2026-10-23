@@ -3,6 +3,7 @@ import { sql } from "../core/db";
 import { latestScoresFor, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg, type ClaimRow } from "./records";
 import { indicators } from "../scoring/indicators";
 import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, fulfillmentSplit, interestSplit, latestDelay, personProfile } from "../scoring/score";
+import { scoreConsistency } from "../scoring/consistency";
 import { DISCLOSURE, eventsForClaims, tallyTiers, verdictTier } from "./verdict-tier";
 
 export type ConsultRequest = {
@@ -235,6 +236,13 @@ export async function consultPrior(input: ConsultRequest) {
   const interestMap = new Map(await Promise.all(matchedPeopleIds.map(async (pid) => [pid, await personInterests(pid)] as const)));
   const atlasMap = new Map(await Promise.all(matchedPeopleIds.map(async (pid) => [pid, await personInterestAtlas(pid)] as const)));
   const delayMap = new Map(await Promise.all(matchedPeopleIds.map(async (pid) => [pid, await latestDelay(pid)] as const)));
+  const consistencyAll = matchedPeopleIds.length
+    ? await sql<{ person_id: string; domain: string; proposed_label: string; label: string | null; date: string | null }[]>`
+        SELECT person_id, domain, proposed_label, label, b->>'date' AS date
+        FROM consistency_pairs
+        WHERE person_id IN ${sql(matchedPeopleIds)} AND publication = 'published'
+      `
+    : [];
 
   // 3. Build per-person domain prior evaluations
   const evaluations = matchedPeopleIds.map((pid) => {
@@ -331,7 +339,17 @@ export async function consultPrior(input: ConsultRequest) {
             related: c.id in interests.claim_notes,
           })),
           interests.collected,
+          (consistencyAll ?? []).filter((row) => row.person_id === pid).map((row) => ({
+            domain: row.domain,
+            consistent: (row.label ?? row.proposed_label) === "consistent",
+            date: row.date || "1970-01-01",
+          })),
         ).find((row) => row.domain === (domainScore?.domain ?? "")) ?? null,
+      consistency: scoreConsistency(
+        consistencyAll
+          .filter((row) => row.person_id === pid && row.domain === (domainScore?.domain ?? ""))
+          .map((row) => ({ domain: row.domain, consistent: (row.label ?? row.proposed_label) === "consistent", date: row.date || "1970-01-01" })),
+      ),
       interests: interests.collected
         ? {
             status: "collected" as const,
