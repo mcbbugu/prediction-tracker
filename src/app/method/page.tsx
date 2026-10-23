@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Icon } from "@/components/icon";
 import { getJson } from "@/lib/api";
 
@@ -17,8 +19,37 @@ const RESOLVER_LABEL: Record<string, string> = {
   model: "模型",
 };
 
+type PipelineRow = {
+  pipeline: string;
+  date: string;
+  discovery_recall: number | null;
+  extraction_precision: number | null;
+  verdict_agreement: number | null;
+  verdict_wilson_low: number | null;
+  kappa: number | null;
+  deterministic_share: number | null;
+  searches_per_claim: number | null;
+  seconds_per_claim: number | null;
+};
+
+function pipelineHistory() {
+  try {
+    return readFileSync(join(process.cwd(), "data/eval/history.jsonl"), "utf8")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as PipelineRow);
+  } catch {
+    return [];
+  }
+}
+
+const pct = (value: number | null) => (value == null ? "—" : `${Math.round(value * 1000) / 10}%`);
+
 export default async function MethodPage() {
   const stats = await getJson<ResolutionStats>("/v1/method/resolution").catch(() => null);
+  const history = pipelineHistory();
+  const latest = history.at(-1);
   return (
     <article className="mx-auto max-w-[680px] pt-8">
       <p className="inline-flex items-center gap-1.5 text-sm text-mute">
@@ -51,7 +82,40 @@ export default async function MethodPage() {
       </p>
       <h2 id="eval" className="mt-12 text-xl font-semibold tracking-tight">现在这个阶段</h2>
       <p className="mt-3 text-mute">
-        判定由 AI 完成，尚未经人工校准。准确率评测中。机器判定照常计分，页面和接口都会标明这一点。「自动收录 · 双模型一致」只说明两个模型读同一份已存档证据后结论相同，不是有人独立核实过事实。
+        判定由 AI 完成，尚未经人工校准。
+        {latest?.verdict_agreement != null
+          ? ` 相对人工种子，当前流水线判定一致率 ${pct(latest.verdict_agreement)}，Wilson 下界 ${pct(latest.verdict_wilson_low)}。`
+          : " 准确率评测中。"}
+        机器判定照常计分，页面和接口都会标明这一点。「自动收录 · 双模型一致」只说明两个模型读同一份已存档证据后结论相同，不是有人独立核实过事实。
+      </p>
+      <h2 className="mt-12 text-xl font-semibold tracking-tight">流水线版本</h2>
+      {history.length === 0 ? (
+        <p className="mt-3 text-mute">还没有跑过评测。</p>
+      ) : (
+        <table className="mt-3 w-full text-left text-sm text-mute">
+          <thead>
+            <tr>
+              <th className="py-1 font-medium">版本</th>
+              <th className="py-1 font-medium">发现</th>
+              <th className="py-1 font-medium">抽取</th>
+              <th className="py-1 font-medium">判定</th>
+              <th className="py-1 font-medium">确定性</th>
+            </tr>
+          </thead>
+          <tbody>
+            {history.map((row) => (
+              <tr key={`${row.date}-${row.pipeline}`}>
+                <td className="py-1 pr-3">{row.date}</td>
+                <td className="py-1">{pct(row.discovery_recall)}</td>
+                <td className="py-1">{pct(row.extraction_precision)}</td>
+                <td className="py-1">{pct(row.verdict_agreement)}</td>
+                <td className="py-1">{pct(row.deterministic_share)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className="mt-2 text-xs text-mute">{latest ? latest.pipeline : ""}
       </p>
       <h2 className="mt-12 text-xl font-semibold tracking-tight">哪些判定不经过模型</h2>
       <p className="mt-3 text-mute">

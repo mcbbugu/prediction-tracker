@@ -1,0 +1,1 @@
+{"pipeline":"EXTRACT_V1+JUDGE_V1+CROSS_V1+STRUCTURE_V1+resolver-v1","date":"2026-10-23","discovery_recall":1,"extraction_precision":0.08,"verdict_agreement":0.905,"verdict_wilson_low":0.779,"kappa":0.848,"deterministic_share":0.013,"searches_per_claim":2.8,"seconds_per_claim":389.977,"gold_discovery":51,"gold_verdicts":42}

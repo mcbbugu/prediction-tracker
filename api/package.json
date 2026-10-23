@@ -34,7 +34,9 @@
     "expand-plan": "bun run src/tools/expand-plan.ts",
     "expand": "bun run src/tools/expand.ts",
     "typecheck": "tsc --noEmit -p .",
-    "eval:downstream": "bun --env-file=.env run src/tools/downstream-eval.ts"
+    "eval:downstream": "bun --env-file=.env run src/tools/downstream-eval.ts",
+    "eval": "bun --env-file=.env run src/tools/eval.ts",
+    "eval:check": "bun --env-file=.env run src/tools/eval.ts --check"
   },
   "dependencies": {
     "@elysiajs/cors": "1.2.0",
