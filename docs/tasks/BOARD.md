@@ -21,7 +21,7 @@
 | [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 已完成 | a0b72e6 |
 | [030](030-downstream-experiment-v2.md) | 下游对照实验第二版：排除答案泄露（#3） | Cursor | P0 | 已完成 | 59c4895 |
 | [029](029-daily-expansion.md) | 每日扩库：多出「有分数的人」 | Cursor | P0 | 已完成 | 95ff9d5 |
-| [032](032-expand-name-lists.md) | 扩大人物名单，把每天的 AFP 用起来 | Cursor | P0 | 进行中 | |
+| [032](032-expand-name-lists.md) | 扩大人物名单，把每天的 AFP 用起来 | Cursor | P0 | 已完成 | 见完成记录 |
 | [034](034-consistency-import-score.md) | 可信度：已有 9 人核对入库、计分、页面展示 | Cursor（入库计分接口）→ Claude（页面） | P0 | 已完成 | 768dd56 |
 | [022](022-promise-vs-forecast.md) | 承诺与预测分开计分（019、020 依赖它） | Cursor | P0 | 已完成 | c80a209 |
 | [019](019-delay-survival.md) | 生存分析：延迟系数与兑现时间预测（依赖 022；030 的 C 组要用） | Cursor | P0 | 已完成 | 9057773 |

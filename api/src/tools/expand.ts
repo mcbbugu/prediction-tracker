@@ -28,7 +28,8 @@ async function enqueue() {
     verifies += 1;
   }
   let discovered = 0;
-  for (const row of plan.missing.slice(0, DISCOVER_LIMIT)) {
+  for (const row of plan.missing) {
+    if (discovered >= DISCOVER_LIMIT) break;
     const busy = await sql`
       SELECT 1 FROM jobs
       WHERE kind = 'analyze_person' AND query = ${row.query}

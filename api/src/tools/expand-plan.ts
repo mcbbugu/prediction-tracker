@@ -11,6 +11,14 @@ import { MIN_JUDGED } from "../scoring/score";
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const JUDGED = ["已兑现", "部分兑现", "未兑现"];
 
+export const ROSTER_FILES = [
+  "data/batches/ai-tech-100.txt",
+  "data/batches/ai-tech-200.txt",
+  "data/batches/investors-100.txt",
+  "data/batches/crypto-50.txt",
+  "data/batches/science-sports-culture-50.txt",
+];
+
 export type GapRow = { id: string; name: string; judged: number; overdue: number };
 
 export function rankGaps(rows: GapRow[], minJudged = MIN_JUDGED) {
@@ -29,6 +37,39 @@ export function rosterNames(text: string) {
       const [zh, en] = line.split("|").map((part) => part.trim());
       return { zh, en: en ?? "", query: en ? `${zh}（${en}）` : zh };
     });
+}
+
+export function foldName(value: string) {
+  return value.toLowerCase().normalize("NFKD").replace(/\p{M}/gu, "");
+}
+
+export function samePerson(candidate: { zh: string; en: string }, known: { name: string; name_en: string }) {
+  const en = foldName(candidate.en);
+  const knownEn = foldName(known.name_en);
+  if (candidate.zh && candidate.zh === known.name) return true;
+  if (en && knownEn && en === knownEn) return true;
+  const surname = en.split(/\s+/).at(-1) ?? "";
+  const knownSurname = knownEn.split(/\s+/).at(-1) ?? "";
+  if (surname.length < 5 || surname !== knownSurname) return false;
+  const given = en.slice(0, -surname.length).trim();
+  const knownGiven = knownEn.slice(0, -knownSurname.length).trim();
+  if (!given || !knownGiven) return true;
+  return given.startsWith(knownGiven) || knownGiven.startsWith(given);
+}
+
+export function concatRosters(files: { text: string }[]) {
+  const seen = new Set<string>();
+  const rows: ReturnType<typeof rosterNames> = [];
+  for (const file of files) {
+    for (const row of rosterNames(file.text)) {
+      const key = foldName(row.en) || row.zh;
+      if (seen.has(key) || seen.has(row.zh)) continue;
+      seen.add(key);
+      if (row.zh) seen.add(row.zh);
+      rows.push(row);
+    }
+  }
+  return rows;
 }
 
 export async function expansionMetrics() {
@@ -56,7 +97,7 @@ export async function expansionMetrics() {
   };
 }
 
-export async function buildPlan(rosterFile = "data/batches/ai-tech-100.txt") {
+export async function buildPlan(rosterFiles = ROSTER_FILES) {
   const today = new Date().toISOString().slice(0, 10);
   const people = await sql<GapRow[]>`
     SELECT p.id, p.name,
@@ -84,14 +125,14 @@ export async function buildPlan(rosterFile = "data/batches/ai-tech-100.txt") {
   verifies.sort((a, b) => (order.get(a.person_id) ?? 999) - (order.get(b.person_id) ?? 999));
 
   const known = await sql<{ name: string; name_en: string }[]>`SELECT name, name_en FROM people`;
-  const fold = (value: string) => value.toLowerCase().normalize("NFKD").replace(/\p{M}/gu, "");
-  const seen = new Set(known.flatMap((row) => [row.name, fold(row.name_en)]));
-  const surnames = new Set(known.map((row) => fold(row.name_en).split(/\s+/).at(-1) ?? "").filter((name) => name.length >= 5));
-  const missing = rosterNames(readFileSync(join(root, rosterFile), "utf8")).filter((row) => {
-    const en = fold(row.en);
-    const surname = en.split(/\s+/).at(-1) ?? "";
-    return !seen.has(row.zh) && !seen.has(en) && !(surname.length >= 5 && surnames.has(surname));
+  const roster = rosterFiles.flatMap((file) => {
+    try {
+      return [{ text: readFileSync(join(root, file), "utf8") }];
+    } catch {
+      return [];
+    }
   });
+  const missing = concatRosters(roster).filter((row) => !known.some((person) => samePerson(row, person)));
   return { ranked, verifies, missing };
 }
 
