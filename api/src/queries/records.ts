@@ -92,6 +92,42 @@ export async function latestScores(personId: string) {
   return rows.filter((row) => row.confidence !== "已移除");
 }
 
+// Same rows as latestScores, one round trip. Filter after DISTINCT ON: a domain whose newest
+// snapshot is 已移除 is omitted, not replaced by an older snapshot.
+export async function latestScoresFor(personIds: string[]) {
+  const grouped = new Map<string, ScoreRow[]>();
+  if (personIds.length === 0) return grouped;
+  const rows = await sql<(ScoreRow & { person_id: string })[]>`
+    SELECT person_id, domain, value::float8 AS value, low::float8 AS low, high::float8 AS high,
+           n, confidence, formula_version, voided
+    FROM (
+      SELECT DISTINCT ON (person_id, domain)
+        person_id, domain, value, low, high, n, confidence, formula_version, voided
+      FROM score_snapshots
+      WHERE person_id IN ${sql(personIds)}
+      ORDER BY person_id, domain, computed_at DESC
+    ) latest
+    WHERE confidence <> '已移除'
+    ORDER BY person_id, domain
+  `;
+  for (const row of rows) {
+    const score: ScoreRow = {
+      domain: row.domain,
+      value: row.value,
+      low: row.low,
+      high: row.high,
+      n: row.n,
+      confidence: row.confidence,
+      formula_version: row.formula_version,
+      voided: row.voided,
+    };
+    const list = grouped.get(row.person_id);
+    if (list) list.push(score);
+    else grouped.set(row.person_id, [score]);
+  }
+  return grouped;
+}
+
 // SPEC 利益关系 (P12): relations with dates and archived sources, plus which published claims touch them.
 export type InterestRow = {
   id: number;

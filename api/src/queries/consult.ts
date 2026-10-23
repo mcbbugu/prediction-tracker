@@ -1,6 +1,6 @@
 import { ArkStopped, arkConfigured, arkJson } from "../core/ark";
 import { sql } from "../core/db";
-import { latestScores, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg, type ClaimRow } from "./records";
+import { latestScoresFor, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg, type ClaimRow } from "./records";
 import { indicators } from "../scoring/indicators";
 import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, interestSplit, personProfile } from "../scoring/score";
 
@@ -192,17 +192,6 @@ export async function consultPrior(input: ConsultRequest) {
     publishedClaims(),
   ]);
 
-  const allScores = await Promise.all(
-    people.map(async (p) => ({
-      person_id: p.id,
-      scores: await latestScores(p.id),
-    })),
-  );
-  const scoreMap = new Map<string, Awaited<ReturnType<typeof latestScores>>>();
-  for (const entry of allScores) {
-    scoreMap.set(entry.person_id, entry.scores);
-  }
-
   const categories = [...new Set(allClaims.map((claim) => claim.category))];
   const terms = rawQuery ? searchTerms(rawQuery) : [];
   const parsed = rawQuery && !input.person_id ? await parseQuery(rawQuery, people, categories) : null;
@@ -228,6 +217,8 @@ export async function consultPrior(input: ConsultRequest) {
       .map((claim) => claim.person_id);
     matchedPeopleIds = [...new Set([...byName, ...byClaim])];
   }
+
+  const scoreMap = await latestScoresFor(matchedPeopleIds);
 
   const matchedDomains = new Set<string>();
   if (input.domain && input.domain !== "all") matchedDomains.add(input.domain);

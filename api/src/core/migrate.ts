@@ -63,6 +63,7 @@ async function migrateUnlocked() {
   await sql`CREATE INDEX IF NOT EXISTS verdict_proposals_state_idx ON verdict_proposals (state, created_at)`;
   await sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'public'`;
   await sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS aliases text[] NOT NULL DEFAULT '{}'`;
+  await sql`CREATE INDEX IF NOT EXISTS people_public_name_idx ON people (name) WHERE visibility = 'public'`;
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS quote_original text NOT NULL DEFAULT ''`;
   await sql`
     CREATE TABLE IF NOT EXISTS jobs (
@@ -125,6 +126,8 @@ async function migrateUnlocked() {
       PRIMARY KEY (claim_id, interest_id)
     )
   `;
+  // Person pages and consult look up claims by interest, the reverse of the primary key.
+  await sql`CREATE INDEX IF NOT EXISTS claim_interests_interest_idx ON claim_interests (interest_id, claim_id)`;
   // 利益关系的三层数据: scale on layer 1, a shared organisation key, layer 2 exposures and layer 3 claim links.
   await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS stake_pct numeric`;
   await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS amount_usd numeric`;
@@ -162,6 +165,7 @@ async function migrateUnlocked() {
       PRIMARY KEY (claim_id, exposure_id)
     )
   `;
+  await sql`CREATE INDEX IF NOT EXISTS claim_exposures_exposure_idx ON claim_exposures (exposure_id, claim_id)`;
   // Every Ark call, from any process: the shared rate limiter reserves slots here and the AFP budget sums it.
   await sql`
     CREATE TABLE IF NOT EXISTS ark_calls (
@@ -199,6 +203,7 @@ async function migrateUnlocked() {
     CREATE UNIQUE INDEX IF NOT EXISTS org_exposures_unique_basis_idx
     ON org_exposures (org_key, dimension, lower(target), coalesce(metric_kind, ''), coalesce(metric_year, 0), basis)
   `;
+  await sql`CREATE INDEX IF NOT EXISTS org_exposures_org_published_idx ON org_exposures (org_key, dimension, target) WHERE publication = 'published'`;
   // Organisation-level annual revenue (SPEC 推算规则), from filings.
   await sql`
     CREATE TABLE IF NOT EXISTS org_financials (
@@ -217,6 +222,7 @@ async function migrateUnlocked() {
       UNIQUE (org_key, period_end, form)
     )
   `;
+  await sql`CREATE INDEX IF NOT EXISTS org_financials_org_period_idx ON org_financials (org_key, period_end DESC)`;
   // Queue fields: one worker claims queued jobs; payload carries per-kind input (e.g. claim_id).
   await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS payload jsonb NOT NULL DEFAULT '{}'::jsonb`;
   await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0`;
@@ -244,11 +250,15 @@ async function migrateUnlocked() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS challenges_pending_idx ON challenges (state, created_at)`;
   await sql`CREATE INDEX IF NOT EXISTS challenges_target_idx ON challenges (target_kind, target_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS challenges_claim_pending_idx ON challenges (target_id) WHERE target_kind = 'claim' AND state = 'pending'`;
   // 改期合并 (formula v1.3): restatements of one commitment share a thread; the thread's judged claims
   // count √k in total. thread_source says who linked them (agent / manual).
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS thread_id text`;
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS thread_source text`;
   await sql`CREATE INDEX IF NOT EXISTS claims_thread_idx ON claims (thread_id) WHERE thread_id IS NOT NULL`;
+  await sql`CREATE INDEX IF NOT EXISTS claims_published_deadline_idx ON claims (deadline, id) WHERE publication = 'published'`;
+  await sql`CREATE INDEX IF NOT EXISTS claims_person_published_date_idx ON claims (person_id, published_date, id) WHERE publication = 'published'`;
+  await sql`CREATE INDEX IF NOT EXISTS claims_published_person_status_idx ON claims (person_id, status) WHERE publication = 'published'`;
   // 证据不足 is void (not scored); how many were voided is published next to the score.
   await sql`ALTER TABLE score_snapshots ADD COLUMN IF NOT EXISTS voided integer NOT NULL DEFAULT 0`;
   // 校准协议: blind human labels for agent verdicts. purpose = calibration (the stratified sample that opens
@@ -285,6 +295,7 @@ async function migrateUnlocked() {
     CREATE UNIQUE INDEX IF NOT EXISTS interests_live_unique_idx
     ON interests (person_id, kind, lower(counterparty), lower(role)) WHERE superseded_at IS NULL
   `;
+  await sql`CREATE INDEX IF NOT EXISTS interests_person_live_idx ON interests (person_id, kind, counterparty) WHERE publication = 'published' AND superseded_at IS NULL`;
   await sql`
     UPDATE interests SET role = regexp_replace(role, '[\u200B-\u200D\uFEFF]+', '', 'g')
     WHERE role ~ '[\u200B-\u200D\uFEFF]'
@@ -324,6 +335,10 @@ async function migrateUnlocked() {
     )
   `;
   await sql`CREATE INDEX IF NOT EXISTS consistency_pairs_person_idx ON consistency_pairs (person_id, domain)`;
+  // Trigram indexes for ILIKE name lookup and future SQL-side quote search. Superuser is required.
+  await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`;
+  await sql`CREATE INDEX IF NOT EXISTS people_name_trgm_idx ON people USING gin (name gin_trgm_ops, name_en gin_trgm_ops)`;
+  await sql`CREATE INDEX IF NOT EXISTS claims_quote_trgm_idx ON claims USING gin (quote_zh gin_trgm_ops, quote_en gin_trgm_ops)`;
 }
 
 export async function logEvent(event: {
