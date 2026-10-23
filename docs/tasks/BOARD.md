@@ -15,7 +15,7 @@
 | [003](003-rerun-failed-analysis.md) | 重跑失败的人物分析 | Cursor | P1 | 已完成 | 无代码提交 |
 | [004](004-refetch-sources.md) | 重抓乱码 PDF 和打不开的出处 | Cursor | P2 | 已完成 | f9437cf |
 | [011](011-replayable-pipeline.md) | 模型调用内容寻址与可重放 | Cursor | P0 | 已完成 | f6fda7e |
-| [012](012-testable-propositions.md) | 可检验命题 + 确定性判定器（依赖 011） | Cursor | P0 | 已完成 | 见完成记录 |
+| [012](012-testable-propositions.md) | 可检验命题 + 确定性判定器（依赖 011） | Cursor | P0 | 已完成 | 4c5fc53 |
 | [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 待办 | |
 | [014](014-transparency-log.md) | 透明日志与每日根哈希（依赖 011） | Cursor | P1 | 待办 | |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P1 | 待办 | |
