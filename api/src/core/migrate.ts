@@ -114,7 +114,7 @@ async function migrateUnlocked() {
       created_at timestamptz NOT NULL DEFAULT now()
     )
   `;
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS interests_unique_idx ON interests (person_id, kind, lower(counterparty), lower(role))`;
+  // Uniqueness of live interests rows: interests_live_unique_idx below (partial, ignores superseded rows).
   // Which interest a claim touches, judged against the relations active on the day it was said.
   await sql`
     CREATE TABLE IF NOT EXISTS claim_interests (
@@ -278,6 +278,17 @@ async function migrateUnlocked() {
   await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS end_kind text`;
   await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS superseded_at timestamptz`;
   await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS superseded_by bigint`;
+  // One live row per (person, kind, organisation, role); corrected rows stay alongside as history.
+  // (Replaces interests_unique_idx, which counted superseded rows too and forced workarounds.)
+  await sql`DROP INDEX IF EXISTS interests_unique_idx`;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS interests_live_unique_idx
+    ON interests (person_id, kind, lower(counterparty), lower(role)) WHERE superseded_at IS NULL
+  `;
+  await sql`
+    UPDATE interests SET role = regexp_replace(role, '[\u200B-\u200D\uFEFF]+', '', 'g')
+    WHERE role ~ '[\u200B-\u200D\uFEFF]'
+  `;
   await sql`
     UPDATE interests SET end_kind = CASE
       WHEN ended = 'present' THEN 'ongoing'

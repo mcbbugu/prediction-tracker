@@ -139,7 +139,7 @@ async function collect(person: Person, publication: "published" | "proposed" = p
           ${cleanDate(item.started)}, ${ended}, ${endKind(ended)}, ${page.final_url}, ${page.id}, ${quote}, ${publication},
           ${orgKey(counterparty)}, ${parseScale(item.stake_text, quote, "pct")}, ${parseScale(item.amount_text, quote, "usd")}
         )
-        ON CONFLICT (person_id, kind, lower(counterparty), lower(role)) DO NOTHING
+        ON CONFLICT (person_id, kind, lower(counterparty), lower(role)) WHERE superseded_at IS NULL DO NOTHING
         RETURNING id
       `;
       if (rows.length) kept += 1;
