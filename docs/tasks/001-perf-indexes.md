@@ -33,7 +33,7 @@
 
 ## 完成记录
 
-做了报告里不改变返回字段的两项：索引，以及 consult 的分数 N+1。
+提交 `fc57ccb`。做了报告里不改变返回字段的两项：索引，以及 consult 的分数 N+1。
 
 - `api/src/core/migrate.ts`：按报告加了 12 条 `CREATE INDEX IF NOT EXISTS` 和 `pg_trgm`（当前账号是超级用户，扩展装上了）。放在对应表或它依赖的列出现之后，没有改已有索引。
 - `api/src/queries/records.ts`：新增 `latestScoresFor`，一次取出多人的最新分数。`已移除` 放在 `DISTINCT ON` 之后再滤掉。库里有 20 个领域的最新快照就是「已移除」，若按报告原文把条件写进 `DISTINCT ON`，会把更早的一条捞回来，返回就会变。
