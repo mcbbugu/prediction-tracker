@@ -25,7 +25,7 @@
 | [034](034-consistency-import-score.md) | 可信度：已有 9 人核对入库、计分、页面展示 | Cursor（入库计分接口）→ Claude（页面） | P0 | 已完成 | 768dd56 |
 | [022](022-promise-vs-forecast.md) | 承诺与预测分开计分（019、020 依赖它） | Cursor | P0 | 已完成 | c80a209 |
 | [019](019-delay-survival.md) | 生存分析：延迟系数与兑现时间预测（依赖 022；030 的 C 组要用） | Cursor | P0 | 已完成 | 9057773 |
-| [033](033-copy-and-terms.md) | 文案与术语统一（首页、人物页、全站） | Claude（前端）+ Cursor（提示词、quote_zh 回填） | P1 | 进行中（前端已完成，待 Cursor 做提示词与 quote_zh 回填） | |
+| [033](033-copy-and-terms.md) | 文案与术语统一（首页、人物页、全站） | Claude（前端）+ Cursor（提示词、quote_zh 回填） | P1 | 已完成 | 见完成记录 |
 | [035](035-consistency-auto-collect.md) | 可信度接进每日扩库，新人物自动采集（依赖 034） | Cursor | P1 | 待办 | |
 | [028](028-fix-structured-sources.md) | 修好结构化来源：字幕、8-K、播客（需先装 yt-dlp） | Cursor | P1 | 待办 | |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 已完成 | dd9dcc0 |

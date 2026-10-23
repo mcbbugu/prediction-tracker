@@ -77,6 +77,14 @@ export type KeptEvidence = { url: string; quote: string; source_id: number; fetc
 
 export const JUDGE_V1 = "JUDGE_V1";
 export const CROSS_V1 = "CROSS_V1";
+export const JUDGE_V2 = "JUDGE_V2";
+export const CROSS_V2 = "CROSS_V2";
+
+const RESULT_TONE = "actual_result 用中文直接陈述事实，一到两句，不评价这个人。不要以「原文称」「原文显示」「原文说」「原文写道」开头。";
+
+export function plainStoredResult(text: string) {
+  return text.replace(/^(原文称|原文显示|原文说|原文写道)[，,：:\s]*/, "").trim();
+}
 
 export type PageJudgement = {
   status: string;
@@ -99,7 +107,7 @@ export async function judgeOnPages(claim: DueClaim, pages: Snapshot[], budget = 
       "- 原文明确说明截止日前做到了 → 已兑现；只做到一部分或打了折扣 → 部分兑现；原文明确说明截止日时没做到 → 未兑现。",
       "- 原文没有直接回答这个问题 → 证据不足。不要推测。",
       "evidence 里的 quote 必须从对应 page 的原文里逐字复制一句或一段（20 到 300 字），不要改写、翻译或拼接不同位置的句子。",
-      "actual_result 用中文写一到两句，只陈述原文里的事实，不评价这个人。",
+      RESULT_TONE,
       '输出 JSON：{"status":"","actual_result":"","rationale":"","evidence":[{"page":1,"quote":""}]}',
     ].join("\n"),
     JSON.stringify({
@@ -119,7 +127,7 @@ export async function judgeOnPages(claim: DueClaim, pages: Snapshot[], budget = 
       })),
     }),
     2500,
-    system ? CROSS_V1 : JUDGE_V1,
+    system ? CROSS_V2 : JUDGE_V2,
   )) as Judgement;
 
   const kept: KeptEvidence[] = [];
@@ -145,7 +153,7 @@ export async function judgeOnPages(claim: DueClaim, pages: Snapshot[], budget = 
     status = "证据不足";
   }
 
-  return { status, actual_result: (answer.actual_result ?? "").trim(), rationale, kept, rejected, model_call_id: takeModelCallId(answer) };
+  return { status, actual_result: plainStoredResult(answer.actual_result ?? ""), rationale, kept, rejected, model_call_id: takeModelCallId(answer) };
 }
 
 export function outcomeQuery(claim: DueClaim) {
@@ -166,6 +174,7 @@ const CROSS_PROMPT = [
   "status 只能是：已兑现、部分兑现、未兑现、待定、证据不足。",
   "原文明确做到了 → 已兑现；只做到一部分 → 部分兑现；原文明确没做到 → 未兑现；原文没直接回答 → 证据不足。",
   "evidence 里的 quote 必须从对应 page 的原文逐字复制（20 到 300 字）。",
+  "actual_result 用中文直接陈述事实，不要以「原文称」「原文显示」「原文说」开头。",
   '输出 JSON：{"status":"","actual_result":"","rationale":"","evidence":[{"page":1,"quote":""}]}',
 ].join("\n");
 

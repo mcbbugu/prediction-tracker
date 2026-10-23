@@ -9,7 +9,7 @@ import { migrate } from "../core/migrate";
 import { normalize, quoteOnPage } from "../evidence/sources";
 import { cohenKappa, wilson } from "../scoring/calibration";
 
-export const PIPELINE_VERSION = "EXTRACT_V1+JUDGE_V1+CROSS_V1+STRUCTURE_V1+resolver-v1";
+export const PIPELINE_VERSION = "EXTRACT_V1+JUDGE_V2+CROSS_V2+STRUCTURE_V1+resolver-v1";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const evalDir = join(root, "data/eval");

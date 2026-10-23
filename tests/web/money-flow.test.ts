@@ -302,6 +302,19 @@ describe("mergeExposures", () => {
     expect(none).toHaveLength(0);
     expect(external.map((source) => source.label)).toEqual(["SpaceX", "太空探索技术公司", "NASA"]);
   });
+
+  test("同一家公司、同一笔金额，客户和投资各记一次时只留一条", () => {
+    const xai = org({
+      org_key: "xai",
+      exposures: [
+        exposure({ id: 1, dimension: "customer", target: "Anthropic", target_zh: "Anthropic", metric: { kind: "amount_usd", value: 1_250_000_000, year: null } }),
+        exposure({ id: 2, dimension: "investment", target: "Anthropic", target_zh: "Anthropic", metric: { kind: "amount_usd", value: 1_250_000_000, year: null } }),
+      ],
+    });
+    const { sources } = mergeExposures(xai, [xai]);
+    expect(sources.map((source) => source.label)).toEqual(["Anthropic"]);
+    expect(sources[0].exposures.map((item) => item.id).sort()).toEqual([1, 2]);
+  });
 });
 
 describe("assignClaims", () => {

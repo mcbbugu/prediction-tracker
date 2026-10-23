@@ -184,7 +184,20 @@ export function mergeExposures(org: Org, orgs: Org[]) {
     if (m && (!item.best || rank(m) > rank(item.best))) item.best = m;
     merged.set(key, item);
   }
-  return { sources: [...merged.values()], ties: [...ties.values()] };
+  const sources: MergedSource[] = [];
+  const seenAmount = new Map<string, MergedSource>();
+  for (const item of merged.values()) {
+    const amount = item.best?.kind === "amount_usd" ? item.best.value : null;
+    const signature = amount == null ? "" : `${norm(item.label)}:${amount}`;
+    const previous = signature ? seenAmount.get(signature) : undefined;
+    if (previous) {
+      previous.exposures.push(...item.exposures);
+      continue;
+    }
+    if (signature) seenAmount.set(signature, item);
+    sources.push(item);
+  }
+  return { sources, ties: [...ties.values()] };
 }
 
 export { metricShort };
