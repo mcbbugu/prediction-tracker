@@ -32,7 +32,7 @@ SPEC「近期版本：暂不做人工审核」：机器判定照常计分，但�
 
 ## 完成记录
 
-已判定主张按 `provenance` 和 `claim_events` 分成 `human`、`seed_autocheck`、`machine`、`on_demand`。`/v1/prior`、consult、MCP `get_prior` 都带上每条的 `verdict_tier`，以及顶层的 `verdict_tiers` 和 `disclosure`。人物页分数旁链到方法页 `#eval`。方法页写明现在是评测中，双模型一致不是独立核实。
+提交 `d50b71a`。已判定主张按 `provenance` 和 `claim_events` 分成 `human`、`seed_autocheck`、`machine`、`on_demand`。`/v1/prior`、consult、MCP `get_prior` 都带上每条的 `verdict_tier`，以及顶层的 `verdict_tiers` 和 `disclosure`。人物页分数旁链到方法页 `#eval`。方法页写明现在是评测中，双模型一致不是独立核实。
 
 反证提交后会把对方页面存档并再判定一次。结论变了就更新并标有争议；没变就记下「已复核，结论不变」。
 
