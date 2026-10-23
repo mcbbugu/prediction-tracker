@@ -10,6 +10,12 @@ import { assignClaims, buildMoneyFlow } from "@/lib/money-flow";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const data = await getJson<{ person: Person }>(`/v1/people/${id}`).catch(() => null);
+  return { title: `利益关系 · ${data?.person.name ?? "人物"}` };
+}
+
 export default async function InterestsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const data = await getJson<{ person: Person; claims: Claim[]; interests?: PersonInterests }>(`/v1/people/${id}`);

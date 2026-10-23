@@ -10,6 +10,8 @@ import { getJson, type ConsultPayload } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "搜索" };
+
 export default function SearchPage(props: {
   searchParams: Promise<{ q?: string }>;
 }) {
@@ -50,7 +52,7 @@ async function SearchBody({
       {!data ? (
         <p className="mt-10 inline-flex items-center gap-2 text-mute">
           <Icon name="search" className="text-mute" />
-          从上面开始。检索会返回人物先验和能点回的原话，不会编造分数。
+          从上面开始。检索会返回人物的兑现记录和能点回的原话，不会编造分数。
         </p>
       ) : data.evaluations.length === 0 && data.evidence_chain.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-line p-6">
@@ -97,7 +99,7 @@ async function SearchBody({
             ) : null}
             <h2 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
               <Icon name="person" size={20} className="text-mute" />
-              人物先验
+              人物兑现记录
             </h2>
             <div className="mt-4 space-y-3">
               {data.evaluations.map((item) => (

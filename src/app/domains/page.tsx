@@ -6,6 +6,8 @@ import { getJson, type HomePayload } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "领域" };
+
 export default async function DomainsPage() {
   const data = await getJson<HomePayload>("/v1/home");
   // Larger samples first; a one-claim score is mostly the prior.

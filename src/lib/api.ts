@@ -48,7 +48,7 @@ export type Person = {
 
 export function curationLabel(curation: string | null | undefined) {
   if (curation === "auto") return "自动收录 · 未经人工复核";
-  if (curation === "cross_checked") return "自动收录 · 双模型一致";
+  if (curation === "cross_checked") return "自动收录 · 两个模型判定一致";
   return null;
 }
 

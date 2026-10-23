@@ -6,6 +6,7 @@ import { Portrait } from "@/components/portrait";
 import { ScoreBadge, scoreCaption } from "@/components/score-badge";
 import { cn } from "@/lib/utils";
 import { curationLabel, getJson, type Person, type Score } from "@/lib/api";
+import { shortTitle, spaceCjk, TERMS } from "@/lib/terms";
 
 export const dynamic = "force-dynamic";
 
@@ -67,25 +68,36 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     };
   });
   const cards = { length: data.total };
+  // Page 1 also shows how many people have a score and a live example for the hero. The list is small for now;
+  // a scored-count field on /v1/people can replace this second request once the directory grows past 100.
+  const everyone = page === 1 ? await getJson<PeoplePage>(`/v1/people?limit=100&offset=0&sort=judged`) : null;
+  const scoredCount = everyone ? everyone.people.filter((p) => p.domains.some((d) => d.value != null)).length : 0;
+  const exampleSource = everyone?.people.find((p) => p.domains.some((d) => d.value != null && d.n >= 5)) ?? null;
+  const exampleScore = exampleSource ? [...exampleSource.domains].filter((d) => d.value != null).sort((a, b) => b.n - a.n)[0] : null;
+  const example =
+    exampleSource && exampleScore && exampleScore.value != null
+      ? { person: exampleSource.name, domain: exampleScore.domain, value: exampleScore.value, low: exampleScore.low, high: exampleScore.high, n: exampleScore.n, role: shortTitle(exampleSource.title, 30) || null }
+      : null;
 
   return (
     <div>
       <HomeWash />
       <section className="pt-4">
-        {page === 1 ? <HomeHero total={cards.length} /> : null}
+        {page === 1 ? <HomeHero total={cards.length} scored={scoredCount} example={example} /> : null}
       </section>
 
       <section className="border-t border-black/[0.06] pt-12">
         <div className="mb-8 text-center">
-          <p className="text-xs font-medium tracking-wide text-blue">人物先验库</p>
-          <h2 className="mt-1 text-[28px] font-semibold tracking-tight">已收录 {cards.length} 位公众人物</h2>
-          <p className="mx-auto mt-2 max-w-[44ch] text-sm leading-6 text-mute">分数按领域分开。默认看靠谱度（承诺兑现了多少）。70 以上是实心，52–70 是浅色，再低是空心。这一侧还没有判定过的，显示为虚线。</p>
+          <p className="text-xs font-medium tracking-wide text-blue">人物库</p>
+          <h2 className="mt-1 text-[28px] font-semibold tracking-tight">已收录 {cards.length} 位公众人物{everyone ? <span className="text-mute">，{scoredCount} 位已有分数</span> : null}</h2>
+          <p className="mx-auto mt-2 max-w-[44ch] text-sm leading-6 text-mute">分数按领域分开，默认看靠谱度（承诺兑现了多少）。{TERMS.aiDisclosure}。</p>
+          <p className="mt-1 text-xs text-mute">实心 ≥ 70 · 浅色 52–70 · 空心 &lt; 52 · 虚线：还没有判定</p>
           <p className="mt-3 flex justify-center gap-3 text-xs">
             {(
               [
                 ["promise", "靠谱度"],
                 ["forecast", "判断力"],
-                ["all", "全部（旧）"],
+                ["all", TERMS.pooled],
               ] as const
             ).map(([key, label]) => (
               <Link key={key} href={key === "promise" ? "/" : `/?rank=${key}`} className={rank === key ? "text-blue no-underline" : "text-mute no-underline hover-fine:text-blue"}>
@@ -117,7 +129,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                 <Portrait person={card.person} riso className="w-14 shrink-0 !rounded-[9px]" />
                 <div className="min-w-0 pt-0.5">
                   <p className="truncate text-[16px] leading-6 font-bold">{card.person.name}</p>
-                  <p className="line-clamp-2 text-xs leading-[18px] text-mute">{card.person.title}</p>
+                  <p className="line-clamp-2 text-xs leading-[18px] text-mute" title={spaceCjk(card.person.title)}>{shortTitle(card.person.title)}</p>
                   {curationLabel(card.person.curation) ? (
                     <span className="mt-1 inline-block rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">{curationLabel(card.person.curation)}</span>
                   ) : null}
@@ -159,11 +171,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                 <span>
                   待到期 <b className="num font-semibold text-ink">{card.pending}</b>
                 </span>
-                {card.machine > 0 ? (
-                  <span className="ml-auto rounded-full bg-sunken px-2 py-0.5" title="这些主张由 agent 核对原话后直接公开">
-                    机器核对
-                  </span>
-                ) : null}
+
               </div>
             </Link>
             </Card>

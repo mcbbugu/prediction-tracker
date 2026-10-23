@@ -49,7 +49,7 @@ export function SiteHeader() {
           {
             id: "query",
             title: `查询「${needle}」`,
-            description: "按这句话找人物、主张和先验",
+            description: "按这句话找人物、主张和兑现记录",
             keywords: [needle],
             onSelect: () => router.push(`/search?q=${encodeURIComponent(needle)}`),
           },

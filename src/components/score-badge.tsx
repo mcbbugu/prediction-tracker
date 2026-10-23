@@ -10,7 +10,8 @@ export function hasInterval(score: ScoreLike) {
 // No judged claim → 样本不足. There are no in-between states.
 export function scoreCaption(score: ScoreLike) {
   if (score.value == null) return "还没有已判定的主张";
-  return hasInterval(score) ? `基于 ${score.n} 条 · 80% 区间 ${score.low}–${score.high}` : `基于 ${score.n} 条已判定`;
+  const thin = score.n < 3 ? "，参考价值低" : "";
+  return hasInterval(score) ? `基于 ${score.n} 条${thin} · 80% 区间 ${score.low}–${score.high}` : `基于 ${score.n} 条已判定${thin}`;
 }
 
 // Ink density encodes the record: solid ≥ 70, tint 52–70, outline < 52, dashed when there is no judged claim.

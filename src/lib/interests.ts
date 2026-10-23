@@ -183,22 +183,36 @@ function shortMetric(metric: Exposure["metric"]) {
 }
 
 // SPEC：主张上的「说这句话时的利益」，点开能看到原因。
-export function claimExposureChips(flow: InterestsPayload, claimId: string) {
-  const chips: { key: string; label: string; level: "direct" | "indirect"; reason: string }[] = [];
+// One chip per counterparty: the disclosure year closest to (not after) the year the claim was said; the other
+// years go into the tooltip so the row does not repeat 「美国 · 营收」 three times.
+export function claimExposureChips(flow: InterestsPayload, claimId: string, saidYear?: number) {
+  const byName = new Map<string, { exposure: Exposure; level: "direct" | "indirect"; reason: string; others: string[] }>();
   for (const link of flow.claim_links) {
     if (link.claim_id !== claimId || link.target_kind !== "exposure") continue;
     for (const org of flow.orgs) {
       const exposure = org.exposures.find((item) => item.id === link.target_id);
       if (!exposure) continue;
       const name = exposure.target_zh || exposure.target;
-      const metric = shortMetric(exposure.metric);
-      chips.push({
-        key: `${exposure.id}`,
-        label: metric ? `${name} · ${metric}` : name,
-        level: link.level,
-        reason: link.reason,
-      });
+      const seen = byName.get(name);
+      if (!seen) {
+        byName.set(name, { exposure, level: link.level, reason: link.reason, others: [] });
+        continue;
+      }
+      const year = (e: Exposure) => e.metric?.year ?? 0;
+      const fit = (e: Exposure) => (saidYear == null ? year(e) : year(e) <= saidYear ? 10_000 - (saidYear - year(e)) : -year(e));
+      const [keep, drop] = fit(exposure) > fit(seen.exposure) ? [exposure, seen.exposure] : [seen.exposure, exposure];
+      seen.others.push(shortMetric(drop.metric) ?? "");
+      seen.exposure = keep;
     }
   }
-  return chips;
+  return [...byName.entries()].map(([name, item]) => {
+    const metric = shortMetric(item.exposure.metric);
+    const others = item.others.filter(Boolean);
+    return {
+      key: `${item.exposure.id}`,
+      label: metric ? `${name} · ${metric}` : name,
+      level: item.level,
+      reason: others.length ? `${item.reason}（其他年份：${others.join("；")}）` : item.reason,
+    };
+  });
 }

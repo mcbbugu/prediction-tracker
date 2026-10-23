@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/beui/motion/card";
+import { SITE } from "@/lib/terms";
 
 const SAMPLES = ["马斯克 2025 年底完全无人驾驶", "黄仁勋", "梁文锋"];
 
@@ -15,13 +16,13 @@ const CAPABILITIES = [
   },
   {
     step: "02",
-    title: "领域先验与利益旁证",
+    title: "按领域的兑现率与利益关系",
     body: "兑现率按领域分开算，不打跨领域的人品总分。说话当天他在哪些机构任职、持股，会并排标在原话旁边。",
   },
   {
     step: "03",
     title: "给 Agent 直接调用",
-    body: "推理或写报告前调一次 POST /v1/consult 或 MCP get_prior，拿到该领域的分数、80% 区间、改期记录和能点回的原话。",
+    body: "你的 Agent 在推理或写报告前调一次 POST /v1/consult 或 MCP get_prior，拿到这个人在该领域的兑现率、80% 区间、改期记录和能点回的原话。",
   },
 ];
 
@@ -32,7 +33,9 @@ const STANDARDS = [
   ["利益关系单列", "任职、持股、商业往来不进综合分，单独对照利益相关与无关时的兑现率。"],
 ];
 
-export function HomeHero({ total }: { total: number }) {
+export type HeroExample = { person: string; domain: string; value: number; low: number | null; high: number | null; n: number; role: string | null };
+
+export function HomeHero({ total, scored, example }: { total: number; scored: number; example: HeroExample | null }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
 
@@ -46,13 +49,13 @@ export function HomeHero({ total }: { total: number }) {
     <div className="pt-8 pb-16 sm:pt-12">
       <div className="mx-auto max-w-[780px] text-center">
         <p className="inline-flex items-center gap-2 rounded-full border border-blue/15 bg-white/80 px-3.5 py-1 text-xs font-medium text-blue backdrop-blur-md">
-          先验 · 给 AI 用的可信度层
+          先验 · {SITE.tagline}
         </p>
         <h1 className="mt-5 text-[36px] leading-[1.12] font-[900] tracking-tight text-ink sm:text-[52px]">
-          辅助你的 Agent 选择相信谁
+          在相信一句话之前，先查查说话的人以前准不准
         </h1>
         <p className="mx-auto mt-4 max-w-[40em] text-base leading-7 text-ink/75">
-          模型每天读进成千上万句预测、承诺和判断，却把所有人的话当成同一种事实。先验把公众人物带期限的话逐句对回网页，到期核对结果，算成按领域的先验分数。你的 Agent 在采信一句话之前，先来这里查这个人。
+          人和模型每天都在读别人的预测和承诺，却很少知道说话的人过去兑现了多少。这里把公众人物带期限的话逐句对回原文，到期核对结果，按领域算出兑现率，并标出他说话时的利益关系。
         </p>
 
         <form
@@ -73,7 +76,7 @@ export function HomeHero({ total }: { total: number }) {
             type="submit"
             className="h-11 shrink-0 cursor-pointer rounded-xl bg-blue px-5 text-sm font-medium text-white transition-colors hover:bg-blue-deep"
           >
-            核对先验
+            查一个人
           </button>
         </form>
 
@@ -94,7 +97,7 @@ export function HomeHero({ total }: { total: number }) {
 
       <div className="mt-12 text-center">
         <p className="text-xs font-medium tracking-wide text-blue">核心功能</p>
-        <h2 className="mt-1 text-[26px] font-semibold tracking-tight text-ink">一句话进去，一套可追溯的先验出来</h2>
+        <h2 className="mt-1 text-[26px] font-semibold tracking-tight text-ink">一句话进去，这个人过去的兑现记录出来</h2>
       </div>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         {CAPABILITIES.map((item) => (
@@ -134,14 +137,17 @@ export function HomeHero({ total }: { total: number }) {
         <div className="rounded-2xl bg-ink p-5 text-xs leading-6 text-white/85">
           <div className="flex items-center justify-between text-[11px] text-white/50">
             <span>Agent 决策调用 · POST /v1/consult</span>
-            <span className="num">已收录 {total} 位人物</span>
+            <span className="num">已收录 {total} 位人物 · {scored} 位有分数</span>
           </div>
           <pre className="mt-3 overflow-x-auto font-mono text-[12px] leading-6 text-white/90">
-{`Input   "马斯克说 2026 年底 Robotaxi 全面铺开"
-Prior   自动驾驶 · 39.2（80% 区间 22–58 · 18 条已判定）
-Note    利益相关：Tesla CEO · 同题改期串 6 次
-Action  下调时间表权重，要求外部落地证据后再采信`}
+            {example
+              ? `Input   "${example.person}说的一句关于${example.domain}的新说法"
+Record  ${example.domain} · ${example.value.toFixed(1)}${example.low != null ? `（80% 区间 ${example.low}–${example.high}` : "（"} · ${example.n} 条已判定）${example.role ? `
+Note    利益相关：说话时任 ${example.role}` : ""}
+Action  按这个兑现率调低或调高采信程度，要求外部证据后再引用`
+              : "还没有足够的已判定主张来展示示例。"}
           </pre>
+          <p className="mt-2 text-[11px] text-white/45">以上是当前库里的真实数据，随核对结果更新。</p>
         </div>
       </div>
     </div>

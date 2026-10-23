@@ -1,3 +1,4 @@
+import { plainResult, spaceCjk } from "@/lib/terms";
 import Link from "next/link";
 import { Suspense } from "react";
 import Loading from "@/app/loading";
@@ -67,7 +68,7 @@ function describe(line: ChangeLine, personId: string) {
     );
   if (line.kind === "count")
     return line.to > line.from ? `新增 ${line.to - line.from} 条已判定（${line.from} → ${line.to}）` : `减少 ${line.from - line.to} 条已判定（${line.from} → ${line.to}）`;
-  return `计分规则调整为 ${line.version}：${FORMULA_NOTES[line.version] ?? "计算方式调整"}`;
+  return FORMULA_NOTES[line.version] ? `计分规则升级到 ${line.version}：${FORMULA_NOTES[line.version]}` : `计分规则升级到 ${line.version}`;
 }
 
 function host(url: string) {
@@ -95,12 +96,19 @@ const SHOW: Record<string, { label: string; test: (claim: Claim, today: string) 
   partial: { label: "部分兑现", test: (c) => c.status === "部分兑现" },
   missed: { label: "未兑现", test: (c) => c.status === "未兑现" },
   rescheduled: { label: "改期串", test: (c) => Boolean(c.thread_id) },
-  machine: { label: "机器核对", test: (c) => c.reviewed === false },
+  machine: { label: "AI 判定", test: (c) => c.reviewed === false },
   manual: { label: "人工复核", test: (c) => c.reviewed !== false },
 };
 
 function yearSpan(claim: Claim) {
   return `${claim.published_date.slice(0, 7)} → ${claim.deadline.slice(0, 7)}`;
+}
+
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const data = await getJson<{ person: Person }>(`/v1/people/${id}`).catch(() => null);
+  return { title: data?.person.name ?? "人物" };
 }
 
 export default function PersonPage(props: {
@@ -216,7 +224,6 @@ async function PersonBody({
   const cstage = (row: ProfileRow) => (partOf(row).value != null ? 1 : 0);
   const profile = [...(data.profile ?? [])].sort((a, b) => cstage(b) - cstage(a) || (partOf(b).n ?? 0) - (partOf(a).n ?? 0));
   const top = profile[0];
-  const pct = (w: number) => `${Math.round(w * 100)}%`;
   const fmtPart = (part: { value: number | null; low: number | null; high: number | null }) =>
     part.value != null ? `${part.value.toFixed(1)}（${part.low}–${part.high}）` : "样本不足";
 
@@ -247,7 +254,7 @@ async function PersonBody({
               <span className="truncate">{data.person.name_en}</span>
             </p>
             <h1 className="mt-0.5 text-[28px] leading-tight font-[900] tracking-tight">{data.person.name}</h1>
-            <p className="truncate text-sm text-mute">{data.person.title}</p>
+            <p className="truncate text-sm text-mute" title={spaceCjk(data.person.title)}>{spaceCjk(data.person.title)}</p>
             {curationLabel(data.person.curation) ? (
               <span className="mt-1 inline-block rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">{curationLabel(data.person.curation)}</span>
             ) : null}
@@ -280,18 +287,12 @@ async function PersonBody({
       </section>
       <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 px-1 text-[11px] text-mute">
         <span>
-          核对层级：
-          <Link href={`/p/${id}?show=machine#claims`} className="text-mute hover-fine:text-blue">
-            机器核对 {machine}
-          </Link>
+          {machine === claims.length ? `${machine} 条判定都由 AI 完成，尚未经人工校准` : `${machine} 条由 AI 判定、${claims.length - machine} 条经人工复核；AI 判定尚未经人工校准`}
           {" · "}
-          <Link href={`/p/${id}?show=manual#claims`} className="text-mute hover-fine:text-blue">
-            人工复核 {claims.length - machine}
+          <Link href="/method#eval" className="text-mute hover-fine:text-blue">
+            怎么判的 →
           </Link>
         </span>
-        <Link href="/method#eval" className="text-mute hover-fine:text-blue">
-          AI 判定 · 未经人工校准
-        </Link>
         {lastChange ? <span>分数最近变化 {lastChange}</span> : null}
         {data.person.portrait_credit ? (
           <span>
@@ -323,7 +324,7 @@ async function PersonBody({
             [
               ["promise", "靠谱度"],
               ["forecast", "判断力"],
-              ["all", "全部（旧）"],
+              ["all", "合并兑现率"],
             ] as const
           ).map(([key, label]) => (
             <Link key={key} href={key === "promise" ? `/p/${id}` : `/p/${id}?rank=${key}`} className={rank === key ? "text-blue no-underline" : "text-mute no-underline hover-fine:text-blue"}>
@@ -368,14 +369,14 @@ async function PersonBody({
                 结果不在他控制之内。{top?.fulfillment ? `已判定 ${top.fulfillment.forecast.n} 条。` : ""}
                 {top?.fulfillment?.forecast.n ? "" : "这一侧样本不足。"}
               </p>
-              <p className="mt-2 text-[11px] leading-4 text-mute">全部兑现率 {top ? fmtPart(top.accuracy) : "—"} 是旧口径，承诺和预测混在一起，不再当作主分数。</p>
+              <p className="mt-2 text-[11px] leading-4 text-mute">合并兑现率 {top ? fmtPart(top.accuracy) : "—"}：承诺和预测合在一起算，综合分用的是它。</p>
             </div>
             <div className="rounded-[14px] border border-dashed border-line bg-card/60 p-4">
               <p className="flex items-center justify-between text-xs text-mute">
-                可信度（一致性）<span>权重 {pct(top?.consistency.weight ?? 0.3)}</span>
+                可信度（一致性）
               </p>
-              <p className="mt-1.5 text-lg font-bold text-mute">尚未收集</p>
-              <p className="mt-1 text-[11px] leading-4 text-mute">建议和立场的前后对照、言行对照。校准后才进综合分。</p>
+              <p className="mt-1.5 text-lg font-bold text-mute">还在收集</p>
+              <p className="mt-1 text-[11px] leading-4 text-mute">建议和立场的前后对照、言行对照。暂不计入综合分。</p>
             </div>
             <div className="rounded-[14px] border border-dashed border-line bg-card/60 p-4">
               <p className="flex items-center justify-between text-xs text-mute">
@@ -407,7 +408,7 @@ async function PersonBody({
                 </p>
                 <p className="num mt-1.5 text-sm font-bold">
                   <Link href={`/p/${id}?show=rescheduled#claims`} className="text-ink no-underline hover-fine:text-blue">
-                    改期 {data.indicators.rescheduling.rescheduled}/{data.indicators.rescheduling.commitments} 个承诺
+                    改期 {data.indicators.rescheduling.rescheduled}/{data.indicators.rescheduling.commitments} 条主张
                   </Link>
                   {data.indicators.rescheduling.pushes ? (
                     <span className="font-normal text-mute">
@@ -447,7 +448,7 @@ async function PersonBody({
                   <th className="py-2 pr-2 pl-4 font-medium">领域</th>
                   <th className="px-2 font-medium">综合分</th>
                   <th className="px-2 font-medium">靠谱度 / 判断力</th>
-                  <th className="px-2 font-medium">可信度 · {pct(profile[0].consistency.weight)}</th>
+                  <th className="px-2 font-medium">可信度</th>
                   <th className="py-2 pr-4 pl-2 font-medium">合成说明</th>
                 </tr>
               </thead>
@@ -542,7 +543,7 @@ async function PersonBody({
                         <ScoreBadge value={row.score.value} n={row.score.n} low={row.score.low} high={row.score.high} size="sm" />
                         <span className="text-[11px] leading-4 text-mute">
                           {row.score.value != null
-                            ? `区间 ${row.score.low}–${row.score.high} · ${row.score.n} 条 · 先验 ${(row.score.value / 100).toFixed(3)}`
+                            ? `区间 ${row.score.low}–${row.score.high} · ${row.score.n} 条`
                             : "还没有已判定"}
                         </span>
                       </span>
@@ -706,7 +707,7 @@ async function PersonBody({
         <ul className="mt-6 overflow-hidden rounded-[14px] bg-card">
           {shown.map((claim) => {
             const p = phase(claim, today);
-            const chips = claimExposureChips(flow, claim.id);
+            const chips = claimExposureChips(flow, claim.id, Number(claim.published_date.slice(0, 4)));
             return (
               <li key={claim.id} className="border-b border-line last:border-0">
                 <Link
@@ -750,7 +751,7 @@ async function PersonBody({
                   </span>
                   <span className="min-w-0">
                     <span className="line-clamp-2 block text-[15px] leading-6">{claim.quote_zh}</span>
-                    {claim.interest_note ? <span className="mt-0.5 block text-xs text-mute">{claim.interest_note}</span> : null}
+                    {claim.interest_note ? <span className="mt-0.5 block text-xs text-mute">{spaceCjk(claim.interest_note)}</span> : null}
                     {chips.length > 0 ? (
                       <span className="mt-1 flex flex-wrap gap-1">
                         {chips.map((chip) => (
@@ -763,7 +764,7 @@ async function PersonBody({
                     {JUDGED.has(claim.status) && claim.actual_result ? (
                       <span className="mt-0.5 line-clamp-1 block text-xs text-mute">
                         <span className="font-medium text-ink/70">结果：</span>
-                        {claim.actual_result}
+                        {plainResult(claim.actual_result)}
                       </span>
                     ) : null}
                   </span>
@@ -772,7 +773,7 @@ async function PersonBody({
                     <span>{claim.category}</span>
                     <span className="truncate">
                       {host(claim.source_url)}
-                      {claim.reviewed === false ? " · 机器核对" : " · 人工复核"}
+                      {claim.reviewed === false ? "" : " · 人工复核"}
                     </span>
                   </span>
                 </Link>
@@ -785,9 +786,9 @@ async function PersonBody({
       {/* For agents */}
       <section className="mt-8">
         <h2 className="text-[15px] font-bold">给 AI 调用</h2>
-        <p className="mt-1 text-xs text-mute">采信{data.person.name}的一句新说法之前，先取这个人在该领域的先验。三种方式返回同一套数字和出处。</p>
+        <p className="mt-1 text-xs text-mute">采信{data.person.name}的一句新说法之前，先取这个人在该领域的兑现记录。三种方式返回同一套数字和出处。</p>
         {[
-          { label: "取先验（只查库，as_of 可查过去某天的记录）", code: curl },
+          { label: "查兑现记录（只查库，as_of 可查过去某天的记录）", code: curl },
           { label: "给一句话（自动识别人物和领域，并找出他以前说过的同一件事）", code: consultCurl },
           { label: "MCP（工具 get_prior），加进 AI 客户端的配置", code: mcpConfig },
         ].map((item) => (
@@ -803,7 +804,7 @@ async function PersonBody({
         ))}
         {lead ? (
           <p className="mt-2 text-xs text-mute">
-            当前返回：{lead.domain} 先验 <b className="num text-ink">{((lead.value ?? 0) / 100).toFixed(3)}</b>，80% 区间 {lead.low}–{lead.high}，基于 {lead.n} 条。
+            当前返回：{lead.domain} 兑现率 <b className="num text-ink">{((lead.value ?? 0) / 100).toFixed(3)}</b>，80% 区间 {lead.low}–{lead.high}，基于 {lead.n} 条。
           </p>
         ) : null}
       </section>

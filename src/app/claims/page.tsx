@@ -1,3 +1,4 @@
+import { plainResult } from "@/lib/terms";
 import Link from "next/link";
 import { Catalog } from "@/components/catalog";
 import { Icon } from "@/components/icon";
@@ -24,6 +25,8 @@ function addYear(day: string) {
 }
 
 type Params = { status?: string; domain?: string; person?: string; sort?: string };
+
+export const metadata = { title: "主张" };
 
 export default async function ClaimsPage({ searchParams }: { searchParams: Promise<Params> }) {
   const params = await searchParams;
@@ -126,7 +129,7 @@ export default async function ClaimsPage({ searchParams }: { searchParams: Promi
               {claim.published_date}
               <Icon name="arrow-right" size={12} />
               {claim.deadline}
-              {JUDGED.has(claim.status) && claim.actual_result ? <span className="ml-2 line-clamp-1">结果：{claim.actual_result}</span> : null}
+              {JUDGED.has(claim.status) && claim.actual_result ? <span className="ml-2 line-clamp-1">结果：{plainResult(claim.actual_result)}</span> : null}
             </span>
           </span>
         </Link>

@@ -1,3 +1,4 @@
+import { plainResult, spaceCjk } from "@/lib/terms";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { StatusPill } from "@/components/status-pill";
@@ -69,6 +70,14 @@ function ArchiveNote({ archive }: { archive?: Archive }) {
   );
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string; claimId: string }> }) {
+  const { id, claimId } = await params;
+  const data = await getJson<{ claim: Claim }>(`/v1/people/${id}/claims/${claimId}`).catch(() => null);
+  if (!data) return { title: "主张" };
+  const quote = data.claim.quote_zh ?? "";
+  return { title: `${quote.length > 24 ? `${quote.slice(0, 24)}…` : quote} · ${data.claim.person_name ?? ""}` };
+}
+
 export default async function ClaimPage({
   params,
 }: {
@@ -81,7 +90,7 @@ export default async function ClaimPage({
   const archives = data.archives ?? {};
   const claim = data.claim;
   const flow = await loadInterests(id, []);
-  const chips = claimExposureChips(flow, claim.id);
+  const chips = claimExposureChips(flow, claim.id, Number(claim.published_date.slice(0, 4)));
 
   return (
     <article className="mx-auto max-w-[720px] pt-6">
@@ -141,7 +150,7 @@ export default async function ClaimPage({
               看利益版图
             </Link>
           </h2>
-          {claim.interest_note ? <p className="mt-1 text-sm text-mute">{claim.interest_note}</p> : null}
+          {claim.interest_note ? <p className="mt-1 text-sm text-mute">{spaceCjk(claim.interest_note)}</p> : null}
           {chips.length > 0 ? (
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {chips.map((chip) => (
@@ -159,7 +168,7 @@ export default async function ClaimPage({
           ) : null}
         </section>
       ) : null}
-      <p className="mt-8 leading-8">{claim.actual_result || "尚未核对。"}</p>
+      <p className="mt-8 leading-8">{plainResult(claim.actual_result) || "尚未核对。"}</p>
       <ul className="mt-6 flex flex-col gap-2 text-sm">
         {claim.evidence.map((item) => (
           <li key={item.url} className="flex flex-wrap items-center gap-x-2 gap-y-1">
