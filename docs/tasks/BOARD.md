@@ -19,4 +19,7 @@
 | [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 待办 | |
 | [014](014-transparency-log.md) | 透明日志与每日根哈希（依赖 011） | Cursor | P1 | 待办 | |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P1 | 待办 | |
+| [016](016-exposure-intervals.md) | 推算带区间、假设和时间对齐（依赖 011） | Cursor | P1 | 待办 | |
+| [017](017-insider-trades.md) | 言行一致：SEC Form 4 内部人交易 | Cursor | P1 | 待办 | |
+| [018](018-event-study-baseline.md) | 事件研究与同类基准（依赖 012） | Cursor | P2 | 待办 | |
 | [H01](H01-blind-calibration.md) | 盲标 49 条校准判定（等 009，暂缓） | 人工 | P2 | 待办 | — |
