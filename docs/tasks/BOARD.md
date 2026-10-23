@@ -20,6 +20,7 @@
 | [027](027-downstream-ai-experiment.md) | 下游 AI 对照实验（#3） | Cursor | P0 | 已完成 | c206ad7 |
 | [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 已完成 | a0b72e6 |
 | [030](030-downstream-experiment-v2.md) | 下游对照实验第二版：排除答案泄露（#3） | Cursor | P0 | 已完成 | 59c4895 |
+| [031](031-downstream-benchmark.md) | 下游对照实验做成常设基准，≥50 题带区间（#3） | Cursor | P1 | 待办 | |
 | [029](029-daily-expansion.md) | 每日扩库：多出「有分数的人」 | Cursor | P0 | 已完成 | 95ff9d5 |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 待办 | |
 | [028](028-fix-structured-sources.md) | 修好结构化来源：字幕、8-K、播客（需先装 yt-dlp） | Cursor | P1 | 待办 | |
