@@ -87,7 +87,7 @@
 
 ### Cursor 部分（2026-10-24）
 
-判定提示词升到 `JUDGE_V2` / `CROSS_V2`。`actual_result` 要求直接写事实，不要以「原文称」「原文显示」开头；存库前也会去掉这种开头。流水线版本号改成 `EXTRACT_V1+JUDGE_V2+CROSS_V2+STRUCTURE_V1+resolver-v1`。已经写进库的旧结果不重跑，页面上仍由 `plainResult` 去掉这种开头。
+提交 `81ca832`。判定提示词升到 `JUDGE_V2` / `CROSS_V2`。`actual_result` 要求直接写事实，不要以「原文称」「原文显示」开头；存库前也会去掉这种开头。流水线版本号改成 `EXTRACT_V1+JUDGE_V2+CROSS_V2+STRUCTURE_V1+resolver-v1`。已经写进库的旧结果不重跑，页面上仍由 `plainResult` 去掉这种开头。
 
 20 条公开主张原来没有中文，已写入 `quote_zh`，英文原文没动。主张页 `musk-a-ca28755b` 现在中文在前：「马斯克声称，司机们将能够在一两个月后边开车边发短信。」
 
