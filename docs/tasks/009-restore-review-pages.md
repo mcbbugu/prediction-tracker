@@ -31,7 +31,7 @@
 
 ## 完成记录
 
-`/review` 和 `/review/calibration` 不再跳回首页，标题区跟方法页同一套写法，两个页面都加了 `robots: { index: false }`，导航里没有入口。口令仍记在这个标签页的 sessionStorage（`review-token`），和原来的审核台一样，回来不用再输。
+提交 `d733e08`。`/review` 和 `/review/calibration` 不再跳回首页，标题区跟方法页同一套写法，两个页面都加了 `robots: { index: false }`，导航里没有入口。口令仍记在这个标签页的 sessionStorage（`review-token`），和原来的审核台一样，回来不用再输。
 
 `/review` 读入口令后顶部是待办：校准盲标（已标/100、待标条数、是否达标）、待处理反证、模型分歧（固定 0）、待发布主张。点了会跳到对应区块或校准页。反证、分歧、待发布上面各有一句怎么处理，照站长手册缩短。校准页顶部写了盲标步骤。
 
