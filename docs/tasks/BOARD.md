@@ -5,7 +5,7 @@
 | 编号 | 任务 | 负责人 | 优先级 | 状态 | 提交 |
 | --- | --- | --- | --- | --- | --- |
 | [001](001-perf-indexes.md) | 加索引、去掉 N+1 查询 | Cursor | P1 | 已完成 | fc57ccb |
-| [002](002-data-cleanup.md) | 数据清理脚本 | Cursor | P1 | 已完成 | 见完成记录 |
+| [002](002-data-cleanup.md) | 数据清理脚本 | Cursor | P1 | 已完成 | a8e177c |
 | [005](005-analysis-trace-data.md) | 按需分析：每步记录完整细节 | Cursor | P0 | 待办 | |
 | [006](006-analysis-trace-ui.md) | 任务页展示分析过程（依赖 005） | Cursor | P0 | 待办 | |
 | [007](007-analysis-parity.md) | 按需分析补齐模块、加自动收录标签 | Cursor | P0 | 待办 | |

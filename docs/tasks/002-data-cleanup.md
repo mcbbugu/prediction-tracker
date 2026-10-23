@@ -35,7 +35,7 @@
 
 ## 完成记录
 
-新增 `api/src/tools/cleanup.ts` 和 `api/package.json` 的 `cleanup` 脚本。默认只打印；`--apply` 才把重复主张的 `publication` 改成 `withdrawn`（记 `claim_events`，`action=duplicate_withdrawn`），并把 `basis=crawl`、`metric_kind=amount_usd`、数值 &lt; 10000 的敞口数值和类型置空。不删行。同一人物下，规范化后完全相同（至少 36 字）或几乎相同（至少 48 字，包含且长度比 ≥ 0.75，或 trigram Dice ≥ 0.9 且 80% 实词相同）算重复；证据链接更多的留下，一样多则留更早录入的。
+提交 `a8e177c`。新增 `api/src/tools/cleanup.ts` 和 `api/package.json` 的 `cleanup` 脚本。默认只打印；`--apply` 才把重复主张的 `publication` 改成 `withdrawn`（记 `claim_events`，`action=duplicate_withdrawn`），并把 `basis=crawl`、`metric_kind=amount_usd`、数值 &lt; 10000 的敞口数值和类型置空。不删行。同一人物下，规范化后完全相同（至少 36 字）或几乎相同（至少 48 字，包含且长度比 ≥ 0.75，或 trigram Dice ≥ 0.9 且 80% 实词相同）算重复；证据链接更多的留下，一样多则留更早录入的。
 
 试运行：
 
