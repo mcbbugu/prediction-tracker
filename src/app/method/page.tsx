@@ -1,8 +1,24 @@
 import { Icon } from "@/components/icon";
+import { getJson } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-export default function MethodPage() {
+type ResolutionStats = {
+  propositions: { resolver: string; n: number }[];
+  proposition_total: number;
+  deterministic: number;
+  model: number;
+  verdicts: { resolved_by: string; n: number }[];
+};
+
+const RESOLVER_LABEL: Record<string, string> = {
+  sec_xbrl: "确定性 · SEC 申报",
+  price: "确定性 · 股价",
+  model: "模型",
+};
+
+export default async function MethodPage() {
+  const stats = await getJson<ResolutionStats>("/v1/method/resolution").catch(() => null);
   return (
     <article className="mx-auto max-w-[680px] pt-8">
       <p className="inline-flex items-center gap-1.5 text-sm text-mute">
@@ -33,6 +49,23 @@ export default function MethodPage() {
       <p className="mt-3 text-mute">
         画像里还并排给出两项不打分的旁证。改期：同一件事后来再说时，期限往后推了，算一次改期；页面写明多少个承诺被改期、一共推迟几次、平均推迟多久。可检验度：期限已过的话里，有多少能查到结果、做出判定，判不了的作废。两项都只统计已经收录的主张，收录得越全越准。
       </p>
+      <h2 className="mt-12 text-xl font-semibold tracking-tight">哪些判定不经过模型</h2>
+      <p className="mt-3 text-mute">
+        收录时就把原话写成一条命题：主体、指标、比较符、阈值和截止日。营收对得上已导入的 SEC 年报、股价对得上存档的日线时，由程序直接算，同一份数据永远得出同一个结论。转不成这种命题的，仍交给模型读存档原文。
+        {stats
+          ? ` 目前 ${stats.proposition_total} 条命题里，确定性判定 ${stats.deterministic} 条，模型判定 ${stats.model} 条。`
+          : ""}
+      </p>
+      {stats && stats.propositions.length > 0 ? (
+        <ul className="mt-3 space-y-1 text-sm text-mute">
+          {stats.propositions.map((row) => (
+            <li key={row.resolver}>
+              {RESOLVER_LABEL[row.resolver] ?? row.resolver} {row.n} 条
+              {stats.proposition_total ? `（${Math.round((row.n / stats.proposition_total) * 1000) / 10}%）` : ""}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <h2 className="mt-12 text-xl font-semibold tracking-tight">机器判定什么时候能自动公开</h2>
       <p className="mt-3 text-mute">
         按需分析搜到的人物和主张会标「自动收录 · 未经人工复核」：原话经过逐字核对后直接公开，但还没有人逐条看过。两个模型后来对同一条判定全部一致时，标签改为「自动收录 · 双模型一致」。只有人工裁定过，标签才会去掉。不要把机器核对说成人工复核。

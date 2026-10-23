@@ -12,6 +12,7 @@ import { ensurePortrait } from "../people/portrait";
 import { recomputeScores } from "../scoring/score";
 import { indicators } from "../scoring/indicators";
 import { fillPersonInterests } from "../interests/interests";
+import { structureClaim } from "./structure";
 import { applyVerdictAutomatically, promoteIfUnanimous, verifyClaim, type DueClaim } from "./verdict";
 
 const MAX_PAGES = 10;
@@ -542,6 +543,19 @@ export async function runAnalyzeJob(jobId: string) {
     const pages = await gatherPages(identity, emit);
     const candidates = await extractClaims(identity, pages, emit);
     const kept = await keepVerified(person.id, identity, candidates, emit);
+
+    await emit("结构化", "running", `把 ${kept.length} 条主张写成可检验命题`);
+    const propositions: { claim_id: string; proposition_id: number }[] = [];
+    for (const claim of kept) {
+      try {
+        const propositionId = await structureClaim(claim);
+        propositions.push({ claim_id: claim.id, proposition_id: propositionId });
+      } catch (error) {
+        if (error instanceof ArkStopped) throw error;
+        await emit("结构化", "failed", `一条命题没写成：${error instanceof Error ? error.message.slice(0, 120) : error}`, { claim: claim.id });
+      }
+    }
+    await emit("结构化", "done", `写下 ${propositions.length} 条命题`, { propositions });
 
     const today = new Date().toISOString().slice(0, 10);
     const due = kept.filter((claim) => claim.deadline < today).slice(0, MAX_DUE_CHECKS);

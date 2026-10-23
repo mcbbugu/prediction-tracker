@@ -14,6 +14,7 @@ import { recomputeScores } from "../scoring/score";
 import { sql } from "../core/db";
 import { logEvent } from "../core/migrate";
 import { excerpt, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
+import { resolveProposition } from "../scoring/resolvers";
 
 export const STATUSES = ["已兑现", "部分兑现", "未兑现", "待定", "证据不足"];
 export const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
@@ -172,7 +173,66 @@ export async function crossJudge(claim: DueClaim, pages: Snapshot[]) {
   return judgeOnPages(claim, pages, 5000, CROSS_PROMPT);
 }
 
+async function deterministicVerdict(claim: DueClaim, emit: Emit): Promise<VerdictOutcome | null> {
+  const rows = await sql<{ resolver: string; comparator: string | null; threshold: number | null; deadline: string | null; resolver_args: { org_key?: string; field?: string; symbol?: string } }[]>`
+    SELECT resolver, comparator, threshold::float8 AS threshold, to_char(deadline, 'YYYY-MM-DD') AS deadline, resolver_args
+    FROM propositions
+    WHERE claim_id = ${claim.id} AND superseded_by IS NULL AND resolver IN ('sec_xbrl', 'price')
+    LIMIT 1
+  `;
+  const proposition = rows[0];
+  if (!proposition) return null;
+  const resolution = await resolveProposition({
+    resolver: proposition.resolver,
+    comparator: proposition.comparator,
+    threshold: proposition.threshold,
+    deadline: proposition.deadline,
+    resolver_args: proposition.resolver_args ?? {},
+  });
+  if (!resolution || !JUDGED.has(resolution.status) || !resolution.evidence_url) return null;
+  const evidence = [{
+    url: resolution.evidence_url,
+    quote: resolution.detail,
+    source_id: resolution.evidence_ids[0] ?? 0,
+    fetched_at: new Date().toISOString(),
+    sha256: "",
+  }];
+  const rationale = `确定性判定（${proposition.resolver}）：${resolution.detail}`;
+  const inserted = await sql<{ id: number }[]>`
+    INSERT INTO verdict_proposals (claim_id, person_id, status, actual_result, rationale, evidence, rejected_evidence, search_query, resolved_by)
+    VALUES (
+      ${claim.id}, ${claim.person_id}, ${resolution.status}, ${resolution.detail}, ${rationale},
+      ${sql.json(evidence)}, '[]'::jsonb, '', ${proposition.resolver}
+    )
+    RETURNING id::int AS id
+  `;
+  await logEvent({
+    claim_id: claim.id,
+    person_id: claim.person_id,
+    action: "verdict_proposed",
+    actor: "agent",
+    after: { status: resolution.status, resolved_by: proposition.resolver, computed_value: resolution.computed_value },
+    note: `verdict_proposals#${inserted[0].id}`,
+  });
+  const trace = verdictTrace(resolution.status, evidence, []);
+  await emit("done", `判定建议：${resolution.status}（${proposition.resolver}，没有调用模型）`, { ...trace, resolved_by: proposition.resolver });
+  return {
+    status: resolution.status,
+    pages: 1,
+    evidence_kept: 1,
+    evidence_rejected: 0,
+    unreachable: 0,
+    proposal_id: inserted[0].id,
+    accepted: trace.accepted,
+    rejected: [],
+    agreed: true,
+    second_status: null,
+  };
+}
+
 export async function verifyClaim(claim: DueClaim, emit: Emit = silent, options?: { cross?: boolean }): Promise<VerdictOutcome> {
+  const deterministic = await deterministicVerdict(claim, emit);
+  if (deterministic) return deterministic;
   const query = outcomeQuery(claim);
 
   await emit("running", `搜索这条预测的实际结果`, { claim: claim.id });
@@ -205,7 +265,7 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent, options?
   const { status, rationale, kept, rejected } = judged;
 
   const rows = await sql<{ id: number }[]>`
-    INSERT INTO verdict_proposals (claim_id, person_id, status, actual_result, rationale, evidence, rejected_evidence, search_query, model_call_id)
+    INSERT INTO verdict_proposals (claim_id, person_id, status, actual_result, rationale, evidence, rejected_evidence, search_query, model_call_id, resolved_by)
     VALUES (
       ${claim.id},
       ${claim.person_id},
@@ -215,7 +275,8 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent, options?
       ${sql.json(kept)},
       ${sql.json(rejected)},
       ${query},
-      ${judged.model_call_id}
+      ${judged.model_call_id},
+      'model'
     )
     RETURNING id
   `;
@@ -298,8 +359,8 @@ export async function resolveDisagreement(claimId: string, status: string) {
 // Local-only mode (AUTO_PUBLISH): apply a verdict without a reviewer. The claim stays marked as
 // machine-checked (reviewed_at is null) so the site can label it. Judged verdicts still need evidence.
 export async function applyVerdictAutomatically(proposalId: number) {
-  const rows = await sql<{ id: number; claim_id: string; person_id: string; status: string; actual_result: string; rationale: string; evidence: unknown[] }[]>`
-    SELECT id, claim_id, person_id, status, actual_result, rationale, evidence
+  const rows = await sql<{ id: number; claim_id: string; person_id: string; status: string; actual_result: string; rationale: string; evidence: unknown[]; resolved_by: string | null }[]>`
+    SELECT id, claim_id, person_id, status, actual_result, rationale, evidence, resolved_by
     FROM verdict_proposals WHERE id = ${proposalId} AND state = 'pending'
   `;
   const verdict = rows[0];
@@ -308,7 +369,8 @@ export async function applyVerdictAutomatically(proposalId: number) {
   await sql`
     UPDATE claims
     SET status = ${verdict.status}, actual_result = ${verdict.actual_result}, rationale = ${verdict.rationale},
-        evidence = ${sql.json(verdict.evidence as never)}
+        evidence = ${sql.json(verdict.evidence as never)},
+        resolved_by = COALESCE(${verdict.resolved_by}, resolved_by)
     WHERE id = ${verdict.claim_id}
   `;
   await sql`UPDATE verdict_proposals SET state = 'auto_applied', decided_at = now() WHERE id = ${verdict.id}`;

@@ -11,6 +11,47 @@ export const dynamic = "force-dynamic";
 type Archive = { url: string; fetched_at: string; sha256: string; wayback_url: string | null; fetched_via: string };
 
 // Our archived copy (date + hash) and the Wayback capture, next to every external link.
+type PropositionRow = {
+  subject: string;
+  metric: string;
+  comparator: string | null;
+  threshold: number | null;
+  unit: string;
+  deadline: string | null;
+  resolver: string;
+  spec_version: string;
+};
+
+const RESOLVER_LABEL: Record<string, string> = {
+  sec_xbrl: "确定性 · SEC 申报",
+  price: "确定性 · 股价",
+  model: "模型读存档",
+};
+
+function Proposition({ claim }: { claim: Claim & { proposition?: PropositionRow | null; resolved_by?: string | null } }) {
+  const proposition = claim.proposition;
+  if (!proposition && !claim.resolved_by) return null;
+  const comparator = proposition?.comparator === ">=" ? "不低于" : proposition?.comparator === "<=" ? "不高于" : proposition?.comparator === "=" ? "等于" : proposition?.comparator === "exists_by" ? "在截止日前存在" : "";
+  return (
+    <section className="mt-8">
+      <h2 className="text-sm font-semibold">判定标准</h2>
+      {proposition ? (
+        <p className="mt-1 text-sm text-mute">
+          {proposition.subject || "未写主体"}
+          {proposition.metric ? ` · ${proposition.metric}` : ""}
+          {comparator ? ` · ${comparator}` : ""}
+          {proposition.threshold != null ? ` ${proposition.threshold}` : ""}
+          {proposition.unit ? ` ${proposition.unit}` : ""}
+          {proposition.deadline ? ` · 截止 ${proposition.deadline}` : ""}
+          。方式：{RESOLVER_LABEL[proposition.resolver] ?? proposition.resolver}
+          <span className="text-mute"> · {proposition.spec_version}</span>
+        </p>
+      ) : null}
+      {claim.resolved_by ? <p className="mt-1 text-sm text-mute">这次结论由{RESOLVER_LABEL[claim.resolved_by] ?? claim.resolved_by}写出。</p> : null}
+    </section>
+  );
+}
+
 function ArchiveNote({ archive }: { archive?: Archive }) {
   if (!archive) return null;
   return (
@@ -34,7 +75,7 @@ export default async function ClaimPage({
   params: Promise<{ id: string; claimId: string }>;
 }) {
   const { id, claimId } = await params;
-  const data = await getJson<{ claim: Claim; related: Claim[]; thread?: Claim[]; archives?: Record<string, Archive> }>(
+  const data = await getJson<{ claim: Claim & { proposition?: PropositionRow | null; resolved_by?: string | null }; related: Claim[]; thread?: Claim[]; archives?: Record<string, Archive> }>(
     `/v1/people/${id}/claims/${claimId}`,
   );
   const archives = data.archives ?? {};
@@ -84,6 +125,7 @@ export default async function ClaimPage({
         </a>
         <ArchiveNote archive={archives[claim.source_url]} />
       </p>
+      <Proposition claim={claim} />
       {claim.interest_note || chips.length > 0 ? (
         <section className="mt-8">
           <h2 className="flex items-baseline justify-between text-sm font-semibold">

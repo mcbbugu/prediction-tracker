@@ -16,6 +16,7 @@ import { sql } from "./core/db";
 import { logEvent, migrate } from "./core/migrate";
 import { PEOPLE_LIMIT_DEFAULT, PEOPLE_LIMIT_MAX, peopleSummary } from "./queries/people";
 import { latestScores, oneClaim, personInterestAtlas, personInterests, publishedClaims, type ScoreRow } from "./queries/records";
+import { liveProposition, resolutionStats } from "./queries/resolution";
 import { COMPOSITE_WEIGHTS, interestSplit, personProfile, recomputeScores } from "./scoring/score";
 
 assertSafeToStart("api");
@@ -243,13 +244,20 @@ const app = new Elysia()
       WHERE url IN ${sql(urls)}
       ORDER BY url, (wayback_url IS NOT NULL) DESC, fetched_at DESC
     `;
+    const [resolved] = await sql<{ resolved_by: string | null }[]>`SELECT resolved_by FROM claims WHERE id = ${claim.id}`;
     return {
-      claim: { ...claim, interest_note: interests.claim_notes[claim.id] ?? null },
+      claim: {
+        ...claim,
+        interest_note: interests.claim_notes[claim.id] ?? null,
+        resolved_by: resolved?.resolved_by ?? null,
+        proposition: await liveProposition(claim.id),
+      },
       related: related.slice(0, 4),
       thread,
       archives: Object.fromEntries(archives.map((row) => [row.url, row])),
     };
   })
+  .get("/v1/method/resolution", async () => resolutionStats())
   .get("/v1/review", async ({ request, set }) => {
     if (!authorized(request)) {
       set.status = 401;

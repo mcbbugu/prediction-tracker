@@ -224,6 +224,32 @@ async function migrateUnlocked() {
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS model_call_id text`;
   await sql`ALTER TABLE verdict_proposals ADD COLUMN IF NOT EXISTS model_call_id text`;
   await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS model_call_id text`;
+  // A claim's resolution standard, written when the claim is recorded. Rows are not edited;
+  // a replacement inserts a new row and points the old superseded_by at it.
+  await sql`
+    CREATE TABLE IF NOT EXISTS propositions (
+      id bigserial PRIMARY KEY,
+      claim_id text NOT NULL,
+      subject text NOT NULL DEFAULT '',
+      metric text NOT NULL DEFAULT '',
+      comparator text,
+      threshold numeric,
+      unit text NOT NULL DEFAULT '',
+      deadline date,
+      resolver text NOT NULL,
+      resolver_args jsonb NOT NULL DEFAULT '{}'::jsonb,
+      spec_version text NOT NULL DEFAULT 'v1',
+      model_call_id text,
+      superseded_by bigint,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS propositions_live_claim_idx
+    ON propositions (claim_id) WHERE superseded_by IS NULL
+  `;
+  await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS resolved_by text`;
+  await sql`ALTER TABLE verdict_proposals ADD COLUMN IF NOT EXISTS resolved_by text`;
   // Evidence store standard: the raw bytes as fetched (gzip) and their hash, how the page was reached,
   // and an independent Wayback Machine capture as third-party corroboration.
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS raw_gz bytea`;
