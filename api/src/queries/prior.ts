@@ -5,7 +5,7 @@
 // 结果用的是今天查到的事实（我们并不知道当年的人是否已经知道结果），所以它回答的是
 // 「到那天为止，他到期的话兑现得怎么样」，不是「当年的人会怎么看」。
 import { sql } from "../core/db";
-import { FORMULA_VERSION, fulfillmentSplit, scoreDomain } from "../scoring/score";
+import { FORMULA_VERSION, fulfillmentSplit, latestDelay, scoreDomain } from "../scoring/score";
 import { indicators, type IndicatorClaim } from "../scoring/indicators";
 import { publishedClaims, personInterests, type ClaimRow } from "./records";
 import { DISCLOSURE, eventsByClaim, tallyTiers, verdictTier } from "./verdict-tier";
@@ -150,6 +150,12 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
     }));
 
   const picked = input.domain ? [input.domain] : domains;
+  const delayRows = await latestDelay(person.id);
+  const compact = (domain: string) => {
+    const row = delayRows.find((item) => item.domain === domain) ?? delayRows.find((item) => item.domain === "");
+    if (!row) return null;
+    return { n: row.n, censored: row.censored, median: row.median, low: row.low, high: row.high, shrunk: row.shrunk, sentence: row.sentence };
+  };
   return {
     person: { id: person.id, name: person.name, name_en: person.name_en, url: `${SITE}/p/${person.id}` },
     as_of: asOf,
@@ -169,6 +175,7 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
             events,
           ),
           claims_url: `${SITE}/p/${person.id}?domain=${encodeURIComponent(d)}#claims`,
+          delay: compact(d),
         },
       ]),
     ),

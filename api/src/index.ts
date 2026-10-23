@@ -17,7 +17,8 @@ import { logEvent, migrate } from "./core/migrate";
 import { PEOPLE_LIMIT_DEFAULT, PEOPLE_LIMIT_MAX, peopleSummary } from "./queries/people";
 import { latestScores, oneClaim, personInterestAtlas, personInterests, publishedClaims, type ScoreRow } from "./queries/records";
 import { liveProposition, resolutionStats } from "./queries/resolution";
-import { COMPOSITE_WEIGHTS, interestSplit, personProfile, recomputeScores } from "./scoring/score";
+import { COMPOSITE_WEIGHTS, interestSplit, latestDelay, personProfile, recomputeScores } from "./scoring/score";
+import { predictWhen } from "./scoring/survival";
 
 assertSafeToStart("api");
 const reviewToken = process.env.REVIEW_TOKEN;
@@ -214,6 +215,7 @@ const app = new Elysia()
         relations: interests.relations,
         ...(interests.collected ? interestSplit(rows) : {}),
       },
+      delay: await latestDelay(person.id),
     };
   })
   .get("/v1/people/:id/interests", async ({ params, set }) => {
@@ -247,6 +249,11 @@ const app = new Elysia()
       ORDER BY url, (wayback_url IS NOT NULL) DESC, fetched_at DESC
     `;
     const [resolved] = await sql<{ resolved_by: string | null }[]>`SELECT resolved_by FROM claims WHERE id = ${claim.id}`;
+    const delayRows = await latestDelay(params.id);
+    const delayProfile = delayRows.find((row) => row.domain === claim.category) ?? delayRows.find((row) => row.domain === "");
+    const delay = claim.kind === "promise" && claim.status === "待定" && delayProfile
+      ? { ...predictWhen(claim.published_date, claim.deadline, delayProfile), shrunk: delayProfile.shrunk, sentence: delayProfile.sentence }
+      : null;
     return {
       claim: {
         ...claim,
@@ -254,6 +261,7 @@ const app = new Elysia()
         resolved_by: resolved?.resolved_by ?? null,
         proposition: await liveProposition(claim.id),
       },
+      delay,
       related: related.slice(0, 4),
       thread,
       archives: Object.fromEntries(archives.map((row) => [row.url, row])),

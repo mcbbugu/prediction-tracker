@@ -121,6 +121,20 @@ export type ProfileRow = {
 
 export type AccuracyPart = { value: number | null; low: number | null; high: number | null; n: number };
 
+export type DelayPoint = { time: number; survival: number };
+export type DelayProfile = {
+  domain: string;
+  n: number;
+  censored: number;
+  partial: number;
+  median: number | null;
+  low: number | null;
+  high: number | null;
+  shrunk: boolean;
+  curve: DelayPoint[];
+  sentence: string;
+};
+
 // SPEC 利益关系 (P12): never part of the score; shown beside it.
 export type Interest = {
   id: number;

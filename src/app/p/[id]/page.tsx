@@ -12,7 +12,7 @@ import { CopyButton } from "@/components/copy-button";
 import { ScoreHistoryCharts, type DomainHistory } from "@/components/score-history-chart";
 import { StatusPill } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
-import { PUBLIC_API_URL, curationLabel, getJson, type Claim, type Indicators, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
+import { PUBLIC_API_URL, curationLabel, getJson, type Claim, type DelayProfile, type Indicators, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,23 @@ const FORMULA_NOTES: Record<string, string> = {
   "v1.1": "有一条判定就出分，并给出区间",
   "v1.2": "时间衰减放宽为每 3 年减半，几年前的判定重新计入",
 };
+
+function KmChart({ curve }: { curve: DelayProfile["curve"] }) {
+  if (curve.length < 2) return null;
+  const width = 220;
+  const height = 64;
+  const pad = 4;
+  const maxTime = Math.max(...curve.map((point) => point.time), 1);
+  const x = (time: number) => pad + (time / maxTime) * (width - pad * 2);
+  const y = (survival: number) => pad + (1 - survival) * (height - pad * 2);
+  let path = `M ${x(0)} ${y(1)}`;
+  for (const point of curve) path += ` H ${x(point.time)} V ${y(point.survival)}`;
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 h-16 w-full" role="img" aria-label="承诺延迟的生存曲线">
+      <path d={path} fill="none" stroke="#2f3fc4" strokeWidth="1.5" />
+    </svg>
+  );
+}
 
 function quoteSnippet(claim: Claim | undefined) {
   if (!claim) return "一条已不再公开的主张";
@@ -110,7 +127,7 @@ async function PersonBody({
   const yearFilter = rawYear && /^\d{4}$/.test(rawYear) ? rawYear : undefined;
   const monthFilter = rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) ? rawMonth : undefined;
   const [data, history] = await Promise.all([
-    getJson<{ person: Person; analysis_job_id?: string | null; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators }>(`/v1/people/${id}`),
+    getJson<{ person: Person; analysis_job_id?: string | null; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators; delay?: DelayProfile[] }>(`/v1/people/${id}`),
     getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history`).catch(() => ({ snapshots: [] as Snapshot[] })),
   ]);
   const today = new Date().toISOString().slice(0, 10);
@@ -409,6 +426,15 @@ async function PersonBody({
                 <p className="mt-1 text-[11px] leading-4 text-mute">
                   同一件事后来再说时期限往后推，算一次改期。到期的话里查不到结果的作废，不计分。只统计已收录的主张。
                 </p>
+              </div>
+            ) : null}
+            {data.delay?.find((row) => row.domain === "") ? (
+              <div className="rounded-[14px] border border-dashed border-line bg-card/60 p-4 sm:col-span-2">
+                <p className="flex items-center justify-between text-xs text-mute">
+                  延迟系数<span>只计承诺，不进综合分</span>
+                </p>
+                <p className="mt-1.5 text-sm font-bold">{data.delay.find((row) => row.domain === "")?.sentence}</p>
+                <KmChart curve={data.delay.find((row) => row.domain === "")?.curve ?? []} />
               </div>
             ) : null}
           </div>

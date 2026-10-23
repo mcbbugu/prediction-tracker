@@ -2,7 +2,7 @@ import { ArkStopped, arkConfigured, arkJson } from "../core/ark";
 import { sql } from "../core/db";
 import { latestScoresFor, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg, type ClaimRow } from "./records";
 import { indicators } from "../scoring/indicators";
-import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, fulfillmentSplit, interestSplit, personProfile } from "../scoring/score";
+import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, fulfillmentSplit, interestSplit, latestDelay, personProfile } from "../scoring/score";
 import { DISCLOSURE, eventsForClaims, tallyTiers, verdictTier } from "./verdict-tier";
 
 export type ConsultRequest = {
@@ -234,6 +234,7 @@ export async function consultPrior(input: ConsultRequest) {
   // SPEC 利益关系: not part of the score; returned so downstream AIs can weigh it themselves.
   const interestMap = new Map(await Promise.all(matchedPeopleIds.map(async (pid) => [pid, await personInterests(pid)] as const)));
   const atlasMap = new Map(await Promise.all(matchedPeopleIds.map(async (pid) => [pid, await personInterestAtlas(pid)] as const)));
+  const delayMap = new Map(await Promise.all(matchedPeopleIds.map(async (pid) => [pid, await latestDelay(pid)] as const)));
 
   // 3. Build per-person domain prior evaluations
   const evaluations = matchedPeopleIds.map((pid) => {
@@ -295,6 +296,8 @@ export async function consultPrior(input: ConsultRequest) {
         kind: claim.kind,
       })),
     );
+    const delayRows = delayMap.get(person.id) ?? [];
+    const delayRow = delayRows.find((row) => row.domain === (domainScore?.domain ?? "")) ?? delayRows.find((row) => row.domain === "");
     return {
       person_id: person.id,
       person_name: person.name,
@@ -305,6 +308,9 @@ export async function consultPrior(input: ConsultRequest) {
       score: scoreVal,
       promise: split.promise,
       forecast: split.forecast,
+      delay: delayRow
+        ? { n: delayRow.n, censored: delayRow.censored, median: delayRow.median, low: delayRow.low, high: delayRow.high, shrunk: delayRow.shrunk, sentence: delayRow.sentence }
+        : null,
       prior_weight: priorWeight,
       verified_count: domainScore?.n ?? 0,
       // 证据不足 claims in this domain: void, not scored (formula v1.3); a high count means vague or unverifiable talk.

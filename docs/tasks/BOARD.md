@@ -24,7 +24,7 @@
 | [032](032-expand-name-lists.md) | 扩大人物名单，把每天的 AFP 用起来 | Cursor | P0 | 进行中 | |
 | [034](034-consistency-import-score.md) | 可信度：已有 9 人核对入库、计分、页面展示 | Cursor | P0 | 待办 | |
 | [022](022-promise-vs-forecast.md) | 承诺与预测分开计分（019、020 依赖它） | Cursor | P0 | 已完成 | c80a209 |
-| [019](019-delay-survival.md) | 生存分析：延迟系数与兑现时间预测（依赖 022；030 的 C 组要用） | Cursor | P0 | 待办 | |
+| [019](019-delay-survival.md) | 生存分析：延迟系数与兑现时间预测（依赖 022；030 的 C 组要用） | Cursor | P0 | 已完成 | 见完成记录 |
 | [033](033-copy-and-terms.md) | 文案与术语统一（首页、人物页、全站） | Cursor | P1 | 待办 | |
 | [035](035-consistency-auto-collect.md) | 可信度接进每日扩库，新人物自动采集（依赖 034） | Cursor | P1 | 待办 | |
 | [028](028-fix-structured-sources.md) | 修好结构化来源：字幕、8-K、播客（需先装 yt-dlp） | Cursor | P1 | 待办 | |

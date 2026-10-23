@@ -75,7 +75,7 @@ export default async function ClaimPage({
   params: Promise<{ id: string; claimId: string }>;
 }) {
   const { id, claimId } = await params;
-  const data = await getJson<{ claim: Claim & { proposition?: PropositionRow | null; resolved_by?: string | null }; related: Claim[]; thread?: Claim[]; archives?: Record<string, Archive> }>(
+  const data = await getJson<{ claim: Claim & { proposition?: PropositionRow | null; resolved_by?: string | null }; related: Claim[]; thread?: Claim[]; archives?: Record<string, Archive>; delay?: { date: string | null; low: string | null; high: string | null; note: string | null; shrunk: boolean } | null }>(
     `/v1/people/${id}/claims/${claimId}`,
   );
   const archives = data.archives ?? {};
@@ -108,6 +108,13 @@ export default async function ClaimPage({
         ) : null}
         {claim.quote_kind === "reported" ? <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">转述</span> : null}
       </div>
+      {data.delay ? (
+        <p className="mt-3 text-sm text-mute">
+          {data.delay.note
+            ? "按他的历史，多数同类承诺至今未兑现。"
+            : `按他的历史，预计 ${data.delay.date} 兑现${data.delay.low && data.delay.high ? `（${data.delay.low}–${data.delay.high}）` : ""}。${data.delay.shrunk ? "样本少，参考同领域。" : ""}`}
+        </p>
+      ) : null}
       <blockquote className="mt-6">
         <p className="font-semibold tracking-tight text-3xl leading-snug">“{claim.quote_zh}”</p>
         <p className="mt-4 text-lg text-mute italic">“{claim.quote_en}”</p>

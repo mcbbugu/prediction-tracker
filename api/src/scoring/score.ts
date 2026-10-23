@@ -1,4 +1,5 @@
 import { sql } from "../core/db";
+import { DELAY_VERSION, delaySentence, estimateDelay, promiseObservations, type SurvivalClaim } from "./survival";
 
 // v1.1 (2026-10-21): same formula; a score and its 80% interval show from the first judged claim (no 3/8 tiers).
 // v1.2 (2026-10-21): half-life 180 days → 3 years, so a record from years ago still counts.
@@ -378,6 +379,57 @@ export async function recomputeScores(
       `;
     }
   }
+  await refreshDelay(personId);
+}
+
+async function refreshDelay(personId: string) {
+  const today = new Date().toISOString().slice(0, 10);
+  const claims = await sql<SurvivalClaim[]>`
+    SELECT c.id, c.person_id, c.category, c.status, c.kind, c.thread_id,
+           to_char(c.published_date, 'YYYY-MM-DD') AS published_date,
+           to_char(c.deadline, 'YYYY-MM-DD') AS deadline,
+           coalesce(
+             (SELECT to_char(min(s.fetched_at), 'YYYY-MM-DD')
+              FROM sources s
+              WHERE jsonb_typeof(c.evidence) = 'array'
+                AND s.url IN (SELECT e->>'url' FROM jsonb_array_elements(c.evidence) e WHERE e->>'url' IS NOT NULL)),
+             (SELECT to_char(min(ev.created_at), 'YYYY-MM-DD')
+              FROM claim_events ev
+              WHERE ev.claim_id = c.id AND ev.action IN ('verdict', 'verdict_auto_applied'))
+           ) AS resolved_on
+    FROM claims c
+    WHERE c.publication = 'published' AND c.kind = 'promise'
+  `;
+  const observations = promiseObservations(claims, today);
+  const mine = observations.filter((row) => row.person_id === personId);
+  const domains = ["", ...new Set(mine.map((row) => row.category))];
+  for (const domain of domains) {
+    const personRows = domain ? mine.filter((row) => row.category === domain) : mine;
+    if (personRows.length === 0) continue;
+    const pool = domain ? observations.filter((row) => row.category === domain) : observations;
+    const estimate = estimateDelay(personRows, pool);
+    await sql`
+      INSERT INTO delay_profiles (person_id, domain, n, censored, partial, median, low, high, curve, shrunk, version)
+      VALUES (
+        ${personId}, ${domain}, ${estimate.n}, ${estimate.censored}, ${estimate.partial},
+        ${estimate.median}, ${estimate.low}, ${estimate.high}, ${sql.json(estimate.curve)},
+        ${estimate.shrunk}, ${DELAY_VERSION}
+      )
+    `;
+  }
+}
+
+export async function latestDelay(personId: string) {
+  const rows = await sql<
+    { domain: string; n: number; censored: number; partial: number; median: number | null; low: number | null; high: number | null; shrunk: boolean; curve: { time: number; survival: number }[] }[]
+  >`
+    SELECT DISTINCT ON (domain) domain, n, censored, partial,
+           median::float8 AS median, low::float8 AS low, high::float8 AS high, shrunk, curve
+    FROM delay_profiles
+    WHERE person_id = ${personId}
+    ORDER BY domain, computed_at DESC
+  `;
+  return rows.map((row) => ({ ...row, sentence: delaySentence(row) }));
 }
 
 // pnpm api:rescore — recompute every person's domain scores (e.g. after the interval was added).

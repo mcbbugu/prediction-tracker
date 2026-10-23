@@ -436,6 +436,24 @@ async function migrateUnlocked() {
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'uncertain'`;
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS kind_reason text NOT NULL DEFAULT ''`;
   await sql`ALTER TABLE score_snapshots ADD COLUMN IF NOT EXISTS slice text NOT NULL DEFAULT 'all'`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS delay_profiles (
+      id bigserial PRIMARY KEY,
+      person_id text NOT NULL,
+      domain text NOT NULL DEFAULT '',
+      n integer NOT NULL,
+      censored integer NOT NULL,
+      partial integer NOT NULL DEFAULT 0,
+      median double precision,
+      low double precision,
+      high double precision,
+      curve jsonb NOT NULL DEFAULT '[]'::jsonb,
+      shrunk boolean NOT NULL DEFAULT false,
+      version text NOT NULL,
+      computed_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS delay_profiles_person_idx ON delay_profiles (person_id, domain, computed_at DESC)`;
 }
 
 export async function logEvent(event: {
