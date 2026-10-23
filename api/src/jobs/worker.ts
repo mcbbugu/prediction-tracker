@@ -158,6 +158,15 @@ async function loop() {
       await recheck();
       continue;
     }
+    const stopAt = Number(process.env.EXPAND_AFP_STOP || 0);
+    if (stopAt > 0) {
+      const afp = await afpUsedToday();
+      if (afp.budget > 0 && afp.used / afp.budget >= stopAt) {
+        stopping = true;
+        stopReason = `AFP 已用 ${Math.round(afp.used)}/${afp.budget}，达到扩库上限 ${Math.round(stopAt * 100)}%`;
+        continue;
+      }
+    }
     const job = await claimNext();
     if (!job) {
       if (once) return;

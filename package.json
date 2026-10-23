@@ -29,7 +29,8 @@
     "api:requote": "cd api && bun run requote",
     "api:portraits": "cd api && bun run portraits",
     "api:worker": "cd api && bun run worker",
-    "api:enqueue": "cd api && bun run enqueue"
+    "api:enqueue": "cd api && bun run enqueue",
+    "api:expand": "cd api && bun --env-file=.env run expand"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

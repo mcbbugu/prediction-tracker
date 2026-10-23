@@ -31,6 +31,8 @@
     "portraits": "bun run src/people/portrait.ts",
     "worker": "bun run src/jobs/worker.ts",
     "enqueue": "bun run src/jobs/enqueue.ts",
+    "expand-plan": "bun run src/tools/expand-plan.ts",
+    "expand": "bun run src/tools/expand.ts",
     "typecheck": "tsc --noEmit -p .",
     "eval:downstream": "bun --env-file=.env run src/tools/downstream-eval.ts"
   },
