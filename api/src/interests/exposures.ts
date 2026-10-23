@@ -126,6 +126,7 @@ async function extract(org: { key: string; name: string }, dimension: Dimension,
     ].join("\n"),
     JSON.stringify({ organisation: org.name, url: page.final_url, title: page.title, text: excerpt(page.text, [org.name.toLowerCase(), ...PLAN[dimension].keys], 12000) }),
     3500,
+    "EXPOSURE_V1",
   )) as { exposures?: Extracted[] };
   return answer.exposures ?? [];
 }
@@ -260,6 +261,7 @@ export async function linkExposures(personId: string) {
       claims: claims.map((claim) => ({ claim_id: claim.id, domain: claim.category, quote: claim.quote_en || claim.quote_zh })),
     }),
     6000,
+    "EXPOSURE_LINK_V1",
   )) as { links?: { claim_id?: string; exposure_id?: number; level?: string; reason?: string }[] };
 
   await clearLinks();

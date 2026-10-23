@@ -5,7 +5,7 @@
 // 更正不覆盖、不删除旧行：插入一条新行（复制原行，改 ended / end_kind，provenance=agent，publication 不变），
 // 再把旧行的 superseded_at / superseded_by 指到新行。
 // 唯一索引只约束未被取代的行（interests_live_unique_idx），所以先把旧行标为被取代，再插新行，不会冲突。
-import { ArkStopped, afpUsedToday, arkJson, arkPreflight } from "../core/ark";
+import { ArkStopped, afpUsedToday, arkJson, arkPreflight, takeModelCallId } from "../core/ark";
 import { sql } from "../core/db";
 import { migrate } from "../core/migrate";
 import { excerpt, normalize, quoteOnPage } from "../evidence/sources";
@@ -242,15 +242,17 @@ async function ask(row: Row, text: string) {
       text,
     }),
     1000,
+    "RELATION_END_V1",
   )) as { verdict?: string; ended?: string; quote?: string };
   const raw = (answer.verdict ?? "").trim().toLowerCase();
   const verdict: Verdict = raw === "ended" || raw === "已结束" ? "ended" : raw === "ongoing" || raw === "present" || raw === "在任" ? "ongoing" : "unchanged";
-  return judgeQuote(row, verdict, String(answer.ended ?? ""), String(answer.quote ?? "").trim());
+  const decision = judgeQuote(row, verdict, String(answer.ended ?? ""), String(answer.quote ?? "").trim());
+  return { ...decision, modelCallId: takeModelCallId(answer) };
 }
 
 // In one transaction: close the old row first (the live-row unique index then lets the copy in), insert the
 // corrected copy, and point the old row at it.
-async function correct(row: Row, ended: string, kind: "ended" | "ongoing") {
+async function correct(row: Row, ended: string, kind: "ended" | "ongoing", callId: string | null) {
   return sql.begin(async (tx) => {
     const [closed] = await tx<{ id: number }[]>`
       UPDATE interests SET superseded_at = now()
@@ -262,11 +264,11 @@ async function correct(row: Row, ended: string, kind: "ended" | "ongoing") {
       INSERT INTO interests (
         person_id, kind, counterparty, counterparty_zh, role, started, ended, end_kind,
         source_url, source_id, quote, publication, provenance, reviewed_at,
-        stake_pct, amount_usd, org_key
+        stake_pct, amount_usd, org_key, model_call_id
       ) VALUES (
         ${row.person_id}, ${row.kind}, ${row.counterparty}, ${row.counterparty_zh}, ${row.role}, ${row.started},
         ${ended}, ${kind}, ${row.source_url}, ${row.source_id}, ${row.quote}, ${row.publication}, 'agent', ${row.reviewed_at},
-        ${row.stake_pct}, ${row.amount_usd}, ${row.org_key}
+        ${row.stake_pct}, ${row.amount_usd}, ${row.org_key}, ${callId}
       )
       RETURNING id::int AS id
     `;
@@ -340,7 +342,7 @@ async function main() {
       else unchangedN += 1;
       let suffix = "";
       if (apply && decision.write) {
-        const id = await correct(row, decision.write.ended, decision.write.endKind);
+        const id = await correct(row, decision.write.ended, decision.write.endKind, decision.modelCallId);
         written += 1;
         suffix = ` · 已写入 #${id}`;
       }

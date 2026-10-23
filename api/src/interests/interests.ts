@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ArkStopped, arkJson, arkPreflight, arkSearch } from "../core/ark";
+import { ArkStopped, arkJson, arkPreflight, arkSearch, takeModelCallId } from "../core/ark";
 import { sql } from "../core/db";
 import { migrate } from "../core/migrate";
 import { canonicalName, orgKey, parseScale } from "./orgs";
@@ -81,6 +81,11 @@ function surname(person: Person) {
   return normalize(person.name_en.split(/\s+/).pop() ?? person.name_en);
 }
 
+export const RELATIONS_V1 = "RELATIONS_V1";
+export const RELATIONS_GROUP_V1 = "RELATIONS_GROUP_V1";
+export const RELATIONS_SCALE_V1 = "RELATIONS_SCALE_V1";
+export const RELATIONS_LINK_V1 = "RELATIONS_LINK_V1";
+
 const KEYS = [
   "founder", "founded", "co-founded", "ceo", "chief executive", "president", "chairman", "chair", "board", "director",
   "stake", "shares", "owns", "owned", "invest", "investor", "advisor", "adviser", "partner", "joined", "left", "resigned",
@@ -105,8 +110,9 @@ async function extract(person: Person, page: Snapshot) {
     ].join("\n"),
     JSON.stringify({ person: person.name_en, url: page.final_url, title: page.title, text: excerpt(page.text, KEYS, 10000) }),
     3000,
+    RELATIONS_V1,
   )) as { relations?: Extracted[] };
-  return answer.relations ?? [];
+  return { relations: answer.relations ?? [], callId: takeModelCallId(answer) };
 }
 
 async function collect(person: Person, publication: "published" | "proposed" = publish ? "published" : "proposed") {
@@ -115,8 +121,11 @@ async function collect(person: Person, publication: "published" | "proposed" = p
   let rejected = 0;
   for (const page of pages) {
     let relations: Extracted[] = [];
+    let callId: string | null = null;
     try {
-      relations = await extract(person, page);
+      const extracted = await extract(person, page);
+      relations = extracted.relations;
+      callId = extracted.callId;
     } catch (error) {
       console.log(`  抽取失败 ${page.final_url}：${(error as Error).message.slice(0, 100)}`);
       continue;
@@ -133,11 +142,11 @@ async function collect(person: Person, publication: "published" | "proposed" = p
       const ended = (item.ended ?? "").trim().toLowerCase() === "present" ? "present" : cleanDate(item.ended);
       const rows = await sql`
         INSERT INTO interests (person_id, kind, counterparty, counterparty_zh, role, started, ended, end_kind, source_url, source_id, quote, publication,
-                               org_key, stake_pct, amount_usd)
+                               org_key, stake_pct, amount_usd, model_call_id)
         VALUES (
           ${person.id}, ${kind}, ${counterparty}, ${(item.counterparty_zh ?? "").trim()}, ${(item.role ?? "").trim()},
           ${cleanDate(item.started)}, ${ended}, ${endKind(ended)}, ${page.final_url}, ${page.id}, ${quote}, ${publication},
-          ${orgKey(counterparty)}, ${parseScale(item.stake_text, quote, "pct")}, ${parseScale(item.amount_text, quote, "usd")}
+          ${orgKey(counterparty)}, ${parseScale(item.stake_text, quote, "pct")}, ${parseScale(item.amount_text, quote, "usd")}, ${callId}
         )
         ON CONFLICT (person_id, kind, lower(counterparty), lower(role)) WHERE superseded_at IS NULL DO NOTHING
         RETURNING id
@@ -166,6 +175,7 @@ export async function consolidate(personId: string) {
     ].join("\n"),
     JSON.stringify(rows),
     4000,
+    RELATIONS_GROUP_V1,
   )) as { groups?: { keep?: number; merge?: number[] }[] };
   const known = new Set(rows.map((row) => row.id));
   const keep = new Set((answer.groups ?? []).map((group) => Number(group.keep)).filter((id) => known.has(id)));
@@ -196,6 +206,7 @@ export async function backfill(personId: string) {
     ].join("\n"),
     JSON.stringify(todo.map((row) => ({ id: row.id, counterparty: row.counterparty, quote: row.quote }))),
     3000,
+    RELATIONS_SCALE_V1,
   )) as { rows?: { id?: number; stake_text?: string; amount_text?: string }[] };
   const byId = new Map(todo.map((row) => [row.id, row]));
   let filled = 0;
@@ -263,6 +274,7 @@ export async function linkClaims(personId: string) {
       claims: claims.map((claim) => ({ claim_id: claim.id, domain: claim.category, quote: claim.quote_en || claim.quote_zh })),
     }),
     4000,
+    RELATIONS_LINK_V1,
   )) as { links?: { claim_id?: string; interest_ids?: number[]; reason?: string }[] };
 
   const byId = new Map(interests.map((item) => [Number(item.id), item]));

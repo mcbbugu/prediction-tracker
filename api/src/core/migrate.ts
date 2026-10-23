@@ -203,6 +203,27 @@ async function migrateUnlocked() {
   await sql`CREATE INDEX IF NOT EXISTS ark_calls_created_idx ON ark_calls (created_at DESC)`;
   // Why a call failed (network / server / rate / denied / request): the circuit breaker in ark.ts reads it.
   await sql`ALTER TABLE ark_calls ADD COLUMN IF NOT EXISTS error_kind text`;
+  // Content-addressed model calls. id is sha256(model + prompt + prompt version + params + input).
+  // Old claims are left null; nothing is backfilled.
+  await sql`
+    CREATE TABLE IF NOT EXISTS model_calls (
+      id text PRIMARY KEY,
+      model text NOT NULL,
+      prompt_version text NOT NULL,
+      prompt text NOT NULL,
+      params jsonb NOT NULL,
+      input jsonb NOT NULL,
+      output jsonb,
+      output_text text,
+      output_hash text,
+      elapsed_ms integer,
+      kind text NOT NULL DEFAULT 'chat',
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS model_call_id text`;
+  await sql`ALTER TABLE verdict_proposals ADD COLUMN IF NOT EXISTS model_call_id text`;
+  await sql`ALTER TABLE interests ADD COLUMN IF NOT EXISTS model_call_id text`;
   // Evidence store standard: the raw bytes as fetched (gzip) and their hash, how the page was reached,
   // and an independent Wayback Machine capture as third-party corroboration.
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS raw_gz bytea`;

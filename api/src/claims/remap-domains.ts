@@ -20,6 +20,7 @@ export async function remapStrayDomains(log: (line: string) => void = console.lo
     `把每个旧分类归到下面固定领域中最贴切的一个：${DOMAINS.join("、")}。输出 JSON：{"map":{"旧分类":"固定领域"}}`,
     JSON.stringify(stray.map((row) => row.category)),
     1500,
+    "REMAP_V1",
   )) as { map?: Record<string, string> };
 
   const people = new Set<string>();

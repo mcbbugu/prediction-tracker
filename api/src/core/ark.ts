@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { basename } from "node:path";
 import { sql } from "./db";
 import { notify } from "./notify";
@@ -209,20 +210,139 @@ async function arkPostOnce(path: string, payload: Record<string, unknown>) {
   return body;
 }
 
-export async function arkJson(system: string, user: string, maxTokens = 2000) {
-  const body = (await arkPost("/chat/completions", {
-    model: process.env.ARK_MODEL,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
+// ---- Content-addressed model calls.
+// id = sha256(model + prompt + prompt version + params + input). A repeat reads the stored output.
+// ARK_REPLAY=1 reads only and throws when the cache is missing. ARK_CACHE=off always calls the model.
+// Search inputs include the Shanghai date, so the same query on another day is a different call.
+const callIds = new WeakMap<object, string>();
+
+export function takeModelCallId(value: object | null | undefined) {
+  if (!value || typeof value !== "object") return null;
+  return callIds.get(value) ?? null;
+}
+
+function tagCall<T>(value: T, id: string): T {
+  if (value && typeof value === "object") callIds.set(value as object, id);
+  return value;
+}
+
+export function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
+    .join(",")}}`;
+}
+
+export function sha256Text(text: string) {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+export type ModelCallSpec = {
+  model: string;
+  prompt: string;
+  promptVersion: string;
+  params: unknown;
+  input: unknown;
+  kind: "chat" | "search";
+};
+
+export function contentAddress(spec: Pick<ModelCallSpec, "model" | "prompt" | "promptVersion" | "params" | "input">) {
+  return sha256Text(
+    canonicalJson({
+      model: spec.model,
+      prompt: spec.prompt,
+      prompt_version: spec.promptVersion,
+      params: spec.params,
+      input: spec.input,
+    }),
+  );
+}
+
+export function shanghaiDay(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+export class ReplayMiss extends Error {}
+
+export const SEARCH_V1 = "SEARCH_V1";
+const SEARCH_PROMPT = "联网搜索。只用来找候选链接，不采信回答正文。";
+
+type Db = any;
+
+function cacheOff() {
+  return process.env.ARK_CACHE === "off";
+}
+
+function replayOnly() {
+  return process.env.ARK_REPLAY === "1";
+}
+
+async function readModelOutput(id: string, db: Db) {
+  const rows = await db<{ output_text: string }[]>`
+    SELECT output_text FROM model_calls WHERE id = ${id} AND output_text IS NOT NULL
+  `;
+  if (!rows.length) return null;
+  return JSON.parse(rows[0].output_text) as unknown;
+}
+
+export async function cachedModelCall<T>(spec: ModelCallSpec, run: () => Promise<T>, db: Db = sql): Promise<T> {
+  const id = contentAddress(spec);
+  if (!cacheOff() || replayOnly()) {
+    const hit = await readModelOutput(id, db);
+    if (hit !== null) return tagCall(hit as T, id);
+    if (replayOnly()) throw new ReplayMiss(`重放缓存缺失：${spec.promptVersion} ${id.slice(0, 12)}`);
+  }
+  const started = Date.now();
+  const output = await run();
+  const outputText = JSON.stringify(output);
+  await db`
+    INSERT INTO model_calls (id, model, prompt_version, prompt, params, input, output, output_text, output_hash, elapsed_ms, kind)
+    VALUES (
+      ${id},
+      ${spec.model},
+      ${spec.promptVersion},
+      ${spec.prompt},
+      ${sql.json(spec.params as never)},
+      ${sql.json(spec.input as never)},
+      ${sql.json(output as never)},
+      ${outputText},
+      ${sha256Text(outputText)},
+      ${Date.now() - started},
+      ${spec.kind}
+    )
+    ON CONFLICT (id) DO NOTHING
+  `;
+  return tagCall(output, id);
+}
+
+export async function arkJson(system: string, user: string, maxTokens = 2000, promptVersion = "UNVERSIONED") {
+  const model = process.env.ARK_MODEL || "";
+  const params = {
+    max_tokens: maxTokens,
     response_format: { type: "json_object" },
     thinking: { type: "disabled" },
-    max_tokens: maxTokens,
-  })) as { choices?: { message?: { content?: string } }[] };
-  const content = body.choices?.[0]?.message?.content || "";
-  if (!content) throw new Error("Ark 没有返回正文");
-  return JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/g, "")) as Record<string, unknown>;
+  };
+  return cachedModelCall(
+    { model, prompt: system, promptVersion, params, input: user, kind: "chat" },
+    async () => {
+      const body = (await arkPost("/chat/completions", {
+        model,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        response_format: params.response_format,
+        thinking: params.thinking,
+        max_tokens: params.max_tokens,
+      })) as { choices?: { message?: { content?: string } }[] };
+      const content = body.choices?.[0]?.message?.content || "";
+      if (!content) throw new Error("Ark 没有返回正文");
+      return JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/g, "")) as Record<string, unknown>;
+    },
+  );
 }
 
 export type SearchResult = { text: string; urls: string[]; raw: unknown };
@@ -267,12 +387,21 @@ function collectText(value: unknown, into: string[]) {
 
 // Web search through Ark's Responses API. The model's answer is only used to find candidate links;
 // whatever it says about them is never trusted directly (see verify.ts).
-export async function arkSearch(query: string): Promise<SearchResult> {
-  const body = await arkPost("/responses", {
-    model: process.env.ARK_MODEL,
-    input: [{ role: "user", content: [{ type: "input_text", text: query }] }],
+export async function arkSearch(query: string, promptVersion = SEARCH_V1): Promise<SearchResult> {
+  const model = process.env.ARK_MODEL || "";
+  const day = process.env.ARK_CACHE_DAY || shanghaiDay();
+  const params = {
     tools: [{ type: "web_search", max_keyword: 3 }],
     thinking: { type: "disabled" },
+  };
+  return cachedModelCall(
+    { model, prompt: SEARCH_PROMPT, promptVersion, params, input: { query, day }, kind: "search" },
+    async () => {
+  const body = await arkPost("/responses", {
+    model,
+    input: [{ role: "user", content: [{ type: "input_text", text: query }] }],
+    tools: params.tools,
+    thinking: params.thinking,
   });
   const texts: string[] = [];
   collectText(body.output, texts);
@@ -287,6 +416,8 @@ export async function arkSearch(query: string): Promise<SearchResult> {
     urls: [...urls].filter((url) => !/volces\.com|volcengine\.com|bytedance\.com\/.*search/.test(url)),
     raw: body,
   };
+    },
+  );
 }
 
 // ---- Preflight: before a worker or batch script takes work, make sure chat, web search and plain page

@@ -115,6 +115,7 @@ async function judge(row: Row, quote: string, page: { text: string; title: strin
       page_text: contextAround(page.text, quote),
     }),
     1500,
+    "REQUOTE_V1",
   )) as Judgement;
 }
 

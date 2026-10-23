@@ -1,8 +1,9 @@
-import { arkConfigured, arkJson } from "../core/ark";
+import { arkConfigured, arkJson, takeModelCallId } from "../core/ark";
 import { sql } from "../core/db";
 import { logEvent, migrate } from "../core/migrate";
 
 const personId = process.argv.find((arg) => arg.startsWith("--person="))?.split("=")[1] ?? "musk";
+const AGENT_EXTRACT_V1 = "AGENT_EXTRACT_V1";
 
 type RunStatus = "completed" | "blocked" | "failed";
 
@@ -139,7 +140,7 @@ function complete(claim: ExtractedClaim): claim is Required<ExtractedClaim> {
   );
 }
 
-async function insertVerified(ownerId: string, claim: Required<ExtractedClaim>) {
+async function insertVerified(ownerId: string, claim: Required<ExtractedClaim>, callId: string | null) {
   const existing = await sql<{ id: string }[]>`
     SELECT id FROM claims
     WHERE person_id = ${ownerId}
@@ -153,7 +154,7 @@ async function insertVerified(ownerId: string, claim: Required<ExtractedClaim>) 
   await sql`
     INSERT INTO claims (
       id, person_id, category, claim_type, quote_en, quote_zh, source_url,
-      published_date, deadline, actual_result, status, publication, rationale, evidence, provenance
+      published_date, deadline, actual_result, status, publication, rationale, evidence, provenance, model_call_id
     ) VALUES (
       ${id},
       ${ownerId},
@@ -169,7 +170,8 @@ async function insertVerified(ownerId: string, claim: Required<ExtractedClaim>) 
       'proposed',
       '原话已在抓取到的出处页面中核对。尚未做兑现判定。',
       '[]'::jsonb,
-      'agent'
+      'agent',
+      ${callId}
     )
   `;
   await logEvent({
@@ -216,6 +218,8 @@ async function main() {
         text: page.text.slice(0, index === 0 ? 4500 : 1800),
       })),
     }),
+    2000,
+    AGENT_EXTRACT_V1,
   )) as { claims?: ExtractedClaim[] };
 
   const byUrl = new Map(pages.map((page) => [page.url, page.text]));
@@ -227,7 +231,7 @@ async function main() {
     if (!page || !quoteOnPage(page, claim.quote_en, person.name_en)) continue;
     if (!page.includes(claim.published_date.slice(0, 4))) continue;
     kept += 1;
-    if (await insertVerified(person.id, claim)) inserted += 1;
+    if (await insertVerified(person.id, claim, takeModelCallId(extracted))) inserted += 1;
   }
   await record("抽出可核对主张", "completed", {
     extracted: extracted.claims?.length ?? 0,

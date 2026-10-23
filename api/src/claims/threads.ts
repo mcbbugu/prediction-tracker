@@ -39,6 +39,7 @@ async function proposeThreads(personName: string, domain: string, rows: Row[]) {
       rows.map((row) => ({ id: row.id, said_on: row.published_date, deadline: row.deadline, quote: row.quote_zh || row.quote_en })),
     ),
     3000,
+    "THREADS_V1",
   );
   return Array.isArray(answer.threads) ? (answer.threads as { claim_ids?: unknown; commitment?: string; reason?: string }[]) : [];
 }

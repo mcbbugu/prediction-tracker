@@ -3,7 +3,7 @@
 // 核对通过的主张直接公开（标成机器核对），人物进入目录。做完后前端打开这个人的详情页。
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ArkStopped, arkJson, arkSearch } from "../core/ark";
+import { ArkStopped, arkJson, arkSearch, takeModelCallId } from "../core/ark";
 import { noteKindFailures } from "../core/notify";
 import { sql } from "../core/db";
 import { logEvent } from "../core/migrate";
@@ -35,6 +35,9 @@ export const DOMAINS = [
   "其他科技",
 ];
 const MAX_DUE_CHECKS = 3;
+export const TRANSLATE_V1 = "TRANSLATE_V1";
+export const IDENTIFY_V1 = "IDENTIFY_V1";
+export const EXTRACT_V1 = "EXTRACT_V1";
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 
 export const hasChinese = (value: string) => /[\u4e00-\u9fff]/.test(value);
@@ -65,6 +68,7 @@ export async function translateToChinese(quotes: string[]) {
     '把每句话忠实翻译成简体中文，不增删内容，不加引号。按顺序输出 JSON：{"zh":["",""]}',
     JSON.stringify(quotes),
     Math.min(4000, 400 + quotes.join("").length * 2),
+    TRANSLATE_V1,
   )) as { zh?: string[] };
   return quotes.map((_, index) => {
     const zh = (result.zh?.[index] ?? "").trim();
@@ -174,6 +178,7 @@ async function identify(query: string, emit: ReturnType<typeof emitter>) {
     ].join("\n"),
     JSON.stringify({ query, search_summary: search.text.slice(0, 3000) }),
     800,
+    IDENTIFY_V1,
   )) as Identity;
 
   const trace = identityTrace(identity, search.urls);
@@ -318,7 +323,7 @@ async function extractClaims(identity: Identity, pages: Snapshot[], emit: Return
     (key) => key.length >= 2,
   );
   const keys = [...nameKeys, "年", "将", "会", "will", "by 20", "next year", "within"];
-  const found: { page: Snapshot; item: Extracted }[] = [];
+  const found: { page: Snapshot; item: Extracted; callId: string | null }[] = [];
   for (let start = 0; start < pages.length; start += 3) {
     const batch = pages.slice(start, start + 3);
     const result = (await arkJson(
@@ -346,10 +351,12 @@ async function extractClaims(identity: Identity, pages: Snapshot[], emit: Return
         })),
       }),
       3000,
+      EXTRACT_V1,
     )) as { claims?: Extracted[] };
+    const callId = takeModelCallId(result);
     for (const item of result.claims ?? []) {
       const page = batch[(item.page ?? 0) - 1];
-      if (page) found.push({ page, item });
+      if (page) found.push({ page, item, callId });
     }
   }
   await emit("抽取预测", "done", `模型提出 ${found.length} 条候选`, {
@@ -366,7 +373,7 @@ async function extractClaims(identity: Identity, pages: Snapshot[], emit: Return
 async function keepVerified(
   personId: string,
   identity: Identity,
-  candidates: { page: Snapshot; item: Extracted }[],
+  candidates: { page: Snapshot; item: Extracted; callId: string | null }[],
   emit: ReturnType<typeof emitter>,
 ) {
   await emit("核对原话", "running", "逐条检查原话是否真的出现在存档网页里");
@@ -380,7 +387,7 @@ async function keepVerified(
 
   const kept: (DueClaim & { source_id: number })[] = [];
   const dropped: { quote: string; reason: string; source_id: number; outcome: "dropped" }[] = [];
-  for (const { page, item } of candidates) {
+  for (const { page, item, callId } of candidates) {
     const quote = (item.quote ?? "").trim();
     if (!quote || !item.deadline || !isoDate.test(item.deadline) || !item.said_on || !isoDate.test(item.said_on)) {
       dropped.push({ quote, reason: "缺日期或期限", source_id: page.id, outcome: "dropped" });
@@ -433,12 +440,13 @@ async function keepVerified(
     await sql`
       INSERT INTO claims (
         id, person_id, category, claim_type, quote_en, quote_zh, quote_original, source_url,
-        published_date, deadline, actual_result, status, publication, rationale, evidence, provenance, quote_kind
+        published_date, deadline, actual_result, status, publication, rationale, evidence, provenance, quote_kind,
+        model_call_id
       ) VALUES (
         ${claim.id}, ${personId}, ${claim.category}, 'prediction', ${claim.quote_en}, ${claim.quote_zh}, ${quote},
         ${claim.source_url}, ${claim.published_date}, ${claim.deadline}, '', '待定', 'published',
         ${`${item.kind === "reported" ? "转述" : "原话"}已在存档网页中逐字核对（sources#${page.id}，sha256 ${page.sha256.slice(0, 12)}）。尚未判定。`},
-        '[]'::jsonb, 'agent', ${item.kind === "reported" ? "reported" : "direct"}
+        '[]'::jsonb, 'agent', ${item.kind === "reported" ? "reported" : "direct"}, ${callId}
       )
     `;
     await sql`UPDATE claims SET published_at = now() WHERE id = ${claim.id}`;

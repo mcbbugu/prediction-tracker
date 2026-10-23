@@ -8,7 +8,7 @@
 //   4. Code checks each copied sentence really is in that saved page. Sentences that are not found are discarded.
 //   5. A verdict of 已兑现/部分兑现/未兑现 with no surviving evidence becomes 证据不足.
 //   6. The result is a proposal. Only a person on /review can apply it to the public record.
-import { arkJson, arkSearch } from "../core/ark";
+import { arkJson, arkSearch, takeModelCallId } from "../core/ark";
 import { maybeQueueAudit, verdictAutoPublish } from "../scoring/calibration";
 import { recomputeScores } from "../scoring/score";
 import { sql } from "../core/db";
@@ -73,12 +73,16 @@ const silent: Emit = async () => {};
 
 export type KeptEvidence = { url: string; quote: string; source_id: number; fetched_at: string; sha256: string };
 
+export const JUDGE_V1 = "JUDGE_V1";
+export const CROSS_V1 = "CROSS_V1";
+
 export type PageJudgement = {
   status: string;
   actual_result: string;
   rationale: string;
   kept: KeptEvidence[];
   rejected: { url: string; quote: string; reason: string }[];
+  model_call_id: string | null;
 };
 
 // Steps 3–5: judge using only the saved page text; keep only evidence sentences found word for word.
@@ -113,6 +117,7 @@ export async function judgeOnPages(claim: DueClaim, pages: Snapshot[], budget = 
       })),
     }),
     2500,
+    system ? CROSS_V1 : JUDGE_V1,
   )) as Judgement;
 
   const kept: KeptEvidence[] = [];
@@ -138,7 +143,7 @@ export async function judgeOnPages(claim: DueClaim, pages: Snapshot[], budget = 
     status = "证据不足";
   }
 
-  return { status, actual_result: (answer.actual_result ?? "").trim(), rationale, kept, rejected };
+  return { status, actual_result: (answer.actual_result ?? "").trim(), rationale, kept, rejected, model_call_id: takeModelCallId(answer) };
 }
 
 export function outcomeQuery(claim: DueClaim) {
@@ -200,7 +205,7 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent, options?
   const { status, rationale, kept, rejected } = judged;
 
   const rows = await sql<{ id: number }[]>`
-    INSERT INTO verdict_proposals (claim_id, person_id, status, actual_result, rationale, evidence, rejected_evidence, search_query)
+    INSERT INTO verdict_proposals (claim_id, person_id, status, actual_result, rationale, evidence, rejected_evidence, search_query, model_call_id)
     VALUES (
       ${claim.id},
       ${claim.person_id},
@@ -209,7 +214,8 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent, options?
       ${rationale},
       ${sql.json(kept)},
       ${sql.json(rejected)},
-      ${query}
+      ${query},
+      ${judged.model_call_id}
     )
     RETURNING id
   `;
