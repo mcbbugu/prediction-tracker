@@ -29,6 +29,7 @@ export type Claim = {
   curation?: string | null;
   // Two independent verdicts disagreed; a person has not resolved it yet.
   disagreed?: boolean;
+  recheck_note?: string | null;
 };
 
 export type Person = {

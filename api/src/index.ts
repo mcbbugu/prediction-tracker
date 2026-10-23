@@ -6,9 +6,9 @@ import { handleMcp } from "./queries/mcp";
 import { PriorError, priorAsOf } from "./queries/prior";
 import { consultPrior } from "./queries/consult";
 import { ChallengeError, decideChallenge, pendingChallenges, submitChallenge } from "./claims/challenges";
-import { clientAddress, hashClientIp, ipAnalyzeAllowed, pumpApiQueue, queuePosition, recentAnalyzeCount } from "./jobs/analyze-limit";
+import { admitAnalyze, clientAddress, hashClientIp, pumpApiQueue, queuePosition } from "./jobs/analyze-limit";
 import { notify } from "./core/notify";
-import { resolveDisagreement } from "./claims/verdict";
+import { rejudgeChallenge, resolveDisagreement } from "./claims/verdict";
 import { remapStrayDomains } from "./claims/remap-domains";
 import { arkConfigured } from "./core/ark";
 import { assertSafeToStart, corsOrigin } from "./core/env";
@@ -497,7 +497,8 @@ const app = new Elysia()
       try {
         const result = await submitChallenge({ claimId: params.claimId, url: body.url, note: body.note });
         void notify("challenge", `有新的反证：${params.claimId}`).catch(() => {});
-        return result;
+        const review = await rejudgeChallenge(params.claimId).catch(() => null);
+        return { ...result, review };
       } catch (error) {
         if (!(error instanceof ChallengeError)) throw error;
         set.status = error.status;
@@ -640,30 +641,15 @@ const app = new Elysia()
         set.status = 503;
         return { error: "没有配置模型密钥，agent 无法运行" };
       }
-      const same = await sql<{ id: string }[]>`
-        SELECT id FROM jobs
-        WHERE kind = 'analyze_person' AND lower(query) = lower(${query})
-          AND (state IN ('queued', 'running') OR (state = 'done' AND created_at > now() - interval '1 hour'))
-        ORDER BY created_at DESC LIMIT 1
-      `;
-      if (same[0]) return { job_id: same[0].id, reused: true };
-      const [today] = await sql<{ n: number }[]>`SELECT count(*)::int AS n FROM jobs WHERE created_at > now() - interval '1 day' AND runner = 'api'`;
-      if (today.n >= DAILY_JOB_LIMIT) {
-        set.status = 429;
-        return { error: `今天的分析次数已用完（${DAILY_JOB_LIMIT} 次）` };
-      }
       const rawIp = clientAddress(request.headers, process.env.TRUST_PROXY === "1", server?.requestIP(request)?.address ?? "");
       const clientIp = hashClientIp(rawIp, process.env.IP_HASH_SALT ?? "");
-      if (!ipAnalyzeAllowed(await recentAnalyzeCount(sql, clientIp))) {
+      const admitted = await admitAnalyze({ query, clientIp, dailyLimit: DAILY_JOB_LIMIT });
+      if ("error" in admitted) {
         set.status = 429;
-        return { error: "每天最多发起 3 次新分析，已收录的人物可以随便看" };
+        return { error: admitted.error === "ip" ? "每天最多发起 3 次新分析，已收录的人物可以随便看" : `今天的分析次数已用完（${DAILY_JOB_LIMIT} 次）` };
       }
-      const [job] = await sql<{ id: string }[]>`
-        INSERT INTO jobs (kind, query, runner, client_ip) VALUES ('analyze_person', ${query}, 'api', ${clientIp}) RETURNING id
-      `;
-      // Full concurrency leaves the row queued; pump starts it when a running analysis finishes.
-      await pumpApiQueue();
-      return { job_id: job.id, reused: false };
+      if (!admitted.reused) await pumpApiQueue();
+      return { job_id: admitted.job_id, reused: admitted.reused };
     },
     { body: t.Object({ query: t.String() }) },
   )

@@ -25,10 +25,29 @@ SPEC「近期版本：暂不做人工审核」：机器判定照常计分，但�
 
 ## 验收标准
 
-- [ ] `/v1/prior?person=musk` 返回 `verdict_tiers` 和 `disclosure`，贴样例
-- [ ] 并发测试通过；无证据计分测试通过
-- [ ] 完成后在 GitHub issue #1、#2、#5 下回复做了什么（`gh issue comment`），不要关闭 issue
-- [ ] 通用检查全部通过
+- [x] `/v1/prior?person=musk` 返回 `verdict_tiers` 和 `disclosure`，贴样例
+- [x] 并发测试通过；无证据计分测试通过
+- [x] 完成后在 GitHub issue #1、#2、#5 下回复做了什么（`gh issue comment`），不要关闭 issue
+- [x] 通用检查全部通过
 
 ## 完成记录
+
+已判定主张按 `provenance` 和 `claim_events` 分成 `human`、`seed_autocheck`、`machine`、`on_demand`。`/v1/prior`、consult、MCP `get_prior` 都带上每条的 `verdict_tier`，以及顶层的 `verdict_tiers` 和 `disclosure`。人物页分数旁链到方法页 `#eval`。方法页写明现在是评测中，双模型一致不是独立核实。
+
+反证提交后会把对方页面存档并再判定一次。结论变了就更新并标有争议；没变就记下「已复核，结论不变」。
+
+没有证据的已判定主张作废不计分。库里这类已公开主张是 0 条，没有重算分数。分析名额的检查和写入放进同一把锁。并发 10 个请求只放进 3 条。
+
+`/v1/prior?person=musk` 样例：
+
+```json
+{
+  "disclosure": "判定由 AI 完成，尚未经人工校准；准确率见 /method#eval",
+  "verdict_tiers": { "human": 0, "seed_autocheck": 23, "machine": 0, "on_demand": 2 }
+}
+```
+
+`musk-028`（未兑现）的 `verdict_tier` 是 `seed_autocheck`。
+
+已在 issue #1、#2、#5 留言，没有关闭。验证：95 项测试、`bun run typecheck`、根目录 lint 和 `tsc` 通过。人物页和方法页已在浏览器打开核对。
 

@@ -15,6 +15,7 @@ import { sql } from "../core/db";
 import { logEvent } from "../core/migrate";
 import { excerpt, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
 import { resolveProposition } from "../scoring/resolvers";
+import { challengeReview } from "../queries/verdict-tier";
 
 export const STATUSES = ["已兑现", "部分兑现", "未兑现", "待定", "证据不足"];
 export const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
@@ -230,7 +231,7 @@ async function deterministicVerdict(claim: DueClaim, emit: Emit): Promise<Verdic
   };
 }
 
-export async function verifyClaim(claim: DueClaim, emit: Emit = silent, options?: { cross?: boolean }): Promise<VerdictOutcome> {
+export async function verifyClaim(claim: DueClaim, emit: Emit = silent, options?: { cross?: boolean; extraUrls?: string[] }): Promise<VerdictOutcome> {
   const deterministic = await deterministicVerdict(claim, emit);
   if (deterministic) return deterministic;
   const query = outcomeQuery(claim);
@@ -243,6 +244,15 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent, options?
   const unreachable: string[] = [];
   for (const url of candidates) {
     if (pages.length >= MAX_PAGES) break;
+    const page = await snapshot(url);
+    if (!page || page.http_status >= 400 || page.text.length < 400) {
+      unreachable.push(url);
+      continue;
+    }
+    pages.push(page);
+  }
+  for (const url of options?.extraUrls ?? []) {
+    if (pages.length >= MAX_PAGES || pages.some((page) => page.url === url || page.final_url === url)) continue;
     const page = await snapshot(url);
     if (!page || page.http_status >= 400 || page.text.length < 400) {
       unreachable.push(url);
@@ -393,4 +403,48 @@ export async function applyVerdictIfAllowed(proposalId: number) {
   const applied = await applyVerdictAutomatically(proposalId);
   if (applied) await maybeQueueAudit(proposalId, gate.mode);
   return applied;
+}
+
+// A public challenge already archived its page. Judge again with that page included.
+export async function rejudgeChallenge(claimId: string) {
+  const rows = await sql<(DueClaim & { status: string })[]>`
+    SELECT c.id, c.person_id, p.name_en, c.category, c.quote_en, c.quote_zh, c.source_url,
+           to_char(c.published_date, 'YYYY-MM-DD') AS published_date,
+           to_char(c.deadline, 'YYYY-MM-DD') AS deadline, c.status
+    FROM claims c
+    JOIN people p ON p.id = c.person_id
+    WHERE c.id = ${claimId}
+    LIMIT 1
+  `;
+  const claim = rows[0];
+  if (!claim) return null;
+  const extras = await sql<{ url: string }[]>`
+    SELECT url FROM challenges WHERE target_kind = 'claim' AND target_id = ${claimId} AND state = 'pending'
+  `;
+  const outcome = await verifyClaim(claim, silent, { extraUrls: extras.map((row) => row.url) });
+  if (outcome.proposal_id) await applyVerdictAutomatically(outcome.proposal_id);
+  const [after] = await sql<{ status: string }[]>`SELECT status FROM claims WHERE id = ${claimId}`;
+  const next = after?.status ?? claim.status;
+  const review = challengeReview(claim.status, next);
+  if (review.changed) {
+    await logEvent({
+      claim_id: claimId,
+      person_id: claim.person_id,
+      action: "challenge_rejudged",
+      actor: "agent",
+      before: { status: claim.status },
+      after: { status: next },
+      note: "反证加入后结论改变",
+    });
+    await recomputeScores(claim.person_id, { claim_id: claimId, action: "challenge_rejudged" });
+  } else {
+    await logEvent({
+      claim_id: claimId,
+      person_id: claim.person_id,
+      action: "challenge_rechecked",
+      actor: "agent",
+      note: "已复核，结论不变",
+    });
+  }
+  return { ...review, status: next };
 }

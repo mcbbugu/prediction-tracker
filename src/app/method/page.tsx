@@ -36,7 +36,7 @@ export default async function MethodPage() {
         同一个承诺在不同时间反复重说、一再改期（例如连续几年都说「明年实现」），这些主张连成一串：每次重说仍各自判定，但整串 k 条合计只算 √k 条的分量（改期 10 次约等于 3.2 条）。反复失约仍然是证据，但不会让同一件事压过这个领域里的其他主张。
       </p>
       <p className="mt-8 text-2xl font-medium">S = 100 × (κS₀ + Σ wRE/√k) / (κ + Σ wR/√k)</p>
-      <p className="mt-2 text-xs text-mute">E 是结果（1 / 0.5 / 0），w 是时间权重，R 是证据可靠度（有证据 1，没有 0.5），k 是这条所在改期串的已判定条数（不在串里为 1），κ = 4，S₀ = 0.5。公式版本 v1.3。</p>
+      <p className="mt-2 text-xs text-mute">E 是结果（1 / 0.5 / 0），w 是时间权重，k 是这条所在改期串的已判定条数（不在串里为 1），κ = 4，S₀ = 0.5。没有留下证据的已判定主张作废，不计分。公式版本 v1.3。</p>
       <h2 className="mt-12 text-xl font-semibold tracking-tight">综合分</h2>
       <p className="mt-3 text-mute">
         每个领域有一个综合分，由两项合成：兑现率（上面的公式，看带期限的预测和承诺有没有兑现）占 70%，可信度占 30%。可信度看的是建议和立场的一致性：同一话题前后有没有不加说明地翻转，劝别人做的自己有没有做。两项都按各自的 Beta 后验抽样相加，取均值和 80% 区间。
@@ -48,6 +48,10 @@ export default async function MethodPage() {
       <h2 className="mt-12 text-xl font-semibold tracking-tight">旁证：改期与可检验度</h2>
       <p className="mt-3 text-mute">
         画像里还并排给出两项不打分的旁证。改期：同一件事后来再说时，期限往后推了，算一次改期；页面写明多少个承诺被改期、一共推迟几次、平均推迟多久。可检验度：期限已过的话里，有多少能查到结果、做出判定，判不了的作废。两项都只统计已经收录的主张，收录得越全越准。
+      </p>
+      <h2 id="eval" className="mt-12 text-xl font-semibold tracking-tight">现在这个阶段</h2>
+      <p className="mt-3 text-mute">
+        判定由 AI 完成，尚未经人工校准。准确率评测中。机器判定照常计分，页面和接口都会标明这一点。「自动收录 · 双模型一致」只说明两个模型读同一份已存档证据后结论相同，不是有人独立核实过事实。
       </p>
       <h2 className="mt-12 text-xl font-semibold tracking-tight">哪些判定不经过模型</h2>
       <p className="mt-3 text-mute">
@@ -78,7 +82,7 @@ export default async function MethodPage() {
       </p>
       <h2 className="mt-12 text-xl font-semibold tracking-tight">记录有误怎么办</h2>
       <p className="mt-3 text-mute">
-        每条主张的详情页都可以提交反证：给一个公开出处，并说明哪里不对。提交的链接会被存档，这条主张随即标「有争议」，分数照常显示；人工复核后接受或驳回，理由写进这条主张的变更记录。
+        每条主张的详情页都可以提交反证：给一个公开出处，并说明哪里不对。提交的链接会被存档，并加入证据再判定一次。结论变了就更新，并标「有争议」；没变就公开写「已复核，结论不变」。理由写进这条主张的变更记录。
       </p>
       <ul className="mt-8 space-y-3 text-sm leading-7 text-mute">
         <li>只收有原话、有链接、有明确截止日的科技人物预测。</li>

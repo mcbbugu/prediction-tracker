@@ -112,14 +112,15 @@ export function scoreDomain(rows: ScoredRow[], now = new Date()) {
   // Judged claims per thread; a claim without a thread is a thread of one.
   const threadKey = (row: ScoredRow, index: number) => row.thread_id || `self:${index}`;
   const threadSize = new Map<string, number>();
+  const scored = (row: ScoredRow) => OUTCOME[row.status] !== undefined && row.evidence_count > 0;
   rows.forEach((row, index) => {
-    if (OUTCOME[row.status] !== undefined) threadSize.set(threadKey(row, index), (threadSize.get(threadKey(row, index)) ?? 0) + 1);
+    if (scored(row)) threadSize.set(threadKey(row, index), (threadSize.get(threadKey(row, index)) ?? 0) + 1);
   });
-  const voided = rows.filter((row) => row.status === VOID_STATUS).length;
+  const voided = rows.filter((row) => row.status === VOID_STATUS || (OUTCOME[row.status] !== undefined && row.evidence_count <= 0)).length;
   for (const [index, row] of rows.entries()) {
     const outcome = OUTCOME[row.status];
-    if (outcome === undefined) continue;
-    const reliability = row.evidence_count > 0 ? 1 : 0.5;
+    if (outcome === undefined || row.evidence_count <= 0) continue;
+    const reliability = 1;
     const share = 1 / Math.sqrt(threadSize.get(threadKey(row, index)) ?? 1);
     const w = weight(row.deadline, now) * share;
     weightedEvidence += w * reliability;

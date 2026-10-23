@@ -112,8 +112,11 @@ describe("scoreDomain", () => {
     ])).toBeCloseTo(Math.sqrt(2), 10);
   });
 
-  test("没有证据的权重减半，有证据不按条数加码", () => {
-    expect(evidenceWeight([row("已兑现", { evidence_count: 0 })])).toBe(0.5);
+  test("没有证据的已判定主张作废，不计入分数", () => {
+    const scored = scoreDomain([row("已兑现", { evidence_count: 0 })], NOW);
+    expect(scored.n).toBe(0);
+    expect(scored.voided).toBe(1);
+    expect(scored.value).toBeNull();
     expect(evidenceWeight([row("已兑现", { evidence_count: 1 })])).toBe(1);
     expect(evidenceWeight([row("已兑现", { evidence_count: 4 })])).toBe(1);
   });

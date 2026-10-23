@@ -270,6 +270,9 @@ async function PersonBody({
             人工复核 {claims.length - machine}
           </Link>
         </span>
+        <Link href="/method#eval" className="text-mute hover-fine:text-blue">
+          AI 判定 · 未经人工校准
+        </Link>
         {lastChange ? <span>分数最近变化 {lastChange}</span> : null}
         {data.person.portrait_credit ? (
           <span>
@@ -675,6 +678,9 @@ async function PersonBody({
                       <span title="有人提交了反证，正在复核" className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">
                         有争议
                       </span>
+                    ) : null}
+                    {claim.recheck_note?.includes("结论不变") ? (
+                      <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">已复核，结论不变</span>
                     ) : null}
                     {claim.disagreed ? (
                       <span title="两次独立判定不一致，等待人工裁定" className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">

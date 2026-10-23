@@ -3,6 +3,7 @@ import { sql } from "../core/db";
 import { latestScoresFor, personInterestAtlas, personInterests, publishedClaims, type AtlasOrg, type ClaimRow } from "./records";
 import { indicators } from "../scoring/indicators";
 import { COMPOSITE_WEIGHTS, FORMULA_VERSION, HALF_LIFE_DAYS, MIN_JUDGED, interestSplit, personProfile } from "../scoring/score";
+import { DISCLOSURE, eventsForClaims, tallyTiers, verdictTier } from "./verdict-tier";
 
 export type ConsultRequest = {
   query: string;
@@ -350,6 +351,8 @@ export async function consultPrior(input: ConsultRequest) {
     };
   });
 
+  const matchedClaims = allClaims.filter((claim) => matchedPeopleIds.includes(claim.person_id));
+  const eventMap = await eventsForClaims(matchedClaims.map((claim) => claim.id));
   const scoredClaims = allClaims
     .filter((claim) => {
       if (!matchedPeopleIds.includes(claim.person_id)) return false;
@@ -368,6 +371,7 @@ export async function consultPrior(input: ConsultRequest) {
         ...claim,
         relevance,
         decay_weight: weight,
+        verdict_tier: verdictTier({ status: claim.status, provenance: claim.provenance, events: eventMap.get(claim.id) }),
       };
     })
     .sort((a, b) => {
@@ -458,6 +462,8 @@ export async function consultPrior(input: ConsultRequest) {
     precedents,
     timestamp: new Date().toISOString(),
     formula_version: FORMULA_VERSION,
+    disclosure: DISCLOSURE,
+    verdict_tiers: tallyTiers(matchedClaims.map((claim) => ({ ...claim, events: eventMap.get(claim.id) }))),
     min_judged_threshold: MIN_JUDGED,
     evaluations,
     evidence_chain: scoredClaims,

@@ -8,6 +8,7 @@ import { sql } from "../core/db";
 import { FORMULA_VERSION, scoreDomain } from "../scoring/score";
 import { indicators, type IndicatorClaim } from "../scoring/indicators";
 import { publishedClaims, personInterests, type ClaimRow } from "./records";
+import { DISCLOSURE, eventsByClaim, tallyTiers, verdictTier } from "./verdict-tier";
 
 const SITE = (process.env.SITE_URL || "http://localhost:4321").replace(/\/$/, "");
 const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
@@ -45,7 +46,12 @@ export async function resolvePerson(input: string) {
 
 const isoDay = /^\d{4}-\d{2}-\d{2}$/;
 
-function domainPrior(claims: ClaimRow[], asOf: string, today: string) {
+function domainPrior(
+  claims: ClaimRow[],
+  asOf: string,
+  today: string,
+  events: Map<string, { action: string; actor: string; note: string }[]>,
+) {
   // Said by as_of and due by as_of. For today, a claim already judged before its deadline (fulfilled early)
   // counts too; for a past date we don't know when it was fulfilled, so only the deadline decides.
   const due = claims.filter((c) => c.deadline <= asOf || (asOf === today && JUDGED.has(c.status)));
@@ -91,6 +97,7 @@ function domainPrior(claims: ClaimRow[], asOf: string, today: string) {
         verdict_sources: (c.evidence ?? []).map((e) => e.url),
         reviewed: c.reviewed,
         thread_id: c.thread_id,
+        verdict_tier: verdictTier({ status: c.status, provenance: c.provenance, events: events.get(c.id) }),
         url: `${SITE}/p/${c.person_id}/${c.id}`,
       })),
   };
@@ -104,6 +111,8 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
   if (asOf > today) throw new PriorError("as_of 不能晚于今天", 400);
 
   const all = (await publishedClaims(person.id)).filter((c) => c.published_date <= asOf);
+  const events = await eventsByClaim(person.id);
+  const withEvents = all.map((claim) => ({ ...claim, events: events.get(claim.id) }));
   const domains = [...new Set(all.map((c) => c.category))].sort();
   if (input.domain && !domains.includes(input.domain)) {
     throw new PriorError(`${person.name}在「${input.domain}」领域截至 ${asOf} 没有收录的主张；有：${domains.join("、") || "无"}`, 404);
@@ -130,6 +139,8 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
     person: { id: person.id, name: person.name, name_en: person.name_en, url: `${SITE}/p/${person.id}` },
     as_of: asOf,
     formula_version: FORMULA_VERSION,
+    disclosure: DISCLOSURE,
+    verdict_tiers: tallyTiers(withEvents),
     method: `${SITE}/method`,
     note: "分数只在领域内成立。as_of 只计那天之前说过、期限已到的主张；结果按今天查到的事实判定。证据不足作废不计分；同一承诺的反复改期整串按 √k 计。",
     domains: Object.fromEntries(
@@ -137,9 +148,10 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
         d,
         {
           ...domainPrior(
-            all.filter((c) => c.category === d),
+            withEvents.filter((c) => c.category === d),
             asOf,
             today,
+            events,
           ),
           claims_url: `${SITE}/p/${person.id}?domain=${encodeURIComponent(d)}#claims`,
         },
@@ -152,7 +164,7 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
 // JSON Schema of the result, for MCP outputSchema (structuredContent).
 export const PRIOR_OUTPUT_SCHEMA = {
   type: "object",
-  required: ["person", "as_of", "formula_version", "domains"],
+  required: ["person", "as_of", "formula_version", "domains", "disclosure", "verdict_tiers"],
   properties: {
     person: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, name_en: { type: "string" }, url: { type: "string" } } },
     as_of: { type: "string", format: "date" },

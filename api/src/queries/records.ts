@@ -26,6 +26,7 @@ export type ClaimRow = {
   thread_id: string | null;
   // 更正通道: counter-evidence waiting for review → shown as 有争议.
   disputed: boolean;
+  recheck_note: string | null;
   curation: string;
   disagreed: boolean;
 };
@@ -51,7 +52,8 @@ const claimSelect = sql`
   c.actual_result, c.status, c.publication, c.rationale, c.evidence,
   c.provenance, (c.reviewed_at IS NOT NULL) AS reviewed, c.quote_kind, c.thread_id, p.curation,
   (c.disagreement IS NOT NULL) AS disagreed,
-  EXISTS (SELECT 1 FROM challenges ch WHERE ch.target_kind = 'claim' AND ch.target_id = c.id AND ch.state = 'pending') AS disputed
+  EXISTS (SELECT 1 FROM challenges ch WHERE ch.target_kind = 'claim' AND ch.target_id = c.id AND ch.state = 'pending') AS disputed,
+  (SELECT e.note FROM claim_events e WHERE e.claim_id = c.id AND e.action = 'challenge_rechecked' ORDER BY e.id DESC LIMIT 1) AS recheck_note
 `;
 
 export async function publishedClaims(personId?: string) {
