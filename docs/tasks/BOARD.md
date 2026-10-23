@@ -18,7 +18,7 @@
 | [012](012-testable-propositions.md) | 可检验命题 + 确定性判定器（依赖 011） | Cursor | P0 | 已完成 | 4c5fc53 |
 | [026](026-disclosure-and-fixes.md) | 无人工阶段的披露、来源层级与三处修复（#1 #2 #5） | Cursor | P0 | 待办 | |
 | [027](027-downstream-ai-experiment.md) | 下游 AI 对照实验（#3） | Cursor | P0 | 待办 | |
-| [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 进行中 | |
+| [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 已完成 | 见完成记录 |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 待办 | |
 | [014](014-transparency-log.md) | 透明日志与每日根哈希（依赖 011） | Cursor | P1 | 待办 | |
 | [016](016-exposure-intervals.md) | 推算带区间、假设和时间对齐（依赖 011） | Cursor | P1 | 待办 | |

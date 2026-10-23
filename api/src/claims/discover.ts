@@ -8,6 +8,8 @@ import { noteKindFailures } from "../core/notify";
 import { sql } from "../core/db";
 import { logEvent } from "../core/migrate";
 import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
+import { timedChunks } from "./sources/chunk";
+import { collectSources, recordYield, type SourceRun } from "./sources";
 import { ensurePortrait } from "../people/portrait";
 import { recomputeScores } from "../scoring/score";
 import { indicators } from "../scoring/indicators";
@@ -231,76 +233,31 @@ async function ensurePerson(identity: Identity, query: string) {
   return { id, created: true };
 }
 
-async function gatherPages(identity: Identity, emit: ReturnType<typeof emitter>) {
-  await emit("搜索公开发言", "running", "联网搜索带明确时间的公开预测和承诺");
-  const who = `${identity.name_zh}（${identity.name_en ?? ""}）`;
-  const queries = [
-    `请联网搜索 ${who} 公开说过的、带明确时间的预测或承诺，例如“到某年会…”“明年…”“三年内…”。` +
-      `列出原始出处网页链接（采访原文、演讲实录、官方博客、新闻报道），尽量 6 到 10 个，不要只给网站首页。`,
-    `Search the web for public predictions or commitments with a specific timeframe made by ${identity.name_en || identity.name_zh} ` +
-      `(e.g. "by 2025", "next year", "within three years"). List 6-10 source URLs: interviews, transcripts, official blogs, news articles. No homepages.`,
-  ];
-  const urls: string[] = [];
-  const searches: { query: string; urls: string[]; error?: string }[] = [];
-  for (const query of queries) {
-    try {
-      const result = await arkSearch(query);
-      urls.push(...result.urls);
-      searches.push({ query, urls: result.urls });
-    } catch (error) {
-      if (error instanceof ArkStopped) throw error;
-      const message = error instanceof Error ? error.message.slice(0, 120) : String(error);
-      searches.push({ query, urls: [], error: message });
-      await emit("搜索公开发言", "info", `一次搜索失败：${message}`, { query, urls: [] });
-    }
+async function gatherPages(identity: Identity, emit: ReturnType<typeof emitter>, personId: string) {
+  await emit("搜索公开发言", "running", "按来源找带明确时间的公开预测和承诺");
+  const collected = await collectSources({ id: personId, name_zh: identity.name_zh ?? "", name_en: identity.name_en ?? "" });
+  for (const search of collected.searchLog) {
+    if (search.error) await emit("搜索公开发言", "info", `一次搜索失败：${search.error}`, { query: search.query, urls: [] });
   }
-  const candidates = usableLinks(urls).slice(0, MAX_PAGES + 4);
-  await emit("搜索公开发言", "done", `找到 ${candidates.length} 个可能的出处链接`, { urls: candidates, searches });
-  if (candidates.length === 0) throw new JobStop("联网搜索没有找到可用的出处链接。", "failed");
+  const pages = collected.pages.map((item) => item.page);
+  await emit("搜索公开发言", "done", `找到 ${pages.length} 个可能的出处`, {
+    urls: pages.map((page) => page.final_url),
+    searches: collected.searchLog,
+    sources: collected.runs.map((run) => ({ source: run.source, documents: run.documents, searches: run.searches, detail: run.detail })),
+  });
+  if (pages.length === 0) throw new JobStop("这些来源都没有找到可用的出处。", "failed");
 
-  await emit("存档网页", "running", `逐个打开链接并保存正文`);
-  const pages: Snapshot[] = [];
+  await emit("存档网页", "running", "来源文档已按存档标准保存");
   const unreachable: string[] = [];
-  const archives: {
-    url: string;
-    ok: boolean;
-    reason: string | null;
-    fetched_via: string | null;
-    sha256: string | null;
-    wayback_url: string | null;
-    source_id: number | null;
-  }[] = [];
-  for (const url of candidates) {
-    if (pages.length >= MAX_PAGES) {
-      archives.push({ url, ok: false, reason: "已达存档上限", fetched_via: null, sha256: null, wayback_url: null, source_id: null });
-      continue;
-    }
-    const page = await snapshot(url);
-    const reason = archiveFailure(page);
-    if (!page || reason) {
-      unreachable.push(url);
-      archives.push({
-        url,
-        ok: false,
-        reason,
-        fetched_via: page?.fetched_via ?? null,
-        sha256: page?.sha256 ?? null,
-        wayback_url: null,
-        source_id: page?.id ?? null,
-      });
-      continue;
-    }
-    pages.push(page);
-    archives.push({
-      url: page.final_url,
-      ok: true,
-      reason: null,
-      fetched_via: page.fetched_via,
-      sha256: page.sha256,
-      wayback_url: null,
-      source_id: page.id,
-    });
-  }
+  const archives = pages.map((page) => ({
+    url: page.final_url,
+    ok: true,
+    reason: null,
+    fetched_via: page.fetched_via,
+    sha256: page.sha256,
+    wayback_url: null as string | null,
+    source_id: page.id,
+  }));
   const savedIds = archives.flatMap((row) => (row.source_id == null ? [] : [row.source_id]));
   if (savedIds.length) {
     const shots = await sql<{ id: number; wayback_url: string | null }[]>`
@@ -315,7 +272,7 @@ async function gatherPages(identity: Identity, emit: ReturnType<typeof emitter>)
     archives,
   });
   if (pages.length === 0) throw new JobStop("搜到的链接都打不开，没法核对原话。", "failed");
-  return pages;
+  return { pages, runs: collected.runs };
 }
 
 async function extractClaims(identity: Identity, pages: Snapshot[], emit: ReturnType<typeof emitter>) {
@@ -325,8 +282,12 @@ async function extractClaims(identity: Identity, pages: Snapshot[], emit: Return
   );
   const keys = [...nameKeys, "年", "将", "会", "will", "by 20", "next year", "within"];
   const found: { page: Snapshot; item: Extracted; callId: string | null }[] = [];
-  for (let start = 0; start < pages.length; start += 3) {
-    const batch = pages.slice(start, start + 3);
+  const readable = pages.flatMap((page) => {
+    const chunks = timedChunks(page.text);
+    return chunks.length ? [{ page, text: chunks.join("\n").slice(0, 4000) }] : [];
+  });
+  for (let start = 0; start < readable.length; start += 3) {
+    const batch = readable.slice(start, start + 3);
     const result = (await arkJson(
       [
         `只从给定网页原文中抽取 ${identity.name_zh}（${identity.name_en ?? ""}）本人说的、带明确时间的预测或承诺。`,
@@ -344,11 +305,11 @@ async function extractClaims(identity: Identity, pages: Snapshot[], emit: Return
       ].join("\n"),
       JSON.stringify({
         person: { name_zh: identity.name_zh, name_en: identity.name_en },
-        pages: batch.map((page, index) => ({
+        pages: batch.map((item, index) => ({
           page: index + 1,
-          url: page.final_url,
-          title: page.title,
-          text: excerpt(page.text, keys, 4000),
+          url: item.page.final_url,
+          title: item.page.title,
+          text: item.text || excerpt(item.page.text, keys, 4000),
         })),
       }),
       3000,
@@ -356,7 +317,7 @@ async function extractClaims(identity: Identity, pages: Snapshot[], emit: Return
     )) as { claims?: Extracted[] };
     const callId = takeModelCallId(result);
     for (const item of result.claims ?? []) {
-      const page = batch[(item.page ?? 0) - 1];
+      const page = batch[(item.page ?? 0) - 1]?.page;
       if (page) found.push({ page, item, callId });
     }
   }
@@ -514,6 +475,52 @@ async function jobSearchCount(afterId: number) {
   return row?.n ?? 0;
 }
 
+export async function supplementPerson(personId: string) {
+  const people = await sql<{ id: string; name: string; name_en: string; title: string }[]>`
+    SELECT id, name, name_en, title FROM people WHERE id = ${personId} LIMIT 1
+  `;
+  const person = people[0];
+  const counts = async () => {
+    const [row] = await sql<{ n: number }[]>`SELECT count(*)::int AS n FROM claims WHERE person_id = ${personId} AND publication = 'published'`;
+    return row?.n ?? 0;
+  };
+  if (!person) return { id: personId, name: personId, before: 0, after: 0, error: "不在库里", runs: [] as SourceRun[] };
+  const before = await counts();
+  const identity: Identity = {
+    found: true,
+    name_zh: person.name,
+    name_en: person.name_en,
+    title_zh: person.title,
+    is_public_figure: true,
+    is_politician: false,
+  };
+  const emit: ReturnType<typeof emitter> = async () => {};
+  try {
+    const gathered = await gatherPages(identity, emit, person.id);
+    const candidates = await extractClaims(identity, gathered.pages, emit);
+    const kept = await keepVerified(person.id, identity, candidates, emit);
+    await recordYield(person.id, gathered.runs, kept.map((claim) => claim.source_url));
+    for (const claim of kept) {
+      try {
+        await structureClaim(claim);
+      } catch (error) {
+        if (error instanceof ArkStopped) throw error;
+      }
+    }
+    return { id: personId, name: person.name, before, after: await counts(), runs: gathered.runs };
+  } catch (error) {
+    if (error instanceof ArkStopped) throw error;
+    return {
+      id: personId,
+      name: person.name,
+      before,
+      after: await counts(),
+      error: error instanceof Error ? error.message.slice(0, 160) : String(error),
+      runs: [] as SourceRun[],
+    };
+  }
+}
+
 export async function runAnalyzeJob(jobId: string) {
   const emit = emitter(jobId);
   const started = Date.now();
@@ -540,9 +547,11 @@ export async function runAnalyzeJob(jobId: string) {
       await emit("识别人物", "info", `头像查找失败：${error instanceof Error ? error.message.slice(0, 120) : error}`);
     }
 
-    const pages = await gatherPages(identity, emit);
+    const gathered = await gatherPages(identity, emit, person.id);
+    const pages = gathered.pages;
     const candidates = await extractClaims(identity, pages, emit);
     const kept = await keepVerified(person.id, identity, candidates, emit);
+    await recordYield(person.id, gathered.runs, kept.map((claim) => claim.source_url));
 
     await emit("结构化", "running", `把 ${kept.length} 条主张写成可检验命题`);
     const propositions: { claim_id: string; proposition_id: number }[] = [];

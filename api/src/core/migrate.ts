@@ -250,6 +250,20 @@ async function migrateUnlocked() {
   `;
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS resolved_by text`;
   await sql`ALTER TABLE verdict_proposals ADD COLUMN IF NOT EXISTS resolved_by text`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS source_yield (
+      id bigserial PRIMARY KEY,
+      person_id text NOT NULL,
+      source text NOT NULL,
+      documents integer NOT NULL DEFAULT 0,
+      claims integer NOT NULL DEFAULT 0,
+      elapsed_ms integer NOT NULL DEFAULT 0,
+      searches integer NOT NULL DEFAULT 0,
+      detail text NOT NULL DEFAULT '',
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS source_yield_source_idx ON source_yield (source, created_at DESC)`;
   // Evidence store standard: the raw bytes as fetched (gzip) and their hash, how the page was reached,
   // and an independent Wayback Machine capture as third-party corroboration.
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS raw_gz bytea`;

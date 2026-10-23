@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { cluesFrom, orderSources, searchSlots, timedChunks } from "../src/claims/sources/chunk";
+import { parseFeed } from "../src/claims/sources/rss";
+import { youtubeSkipDetail } from "../src/claims/sources/youtube-captions";
 import { isHomepage, normalize, quoteOnPage, textFromHtml, usableLinks } from "../src/evidence/sources";
 
 const page = [
@@ -91,5 +94,35 @@ describe("usableLinks / isHomepage", () => {
         "https://example.com/reports/2026",
       ]),
     ).toEqual(["https://example.com/reports/2026"]);
+  });
+});
+
+describe("多源发现", () => {
+  test("长文本只留下带时间的块", () => {
+    const filler = "背景介绍。".repeat(80);
+    const text = `${filler}到 2027 年会上市。${filler}没有时间的句子。${filler}next year we ship it.`;
+    const chunks = timedChunks(text, 200, 2000);
+    expect(chunks.length).toBeGreaterThan(0);
+    expect(chunks.every((chunk) => /2027|next year/.test(chunk))).toBe(true);
+    expect(timedChunks("完全没有时间词的短文")).toEqual([]);
+  });
+
+  test("来源按历史产出率排序，联网搜索永远在最后", () => {
+    const names = ["sec_transcripts", "youtube_captions", "rss", "web_search"];
+    expect(orderSources(names, { rss: 0.4, sec_transcripts: 0.1 })).toEqual(["rss", "sec_transcripts", "youtube_captions", "web_search"]);
+    expect(orderSources(names, {}).at(-1)).toBe("web_search");
+  });
+
+  test("每人搜索不超过 6 次", () => {
+    expect(searchSlots(0, 3)).toBe(3);
+    expect(searchSlots(5, 3)).toBe(1);
+    expect(searchSlots(6, 2)).toBe(0);
+  });
+
+  test("RSS 能从条目里取出链接，没有 yt-dlp 就说明跳过", () => {
+    const items = parseFeed(`<rss><channel><item><title>By 2027</title><link>https://example.com/a</link><description>next year</description></item></channel></rss>`);
+    expect(items).toEqual([{ title: "By 2027", link: "https://example.com/a", description: "next year" }]);
+    expect(cluesFrom("Tesla will ship by 2027")).toContain("2027");
+    if (!Bun.which("yt-dlp")) expect(youtubeSkipDetail()).toBe("本机没有 yt-dlp，已跳过");
   });
 });
