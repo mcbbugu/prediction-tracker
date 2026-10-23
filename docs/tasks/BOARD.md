@@ -16,9 +16,11 @@
 | [004](004-refetch-sources.md) | 重抓乱码 PDF 和打不开的出处 | Cursor | P2 | 已完成 | f9437cf |
 | [011](011-replayable-pipeline.md) | 模型调用内容寻址与可重放 | Cursor | P0 | 已完成 | f6fda7e |
 | [012](012-testable-propositions.md) | 可检验命题 + 确定性判定器（依赖 011） | Cursor | P0 | 已完成 | 4c5fc53 |
-| [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 待办 | |
+| [026](026-disclosure-and-fixes.md) | 无人工阶段的披露、来源层级与三处修复（#1 #2 #5） | Cursor | P0 | 待办 | |
+| [027](027-downstream-ai-experiment.md) | 下游 AI 对照实验（#3） | Cursor | P0 | 待办 | |
+| [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 进行中 | |
+| [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 待办 | |
 | [014](014-transparency-log.md) | 透明日志与每日根哈希（依赖 011） | Cursor | P1 | 待办 | |
-| [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P1 | 待办 | |
 | [016](016-exposure-intervals.md) | 推算带区间、假设和时间对齐（依赖 011） | Cursor | P1 | 待办 | |
 | [017](017-insider-trades.md) | 言行一致：SEC Form 4 内部人交易 | Cursor | P1 | 待办 | |
 | [018](018-event-study-baseline.md) | 事件研究与同类基准（依赖 012） | Cursor | P2 | 待办 | |
@@ -26,7 +28,7 @@
 | [020](020-difficulty-hierarchical.md) | 难度调整技能分 + 分层贝叶斯，公式 v2.0（依赖 012） | Cursor | P0 | 待办 | |
 | [021](021-commitment-strength.md) | 承诺强度与本人校准（依赖 012） | Cursor | P1 | 待办 | |
 | [022](022-promise-vs-forecast.md) | 承诺与预测分开计分（019、020 依赖它） | Cursor | P0 | 待办 | |
-| [023](023-prediction-powered-inference.md) | 预测驱动推断：少量人工给出有效区间 | Cursor | P1 | 待办 | |
+| [023](023-prediction-powered-inference.md) | 预测驱动推断：少量人工给出有效区间（#4，先验证代理变量） | Cursor | P2 | 暂缓 | |
 | [024](024-vague-claims.md) | 模糊表述按多种定义判定（依赖 012） | Cursor | P1 | 待办 | |
 | [025](025-growing-lists-pages.md) | 长列表进子页（变化原因、全部主张）+ 服务端分页 | Cursor | P1 | 待办 | |
-| [H01](H01-blind-calibration.md) | 盲标 49 条校准判定（等 009，暂缓） | 人工 | P2 | 待办 | — |
+| [H01](H01-blind-calibration.md) | 盲标 49 条校准判定（近期版本不做） | 人工 | P2 | 待办 | — |
