@@ -17,9 +17,11 @@
 | [011](011-replayable-pipeline.md) | 模型调用内容寻址与可重放 | Cursor | P0 | 已完成 | f6fda7e |
 | [012](012-testable-propositions.md) | 可检验命题 + 确定性判定器（依赖 011） | Cursor | P0 | 已完成 | 4c5fc53 |
 | [026](026-disclosure-and-fixes.md) | 无人工阶段的披露、来源层级与三处修复（#1 #2 #5） | Cursor | P0 | 已完成 | d50b71a |
-| [027](027-downstream-ai-experiment.md) | 下游 AI 对照实验（#3） | Cursor | P0 | 待办 | |
+| [027](027-downstream-ai-experiment.md) | 下游 AI 对照实验（#3） | Cursor | P0 | 进行中 | |
 | [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 已完成 | a0b72e6 |
+| [029](029-daily-expansion.md) | 每日扩库：多出「有分数的人」 | Cursor | P0 | 待办 | |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 待办 | |
+| [028](028-fix-structured-sources.md) | 修好结构化来源：字幕、8-K、播客（需先装 yt-dlp） | Cursor | P1 | 待办 | |
 | [014](014-transparency-log.md) | 透明日志与每日根哈希（依赖 011） | Cursor | P1 | 待办 | |
 | [016](016-exposure-intervals.md) | 推算带区间、假设和时间对齐（依赖 011） | Cursor | P1 | 待办 | |
 | [017](017-insider-trades.md) | 言行一致：SEC Form 4 内部人交易 | Cursor | P1 | 待办 | |
