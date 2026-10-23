@@ -26,6 +26,7 @@ export type ClaimRow = {
   thread_id: string | null;
   // 更正通道: counter-evidence waiting for review → shown as 有争议.
   disputed: boolean;
+  curation: string;
 };
 
 export type ScoreRow = {
@@ -47,7 +48,7 @@ const claimSelect = sql`
   to_char(c.published_date, 'YYYY-MM-DD') AS published_date,
   to_char(c.deadline, 'YYYY-MM-DD') AS deadline,
   c.actual_result, c.status, c.publication, c.rationale, c.evidence,
-  c.provenance, (c.reviewed_at IS NOT NULL) AS reviewed, c.quote_kind, c.thread_id,
+  c.provenance, (c.reviewed_at IS NOT NULL) AS reviewed, c.quote_kind, c.thread_id, p.curation,
   EXISTS (SELECT 1 FROM challenges ch WHERE ch.target_kind = 'claim' AND ch.target_id = c.id AND ch.state = 'pending') AS disputed
 `;
 

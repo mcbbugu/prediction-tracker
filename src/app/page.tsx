@@ -5,7 +5,7 @@ import { HomeWash } from "@/components/home-wash";
 import { Portrait } from "@/components/portrait";
 import { ScoreBadge, scoreCaption } from "@/components/score-badge";
 import { cn } from "@/lib/utils";
-import { getJson, type Person, type Score } from "@/lib/api";
+import { curationLabel, getJson, type Person, type Score } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +89,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                 <div className="min-w-0 pt-0.5">
                   <p className="truncate text-[16px] leading-6 font-bold">{card.person.name}</p>
                   <p className="line-clamp-2 text-xs leading-[18px] text-mute">{card.person.title}</p>
+                  {curationLabel(card.person.curation) ? (
+                    <span className="mt-1 inline-block rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">{curationLabel(card.person.curation)}</span>
+                  ) : null}
                 </div>
               </div>
 

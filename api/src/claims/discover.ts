@@ -1,13 +1,15 @@
 // 按需分析：用户输入一个名字，agent 在后台找这个人带截止日的公开预测，逐条核对原话，到期的再找结果。
 // 每一步写进 job_events，前端 /jobs/[id] 轮询显示真实进度。
 // 核对通过的主张直接公开（标成机器核对），人物进入目录。做完后前端打开这个人的详情页。
-import { basename } from "node:path";
+import { basename, dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ArkStopped, arkJson, arkSearch } from "../core/ark";
 import { sql } from "../core/db";
 import { logEvent } from "../core/migrate";
 import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
 import { ensurePortrait } from "../people/portrait";
 import { recomputeScores } from "../scoring/score";
+import { indicators } from "../scoring/indicators";
 import { fillPersonInterests } from "../interests/interests";
 import { applyVerdictAutomatically, verifyClaim, type DueClaim } from "./verdict";
 
@@ -212,10 +214,11 @@ async function ensurePerson(identity: Identity, query: string) {
   const taken = await sql`SELECT 1 FROM people WHERE id = ${id}`;
   if (taken.length > 0) id = `${id}-${crypto.randomUUID().slice(0, 4)}`;
   await sql`
-    INSERT INTO people (id, name, name_en, title, visibility, aliases)
+    INSERT INTO people (id, name, name_en, title, visibility, aliases, curation)
     VALUES (
       ${id}, ${identity.name_zh!}, ${identity.name_en || identity.name_zh!}, ${identity.title_zh || "公众人物"}, 'draft',
-      ARRAY(SELECT jsonb_array_elements_text(${sql.json([...new Set(names)])}))
+      ARRAY(SELECT jsonb_array_elements_text(${sql.json([...new Set(names)])})),
+      'auto'
     )
   `;
   return { id, created: true };
@@ -463,6 +466,35 @@ async function keepVerified(
   return kept;
 }
 
+// sec.ts is a script (importing it runs the whole import), so hand it the org keys as a subprocess.
+// It skips filings already stored, and ignores keys that are not on its ticker list.
+async function importListedFilings(personId: string, emit: ReturnType<typeof emitter>) {
+  const orgs = await sql<{ org_key: string }[]>`
+    SELECT DISTINCT org_key FROM interests
+    WHERE person_id = ${personId} AND org_key IS NOT NULL AND superseded_at IS NULL AND publication = 'published'
+    ORDER BY org_key
+  `;
+  const keys = orgs.map((row) => row.org_key);
+  if (keys.length === 0) {
+    await emit("财务与敞口", "done", "没有关联机构，不导入申报", { orgs: [] });
+    return;
+  }
+  await emit("财务与敞口", "running", `按 SEC 申报导入 ${keys.length} 家机构的营收和地区敞口`);
+  const apiRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
+  const proc = Bun.spawn(["bun", "--env-file=.env", "run", "src/interests/sec.ts", `--orgs=${keys.join(",")}`, "--years=1"], {
+    cwd: apiRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [code, stdout, stderr] = await Promise.all([proc.exited, new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+  const log = `${stdout}\n${stderr}`.trim().slice(0, 2000);
+  await emit("财务与敞口", code === 0 ? "done" : "failed", code === 0 ? `已核对 ${keys.length} 家机构的申报` : `SEC 导入退出码 ${code}`, {
+    orgs: keys,
+    exit_code: code,
+    log,
+  });
+}
+
 async function jobSearchCount(afterId: number) {
   const caller = basename(process.argv[1] ?? "");
   const [row] = await sql<{ n: number }[]>`
@@ -545,7 +577,20 @@ export async function runAnalyzeJob(jobId: string) {
     }
 
     await sql`UPDATE people SET visibility = 'public' WHERE id = ${person.id}`;
-    if (kept.length > 0 || verdicts.length > 0) await recomputeScores(person.id, { action: "auto_publish" });
+    await importListedFilings(person.id, emit);
+    await emit("分数与旁证", "running", "按已公开的主张重算领域分，并汇总改期和可检验度");
+    await recomputeScores(person.id, { action: "auto_publish" });
+    const indicatorRows = await sql<{ id: string; category: string; status: string; published_date: string; deadline: string; thread_id: string | null }[]>`
+      SELECT id, category, status, to_char(published_date, 'YYYY-MM-DD') AS published_date,
+             to_char(deadline, 'YYYY-MM-DD') AS deadline, thread_id
+      FROM claims WHERE person_id = ${person.id} AND publication = 'published'
+    `;
+    const portrait = indicators(indicatorRows);
+    await emit("分数与旁证", "done", `已重算。改期 ${portrait.rescheduling.rescheduled}/${portrait.rescheduling.commitments}，可判定 ${portrait.testability.judged}/${portrait.testability.resolved}`, {
+      claims: indicatorRows.length,
+      rescheduling: portrait.rescheduling,
+      testability: portrait.testability,
+    });
     const summary = {
       person_id: person.id,
       person_created: person.created,

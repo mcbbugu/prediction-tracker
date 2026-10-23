@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Catalog } from "@/components/catalog";
 import { Icon } from "@/components/icon";
 import { StatusPill } from "@/components/status-pill";
-import { getJson, type Claim, type HomePayload } from "@/lib/api";
+import { curationLabel, getJson, type Claim, type HomePayload } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -114,6 +114,7 @@ export default async function ClaimsPage({ searchParams }: { searchParams: Promi
             <StatusPill status={claim.status === "待定" && claim.deadline < today ? "待核对" : claim.status} />
             <span>{claim.person_name}</span>
             {claim.disputed ? <span className="rounded-md border border-dashed border-ink/40 px-1.5 text-[11px] text-ink">有争议</span> : null}
+            {curationLabel(claim.curation) ? <span className="rounded-md border border-dashed border-ink/40 px-1.5 text-[11px] text-ink">{curationLabel(claim.curation)}</span> : null}
           </span>
           <span>
             <span className="block leading-7">{claim.quote_zh}</span>

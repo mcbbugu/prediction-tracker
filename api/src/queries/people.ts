@@ -42,6 +42,7 @@ export type PersonSummary = {
   insufficient: number;
   // reviewed_at 为空，即还没人工审核过的条数
   machine: number;
+  curation: string;
   domains: PersonDomainScore[];
 };
 
@@ -83,6 +84,7 @@ export async function peopleSummary(options: { limit?: number; offset?: number; 
       ),
       listed AS (
         SELECT p.id, p.name, p.name_en, p.title, p.portrait_path, p.portrait_credit, p.portrait_source_url, p.portrait_license,
+               p.curation,
                coalesce(c.claims, 0) AS claims,
                coalesce(c.judged, 0) AS judged,
                coalesce(c.pending, 0) AS pending,

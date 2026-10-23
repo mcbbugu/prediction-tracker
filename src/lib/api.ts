@@ -26,6 +26,7 @@ export type Claim = {
   thread_id?: string | null;
   // 更正通道: counter-evidence is waiting for review.
   disputed?: boolean;
+  curation?: string | null;
 };
 
 export type Person = {
@@ -37,7 +38,14 @@ export type Person = {
   portrait_credit: string | null;
   portrait_source_url: string | null;
   portrait_license: string | null;
+  curation?: string | null;
 };
+
+export function curationLabel(curation: string | null | undefined) {
+  if (curation === "auto") return "自动收录 · 未经人工复核";
+  if (curation === "cross_checked") return "自动收录 · 双模型一致";
+  return null;
+}
 
 export type AnalysisSearch = { query: string; urls: string[]; error?: string };
 export type AnalysisArchive = {

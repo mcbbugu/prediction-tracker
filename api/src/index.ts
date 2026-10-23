@@ -167,8 +167,9 @@ const app = new Elysia()
         portrait_credit: string | null;
         portrait_source_url: string | null;
         portrait_license: string | null;
+        curation: string;
       }[]
-    >`SELECT id, name, name_en, title, portrait_path, portrait_credit, portrait_source_url, portrait_license FROM people WHERE id = ${params.id} LIMIT 1`;
+    >`SELECT id, name, name_en, title, portrait_path, portrait_credit, portrait_source_url, portrait_license, curation FROM people WHERE id = ${params.id} LIMIT 1`;
     const person = people[0];
     if (!person) {
       set.status = 404;

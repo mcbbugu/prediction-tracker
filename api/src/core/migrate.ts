@@ -63,6 +63,24 @@ async function migrateUnlocked() {
   await sql`CREATE INDEX IF NOT EXISTS verdict_proposals_state_idx ON verdict_proposals (state, created_at)`;
   await sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'public'`;
   await sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS aliases text[] NOT NULL DEFAULT '{}'`;
+  // auto = on-demand analysis, not yet cross-checked. reviewed = a person decided. cross_checked is set by task 010.
+  const curationAdded = await sql<{ exists: boolean }[]>`
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'people' AND column_name = 'curation'
+    ) AS exists
+  `;
+  if (!curationAdded[0]?.exists) {
+    await sql`ALTER TABLE people ADD COLUMN curation text NOT NULL DEFAULT 'reviewed'`;
+    await sql`
+      UPDATE people p SET curation = 'auto'
+      WHERE EXISTS (
+        SELECT 1 FROM jobs j
+        WHERE j.person_id = p.id AND j.kind = 'analyze_person' AND j.state = 'done'
+          AND coalesce((j.result->>'person_created')::boolean, false)
+      )
+    `;
+  }
   await sql`CREATE INDEX IF NOT EXISTS people_public_name_idx ON people (name) WHERE visibility = 'public'`;
   await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS quote_original text NOT NULL DEFAULT ''`;
   await sql`

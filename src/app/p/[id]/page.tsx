@@ -12,7 +12,7 @@ import { CopyButton } from "@/components/copy-button";
 import { ScoreHistoryCharts, type DomainHistory } from "@/components/score-history-chart";
 import { StatusPill } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
-import { PUBLIC_API_URL, getJson, type Claim, type Indicators, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
+import { PUBLIC_API_URL, curationLabel, getJson, type Claim, type Indicators, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -229,6 +229,9 @@ async function PersonBody({
             </p>
             <h1 className="mt-0.5 text-[28px] leading-tight font-[900] tracking-tight">{data.person.name}</h1>
             <p className="truncate text-sm text-mute">{data.person.title}</p>
+            {curationLabel(data.person.curation) ? (
+              <span className="mt-1 inline-block rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">{curationLabel(data.person.curation)}</span>
+            ) : null}
             {data.analysis_job_id ? (
               <Link href={`/jobs/${data.analysis_job_id}`} className="mt-1 inline-block text-xs text-blue">
                 生成过程
@@ -672,6 +675,9 @@ async function PersonBody({
                       <span title="有人提交了反证，正在复核" className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">
                         有争议
                       </span>
+                    ) : null}
+                    {curationLabel(data.person.curation) ? (
+                      <span className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">{curationLabel(data.person.curation)}</span>
                     ) : null}
                   </span>
                   <span className="min-w-0">
