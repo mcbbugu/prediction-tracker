@@ -21,6 +21,7 @@
   --color-paper: #f7f7f8;
   --color-canvas: #f7f7f8;
   --color-card: #ffffff;
+  --color-card-foreground: #0d0d0d;
   --color-card-2: #f4f4f5;
   --color-sunken: #f4f4f5;
   --color-ink: #0d0d0d;
@@ -35,6 +36,16 @@
   --color-score-high: #2f3fc4;
   --color-score-mid: #2f3fc4;
   --color-score-low: #6b6b6f;
+  /* shadcn-style semantic names used by the beUI components (src/components/beui), mapped onto our palette
+     so they render in the site's own ink and ultramarine, never their defaults. */
+  --color-foreground: #0d0d0d;
+  --color-muted-foreground: #6b6b6f;
+  --color-muted: #f4f4f5;
+  --color-background: #f7f7f8;
+  --color-border: #e5e5e7;
+  --color-border-strong: #d0d0d4;
+  --color-primary: #2f3fc4;
+  --color-primary-foreground: #ffffff;
 }
 
 html {
@@ -54,17 +65,7 @@ body {
   background: transparent;
 }
 
-/* Paper grain over the whole page, fixed so it reads as the sheet, not the content. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
+/* Paper colour only. A full-screen grain filter sat above every click and made the page repaint. */
 
 ::selection {
   background: var(--color-blue-tint);
@@ -136,4 +137,10 @@ body::after {
   .lift > * {
     animation: none;
   }
+}
+
+/* Plain CSS variables some beUI components read directly (e.g. text shimmer gradients). */
+:root {
+  --foreground: #0d0d0d;
+  --muted-foreground: #6b6b6f;
 }

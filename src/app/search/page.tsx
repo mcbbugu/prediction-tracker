@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import Loading from "@/app/loading";
 import { ScoreNum } from "@/components/score-num";
 import { SearchField } from "@/components/search-field";
 import { StatusPill } from "@/components/status-pill";
@@ -8,7 +10,17 @@ import { getJson, type ConsultPayload } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-export default async function SearchPage({
+export default function SearchPage(props: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <SearchBody {...props} />
+    </Suspense>
+  );
+}
+
+async function SearchBody({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string }>;
@@ -44,10 +56,10 @@ export default async function SearchPage({
         <div className="mt-10 rounded-2xl border border-line p-6">
           <p className="text-lg font-semibold tracking-tight">库里还没有「{query}」</p>
           <p className="mt-2 max-w-[56ch] text-sm leading-6 text-mute">
-            agent 可以现在去公开资料里找这个人说过的、带截止时间的预测，逐条核对原话；已经到期的再找实际结果。大约需要几分钟，结果先进审核台，不会直接公开。政治人物和没有公开身份的人不做分析。
+            agent 会去公开资料里找这个人带期限的说法、头像和利益关系，逐条核对原话。做完就打开他的页面。政治人物和没有公开身份的人不做分析。
           </p>
           <div className="mt-5">
-            <AnalyzeButton query={query} />
+            <AnalyzeButton query={query} auto />
           </div>
         </div>
       ) : (

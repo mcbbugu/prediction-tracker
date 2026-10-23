@@ -47,6 +47,7 @@ export function ActivityGrid({
               return n ? (
                 <Link
                   key={month}
+                  prefetch={false}
                   href={href(month)}
                   title={`${year} 年 ${m + 1} 月：${n} 句`}
                   className={`${cls} hover-fine:ring-1 hover-fine:ring-blue`}

@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     "research_notes/**",
     "reports/**",
     "public/**",
+    // Vendored beUI components (copied from https://beui.dev); kept as published so updates stay easy.
+    "src/components/beui/**",
   ]),
 ]);
 

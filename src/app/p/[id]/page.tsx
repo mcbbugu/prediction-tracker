@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import Loading from "@/app/loading";
 import { Icon } from "@/components/icon";
 import { ActivityGrid } from "@/components/activity-grid";
 import { Portrait } from "@/components/portrait";
@@ -84,7 +86,18 @@ function yearSpan(claim: Claim) {
   return `${claim.published_date.slice(0, 7)} → ${claim.deadline.slice(0, 7)}`;
 }
 
-export default async function PersonPage({
+export default function PersonPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ domain?: string; show?: string; year?: string; month?: string }>;
+}) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <PersonBody {...props} />
+    </Suspense>
+  );
+}
+
+async function PersonBody({
   params,
   searchParams,
 }: {
@@ -590,11 +603,16 @@ export default async function PersonPage({
       ) : null}
 
       {/* Claims */}
-      <section id="claims" className="mt-8 scroll-mt-24">
-        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <h2 className="flex flex-wrap items-baseline gap-x-3 text-[15px] font-bold">
-          全部主张
-          <span className="text-xs font-normal text-mute">先列已到期的（最近的在上），再列未到期的</span>
+      <section id="claims" className="mt-14 scroll-mt-24">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-8">
+          <div className="shrink-0" title="按说话月份：颜色越深，那个月收录的带期限说法越多；只统计已收录的话">
+            <p className="mb-2 text-[11px] tracking-wide text-mute">按月份</p>
+            <ActivityGrid claims={claims} href={(month) => listHref({ month, year: null, show: null })} active={monthFilter} />
+          </div>
+          <div className="min-w-0">
+        <h2 className="text-[15px] font-bold">全部主张</h2>
+        <p className="mt-1 text-xs text-mute">先列已到期的（最近的在上），再列未到期的</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           {domainFilter ? (
             <Link href={listHref({ domain: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
               {domainFilter}
@@ -619,19 +637,17 @@ export default async function PersonPage({
               <Icon name="cancel" size={11} />
             </Link>
           ) : null}
-        </h2>
-        <div className="flex items-end gap-2" title="按说话月份：颜色越深，那个月收录的带期限说法越多；只统计已收录的话">
-          <span className="text-[10px] leading-tight text-mute">按月份</span>
-          <ActivityGrid claims={claims} href={(month) => listHref({ month, year: null, show: null })} active={monthFilter} />
         </div>
+          </div>
         </div>
-        <ul className="mt-3 overflow-hidden rounded-[14px] bg-card">
+        <ul className="mt-6 overflow-hidden rounded-[14px] bg-card">
           {shown.map((claim) => {
             const p = phase(claim, today);
             const chips = claimExposureChips(flow, claim.id);
             return (
               <li key={claim.id} className="border-b border-line last:border-0">
                 <Link
+                  prefetch={false}
                   href={`/p/${id}/${claim.id}`}
                   className="grid gap-x-4 gap-y-1 px-4 py-3 no-underline hover-fine:bg-sunken/60 md:grid-cols-[112px_1fr_150px]"
                 >

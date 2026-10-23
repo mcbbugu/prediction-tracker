@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { Card, CARD_TARGET_CLASS } from "@/components/beui/motion/card";
+import { HomeHero } from "@/components/home-hero";
+import { HomeWash } from "@/components/home-wash";
 import { Portrait } from "@/components/portrait";
 import { ScoreBadge, scoreCaption } from "@/components/score-badge";
+import { cn } from "@/lib/utils";
 import { getJson, type Person, type Score } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -50,48 +54,35 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
   return (
     <div>
-      <section className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 pt-20 pb-8">
-        <div>
-          <h1 className="text-[40px] leading-tight font-[900] tracking-tight">
-            <span className="display-num mr-2 text-blue">{cards.length}</span>位人物
-          </h1>
-          <p className="mt-2 max-w-[46ch] text-[15px] text-ink/70">
-            每个人说过的、带期限的话，到期后对照结果。分数按领域分开算，不是人品分。
-          </p>
-        </div>
-        <dl className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-mute">
-          <div className="flex items-center gap-1.5">
-            <ScoreBadge value={78} n={12} size="sm" />
-            <dt>70 以上</dt>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <ScoreBadge value={61} n={12} size="sm" />
-            <dt>52–70</dt>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <ScoreBadge value={38} n={12} size="sm" />
-            <dt>52 以下</dt>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <ScoreBadge value={null} n={0} size="sm" />
-            <dt>还没有已判定的主张</dt>
-          </div>
-          <dt className="basis-full text-[11px] sm:basis-auto">分数旁的区间越宽、条数越少，越不确定</dt>
-        </dl>
+      <HomeWash />
+      <section className="pt-4">
+        {page === 1 ? <HomeHero total={cards.length} /> : null}
       </section>
 
-      {cards.length === 0 ? (
+      <section className="border-t border-black/[0.06] pt-12">
+        <div className="mb-8 text-center">
+          <p className="text-xs font-medium tracking-wide text-blue">人物先验库</p>
+          <h2 className="mt-1 text-[28px] font-semibold tracking-tight">已收录 {cards.length} 位公众人物</h2>
+          <p className="mx-auto mt-2 max-w-[44ch] text-sm leading-6 text-mute">分数按领域分开。70 以上是实心，52–70 是浅色，再低是空心。还没有判定过的，显示为虚线。</p>
+        </div>
+        {cards.length === 0 ? (
         <p className="rounded-2xl bg-card p-8 text-sm text-mute">
           还没有公开的人物。在上方搜一个名字，agent 会去公开资料里查。
         </p>
       ) : null}
 
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {shown.map((card) => (
           <li key={card.person.id}>
+            <Card
+              interactive
+              size="compact"
+              className="h-full gap-0 border-white/80 bg-white/90 p-0 py-0 shadow-[0_18px_40px_-28px_rgba(31,42,138,0.55)] backdrop-blur-md"
+            >
             <Link
               href={`/p/${card.person.id}`}
-              className="group flex h-full flex-col rounded-[14px] bg-card p-4 no-underline transition-shadow duration-150 hover-fine:ring-2 hover-fine:ring-blue/25 focus-visible:ring-2 focus-visible:ring-blue focus-visible:outline-none"
+              prefetch={true}
+              className={cn(CARD_TARGET_CLASS, "group flex h-full flex-col p-4 no-underline focus-visible:outline-none")}
             >
               <div className="flex items-start gap-3">
                 <Portrait person={card.person} riso className="w-14 shrink-0 !rounded-[9px]" />
@@ -137,12 +128,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                   待到期 <b className="num font-semibold text-ink">{card.pending}</b>
                 </span>
                 {card.machine > 0 ? (
-                  <span className="ml-auto rounded-full bg-sunken px-2 py-0.5" title="这些主张由 agent 自动核对原话，尚未人工审核">
+                  <span className="ml-auto rounded-full bg-sunken px-2 py-0.5" title="这些主张由 agent 核对原话后直接公开">
                     机器核对
                   </span>
                 ) : null}
               </div>
             </Link>
+            </Card>
           </li>
         ))}
       </ul>
@@ -171,14 +163,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           ) : null}
         </nav>
       ) : null}
-
-      <p className="mt-10 max-w-[70ch] text-xs leading-6 text-mute">
-        给 AI 调用：<code className="rounded bg-card px-1.5 py-0.5 text-ink">POST /v1/consult</code>
-        ，传入一句话，返回说话人在该领域的分数、80% 区间、样本量和可点回的原话。
-        <Link href="/method" className="ml-1 text-blue">
-          分数怎么算
-        </Link>
-      </p>
+      </section>
     </div>
   );
 }
