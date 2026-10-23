@@ -10,6 +10,6 @@
 | [006](006-analysis-trace-ui.md) | 任务页展示分析过程（依赖 005） | Cursor | P0 | 待办 | |
 | [007](007-analysis-parity.md) | 按需分析补齐模块、加自动收录标签 | Cursor | P0 | 待办 | |
 | [008](008-analysis-rate-limit.md) | 按 IP 限流和排队 | Cursor | P1 | 待办 | |
-| [003](003-rerun-failed-analysis.md) | 重跑失败的人物分析 | Cursor | P1 | 待办 | |
+| [003](003-rerun-failed-analysis.md) | 重跑失败的人物分析 | Cursor | P1 | 已完成 | 无代码提交 |
 | [004](004-refetch-sources.md) | 重抓乱码 PDF 和打不开的出处 | Cursor | P2 | 待办 | |
 | [H01](H01-blind-calibration.md) | 盲标 49 条校准判定 | 人工 | P0 | 待办 | — |
