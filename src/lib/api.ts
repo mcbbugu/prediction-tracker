@@ -39,6 +39,43 @@ export type Person = {
   portrait_license: string | null;
 };
 
+export type AnalysisSearch = { query: string; urls: string[]; error?: string };
+export type AnalysisArchive = {
+  url: string;
+  ok: boolean;
+  reason: string | null;
+  fetched_via: string | null;
+  sha256: string | null;
+  wayback_url: string | null;
+  source_id: number | null;
+};
+export type AnalysisCandidate = { quote: string; deadline?: string; source_id?: number; url?: string; outcome?: "passed" | "dropped"; reason?: string; id?: string; domain?: string };
+export type AnalysisVerdict = {
+  claim: string;
+  status: string | null;
+  accepted?: { source_id: number; url: string }[];
+  rejected?: { url: string; quote: string; reason: string }[];
+};
+export type AnalysisRelation = { id: number; kind: string; counterparty: string; counterparty_zh: string; role: string; source_url: string; publication: string };
+export type JobEventData = {
+  urls?: string[];
+  searches?: AnalysisSearch[];
+  archived?: { url: string; title?: string }[];
+  archives?: AnalysisArchive[];
+  unreachable?: string[];
+  candidates?: AnalysisCandidate[];
+  kept?: AnalysisCandidate[];
+  dropped?: AnalysisCandidate[];
+  verdicts?: AnalysisVerdict[];
+  relations?: AnalysisRelation[];
+  elapsed_ms?: number;
+  search_count?: number;
+  status?: string;
+  evidence?: { url: string; quote?: string }[];
+  accepted?: { source_id: number; url: string }[];
+  rejected?: { url: string; quote: string; reason: string }[];
+};
+
 export type Score = {
   person_id?: string;
   domain: string;

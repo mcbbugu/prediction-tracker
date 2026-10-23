@@ -174,10 +174,16 @@ const app = new Elysia()
       set.status = 404;
       return { error: "未找到该人物" };
     }
-    const [claimRows, scores, interests] = await Promise.all([
+    const [claimRows, scores, interests, analysisJobs] = await Promise.all([
       publishedClaims(person.id),
       latestScores(person.id),
       personInterests(person.id),
+      sql<{ id: string }[]>`
+        SELECT id FROM jobs
+        WHERE person_id = ${person.id} AND kind = 'analyze_person' AND state = 'done'
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
     ]);
     const claims = claimRows.map((claim) => ({ ...claim, interest_note: interests.claim_notes[claim.id] ?? null }));
     const rows = claims.map((claim) => ({
@@ -191,6 +197,7 @@ const app = new Elysia()
     const profile = personProfile(rows, interests.collected);
     return {
       person,
+      analysis_job_id: analysisJobs[0]?.id ?? null,
       claims,
       scores,
       profile,

@@ -109,7 +109,7 @@ async function PersonBody({
   const yearFilter = rawYear && /^\d{4}$/.test(rawYear) ? rawYear : undefined;
   const monthFilter = rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) ? rawMonth : undefined;
   const [data, history] = await Promise.all([
-    getJson<{ person: Person; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators }>(`/v1/people/${id}`),
+    getJson<{ person: Person; analysis_job_id?: string | null; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators }>(`/v1/people/${id}`),
     getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history`).catch(() => ({ snapshots: [] as Snapshot[] })),
   ]);
   const today = new Date().toISOString().slice(0, 10);
@@ -229,6 +229,11 @@ async function PersonBody({
             </p>
             <h1 className="mt-0.5 text-[28px] leading-tight font-[900] tracking-tight">{data.person.name}</h1>
             <p className="truncate text-sm text-mute">{data.person.title}</p>
+            {data.analysis_job_id ? (
+              <Link href={`/jobs/${data.analysis_job_id}`} className="mt-1 inline-block text-xs text-blue">
+                生成过程
+              </Link>
+            ) : null}
           </div>
         </div>
         <dl className="grid grid-cols-5 gap-x-5 gap-y-1">
