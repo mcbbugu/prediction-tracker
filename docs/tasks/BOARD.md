@@ -9,7 +9,7 @@
 | [002](002-data-cleanup.md) | 数据清理脚本 | Cursor | P1 | 已完成 | a8e177c |
 | [005](005-analysis-trace-data.md) | 按需分析：每步记录完整细节 | Cursor | P0 | 已完成 | 55081d3 |
 | [006](006-analysis-trace-ui.md) | 任务页展示分析过程（依赖 005） | Cursor | P0 | 已完成 | 2d6f22d |
-| [007](007-analysis-parity.md) | 按需分析补齐模块、加自动收录标签 | Cursor | P0 | 待办 | |
+| [007](007-analysis-parity.md) | 按需分析补齐模块、加自动收录标签 | Cursor | P0 | 进行中 | |
 | [008](008-analysis-rate-limit.md) | 按 IP 限流和排队 | Cursor | P1 | 待办 | |
 | [010](010-cross-model-check.md) | 双模型交叉判定 + 异常通知（依赖 007） | Cursor | P1 | 待办 | |
 | [003](003-rerun-failed-analysis.md) | 重跑失败的人物分析 | Cursor | P1 | 已完成 | 无代码提交 |
@@ -28,4 +28,5 @@
 | [022](022-promise-vs-forecast.md) | 承诺与预测分开计分（019、020 依赖它） | Cursor | P0 | 待办 | |
 | [023](023-prediction-powered-inference.md) | 预测驱动推断：少量人工给出有效区间 | Cursor | P1 | 待办 | |
 | [024](024-vague-claims.md) | 模糊表述按多种定义判定（依赖 012） | Cursor | P1 | 待办 | |
+| [025](025-growing-lists-pages.md) | 长列表进子页（变化原因、全部主张）+ 服务端分页 | Cursor | P1 | 待办 | |
 | [H01](H01-blind-calibration.md) | 盲标 49 条校准判定（等 009，暂缓） | 人工 | P2 | 待办 | — |
