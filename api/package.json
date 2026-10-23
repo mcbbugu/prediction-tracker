@@ -31,7 +31,8 @@
     "portraits": "bun run src/people/portrait.ts",
     "worker": "bun run src/jobs/worker.ts",
     "enqueue": "bun run src/jobs/enqueue.ts",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "eval:downstream": "bun --env-file=.env run src/tools/downstream-eval.ts"
   },
   "dependencies": {
     "@elysiajs/cors": "1.2.0",
