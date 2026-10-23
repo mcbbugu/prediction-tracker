@@ -19,14 +19,15 @@
 | [026](026-disclosure-and-fixes.md) | 无人工阶段的披露、来源层级与三处修复（#1 #2 #5） | Cursor | P0 | 已完成 | d50b71a |
 | [027](027-downstream-ai-experiment.md) | 下游 AI 对照实验（#3） | Cursor | P0 | 已完成 | c206ad7 |
 | [013](013-multi-source-discovery.md) | 多源发现，提高产出率 | Cursor | P0 | 已完成 | a0b72e6 |
-| [029](029-daily-expansion.md) | 每日扩库：多出「有分数的人」 | Cursor | P0 | 待办 | |
+| [030](030-downstream-experiment-v2.md) | 下游对照实验第二版：排除答案泄露（#3） | Cursor | P0 | 待办 | |
+| [029](029-daily-expansion.md) | 每日扩库：多出「有分数的人」 | Cursor | P0 | 进行中 | |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 待办 | |
 | [028](028-fix-structured-sources.md) | 修好结构化来源：字幕、8-K、播客（需先装 yt-dlp） | Cursor | P1 | 待办 | |
 | [014](014-transparency-log.md) | 透明日志与每日根哈希（依赖 011） | Cursor | P1 | 待办 | |
 | [016](016-exposure-intervals.md) | 推算带区间、假设和时间对齐（依赖 011） | Cursor | P1 | 待办 | |
 | [017](017-insider-trades.md) | 言行一致：SEC Form 4 内部人交易 | Cursor | P1 | 待办 | |
 | [018](018-event-study-baseline.md) | 事件研究与同类基准（依赖 012） | Cursor | P2 | 待办 | |
-| [019](019-delay-survival.md) | 生存分析：延迟系数与兑现时间预测（依赖 022） | Cursor | P0 | 待办 | |
+| [019](019-delay-survival.md) | 生存分析：延迟系数与兑现时间预测（依赖 022；030 的 C 组要用） | Cursor | P0 | 待办 | |
 | [020](020-difficulty-hierarchical.md) | 难度调整技能分 + 分层贝叶斯，公式 v2.0（依赖 012） | Cursor | P0 | 待办 | |
 | [021](021-commitment-strength.md) | 承诺强度与本人校准（依赖 012） | Cursor | P1 | 待办 | |
 | [022](022-promise-vs-forecast.md) | 承诺与预测分开计分（019、020 依赖它） | Cursor | P0 | 待办 | |

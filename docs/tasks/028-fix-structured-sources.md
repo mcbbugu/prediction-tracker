@@ -10,7 +10,7 @@
 
 ## 做法
 
-1. **字幕**：本机装好 yt-dlp 后（由用户执行 `brew install yt-dlp`，不要自己装），`youtube_captions` 只下载字幕（`--skip-download --write-auto-subs --sub-langs en,zh-Hans`）。找视频用 yt-dlp 自带的搜索（`ytsearch10:<人名> interview`），不花 AFP。字幕去时间戳后照存档标准存。
+1. **字幕**：本机装好 yt-dlp 后（由用户执行 `brew install yt-dlp`，不要自己装），`youtube_captions` 只下载字幕（`--skip-download --write-auto-subs --sub-langs en,zh-Hans`）。找视频用 yt-dlp 自带的搜索（`ytsearch10:<人名> interview`），不花 AFP。字幕去时间戳后照存档标准存。自动生成的字幕可能有识别错误：存档时标 `transcript_kind = auto`（人工字幕为 `manual`），来自自动字幕的主张页面上标「出自自动字幕」，核对原话时允许的差异仍是零。
 2. **8-K**：查清 013 为什么 0 个文档。8-K 新闻稿通常在 EX-99.1 附件（HTML），要从申报索引里找附件而不是主文件。只取此人任职期间、本人所在公司的申报。
 3. **RSS 有文档没主张**：抽 5 个 RSS 文档看原因（时间词切块漏掉？不是本人说的话？），在完成记录里写结论，能修就修。
 4. **播客文字稿**：新增适配器，先支持自带文字稿的来源（如 Lex Fridman、Dwarkesh 的文字稿页面），按人名在节目列表里匹配。
