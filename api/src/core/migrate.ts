@@ -249,6 +249,17 @@ async function migrateUnlocked() {
   // Hashed client address for the on-demand analysis cap. Never the raw IP.
   await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS client_ip text`;
   await sql`CREATE INDEX IF NOT EXISTS jobs_client_ip_created_idx ON jobs (client_ip, created_at DESC) WHERE client_ip IS NOT NULL`;
+  // Open when a second, independent verdict disagreed. Null once a person resolves it.
+  await sql`ALTER TABLE claims ADD COLUMN IF NOT EXISTS disagreement jsonb`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id bigserial PRIMARY KEY,
+      condition text NOT NULL,
+      message text NOT NULL DEFAULT '',
+      sent_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS notifications_condition_idx ON notifications (condition, sent_at DESC)`;
   // Which judged claims (id + status) a snapshot counted, so a change can be explained claim by claim.
   await sql`ALTER TABLE score_snapshots ADD COLUMN IF NOT EXISTS basis jsonb`;
   // 原话 (direct) or 可核实转述 (reported): a reliable source attributes the statement to the person (SPEC 原则 2).

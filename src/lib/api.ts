@@ -27,6 +27,8 @@ export type Claim = {
   // 更正通道: counter-evidence is waiting for review.
   disputed?: boolean;
   curation?: string | null;
+  // Two independent verdicts disagreed; a person has not resolved it yet.
+  disagreed?: boolean;
 };
 
 export type Person = {

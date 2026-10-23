@@ -98,6 +98,7 @@ export function ReviewDesk() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [calibration, setCalibration] = useState<CalBrief | null>(null);
+  const [disagreements, setDisagreements] = useState<{ id: string; person_name: string; quote_zh: string; status: string; disagreement: { first?: { status?: string; rationale?: string }; second?: { status?: string; rationale?: string } } }[]>([]);
   const [ready, setReady] = useState(false);
   const [decisionNotes, setDecisionNotes] = useState<Record<number, string>>({});
   const [error, setError] = useState("");
@@ -126,6 +127,7 @@ export function ReviewDesk() {
     setVerdicts(body.verdicts ?? []);
     setRuns(body.runs);
     setChallenges(body.challenges ?? []);
+    setDisagreements(body.disagreements ?? []);
     setReady(true);
     const calibrationResponse = await fetch(`${API}/v1/calibration`, { headers: { "x-review-token": nextToken } });
     if (calibrationResponse.ok) {
@@ -158,6 +160,17 @@ export function ReviewDesk() {
     const body = await response.json();
     if (!response.ok) return fail(body.error || "动作没有完成");
     setVerdicts((list) => list.filter((item) => item.id !== id));
+  }
+
+  async function resolveDisagreement(claimId: string, status: string) {
+    const response = await fetch(`${API}/v1/disagreements/${claimId}`, {
+      method: "POST",
+      headers: { "x-review-token": token, "content-type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    const body = await response.json();
+    if (!response.ok) return fail(body.error || "裁定没有完成");
+    setDisagreements((list) => list.filter((item) => item.id !== claimId));
   }
 
   async function decideChallenge(id: number, action: "accept" | "reject") {
@@ -194,7 +207,7 @@ export function ReviewDesk() {
 
   const visible = person === "all" ? proposals : proposals.filter((item) => item.person_id === person);
   const calibrationPending = calibration != null && (!calibration.gate.open || calibration.open > 0);
-  const nothingToDo = ready && calibration != null && !calibrationPending && challenges.length === 0 && proposals.length === 0;
+  const nothingToDo = ready && calibration != null && !calibrationPending && challenges.length === 0 && proposals.length === 0 && disagreements.length === 0;
 
   return (
     <div className="grid items-start gap-12 lg:grid-cols-[1fr_280px]">
@@ -247,7 +260,7 @@ export function ReviewDesk() {
                     <span className="font-medium text-ink">模型分歧</span>
                     <span className="mt-0.5 block text-sm text-mute">两个模型对同一条主张给出了不同判定。</span>
                   </span>
-                  <span className="num shrink-0 text-sm">0</span>
+                  <span className="num shrink-0 text-sm">{disagreements.length}</span>
                 </a>
               </li>
               <li>
@@ -323,8 +336,25 @@ export function ReviewDesk() {
         {ready ? (
           <>
             <section id="disagreements" className="mt-8">
-              <h2 className="inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight">模型分歧 0</h2>
-              <p className="mt-1 text-sm text-mute">两个模型意见不一致时，对照各自的理由自己判：接受、驳回，或改为证据不足。这项还没接上。</p>
+              <h2 className="inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight">模型分歧 {disagreements.length}</h2>
+              <p className="mt-1 text-sm text-mute">两个模型意见不一致。对照两边的结论和理由，选定一个写回。裁定后「有分歧」消失。</p>
+              <ul className="mt-3 space-y-3">
+                {disagreements.map((item) => (
+                  <li key={item.id} className="rounded-2xl border border-line bg-card p-4 text-sm">
+                    <p className="text-xs text-mute">{item.person_name}</p>
+                    <p className="mt-1 font-medium">「{item.quote_zh}」</p>
+                    <p className="mt-2">第一次：{item.disagreement?.first?.status}。{item.disagreement?.first?.rationale}</p>
+                    <p className="mt-1">第二次：{item.disagreement?.second?.status}。{item.disagreement?.second?.rationale}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {STATUSES.map((status) => (
+                        <Button key={status} variant="secondary" onClick={() => resolveDisagreement(item.id, status)}>
+                          定为{status}
+                        </Button>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </section>
             <section id="proposals" className="mt-8">
               <h2 className="inline-flex items-center gap-1.5 text-lg font-semibold tracking-tight">

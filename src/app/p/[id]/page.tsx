@@ -676,6 +676,11 @@ async function PersonBody({
                         有争议
                       </span>
                     ) : null}
+                    {claim.disagreed ? (
+                      <span title="两次独立判定不一致，等待人工裁定" className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">
+                        有分歧
+                      </span>
+                    ) : null}
                     {curationLabel(data.person.curation) ? (
                       <span className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">{curationLabel(data.person.curation)}</span>
                     ) : null}

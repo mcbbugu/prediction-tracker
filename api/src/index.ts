@@ -7,6 +7,8 @@ import { PriorError, priorAsOf } from "./queries/prior";
 import { consultPrior } from "./queries/consult";
 import { ChallengeError, decideChallenge, pendingChallenges, submitChallenge } from "./claims/challenges";
 import { clientAddress, hashClientIp, ipAnalyzeAllowed, pumpApiQueue, queuePosition, recentAnalyzeCount } from "./jobs/analyze-limit";
+import { notify } from "./core/notify";
+import { resolveDisagreement } from "./claims/verdict";
 import { remapStrayDomains } from "./claims/remap-domains";
 import { arkConfigured } from "./core/ark";
 import { assertSafeToStart, corsOrigin } from "./core/env";
@@ -279,7 +281,13 @@ const app = new Elysia()
       ORDER BY created_at DESC
       LIMIT 12
     `;
-    return { proposals, verdicts, runs, challenges: await pendingChallenges() };
+    const disagreements = await sql`
+      SELECT c.id, c.person_id, p.name AS person_name, c.quote_zh, c.status, c.disagreement
+      FROM claims c JOIN people p ON p.id = c.person_id
+      WHERE c.disagreement IS NOT NULL
+      ORDER BY c.person_id, c.id
+    `;
+    return { proposals, verdicts, runs, challenges: await pendingChallenges(), disagreements };
   })
   .post(
     "/v1/review/:id/:action",
@@ -479,7 +487,9 @@ const app = new Elysia()
     "/v1/claims/:claimId/challenges",
     async ({ params, body, set }) => {
       try {
-        return await submitChallenge({ claimId: params.claimId, url: body.url, note: body.note });
+        const result = await submitChallenge({ claimId: params.claimId, url: body.url, note: body.note });
+        void notify("challenge", `有新的反证：${params.claimId}`).catch(() => {});
+        return result;
       } catch (error) {
         if (!(error instanceof ChallengeError)) throw error;
         set.status = error.status;
@@ -487,6 +497,26 @@ const app = new Elysia()
       }
     },
     { params: t.Object({ claimId: t.String() }), body: t.Object({ url: t.String(), note: t.String() }) },
+  )
+  .post(
+    "/v1/disagreements/:claimId",
+    async ({ params, body, request, set }) => {
+      if (!authorized(request)) {
+        set.status = 401;
+        return { error: "审核口令不正确" };
+      }
+      if (!STATUSES.includes(body.status)) {
+        set.status = 400;
+        return { error: "未知状态" };
+      }
+      const personId = await resolveDisagreement(params.claimId, body.status);
+      if (!personId) {
+        set.status = 404;
+        return { error: "没有这条待裁定的分歧" };
+      }
+      return { ok: true, person_id: personId };
+    },
+    { params: t.Object({ claimId: t.String() }), body: t.Object({ status: t.String() }) },
   )
   .post(
     "/v1/challenges/:id/:action",

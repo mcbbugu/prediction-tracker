@@ -4,6 +4,7 @@
 // --once：队列空了就退出（适合一次性清积压）；默认一直等新任务。
 // AUTO_PUBLISH=1（或 --publish）只用于本机未上线的网站，见 SPEC「核对分层」。
 import { ArkUnavailable, ArkStopped, afpUsedToday, arkConfigured, arkPreflight } from "../core/ark";
+import { noteKindFailures } from "../core/notify";
 import { sql } from "../core/db";
 import { runAnalyzeJob } from "../claims/discover";
 import { migrate } from "../core/migrate";
@@ -138,6 +139,7 @@ async function runJob(job: Job) {
     await sql`
       UPDATE jobs SET state = 'failed', result = ${sql.json({ message: message.slice(0, 600) })}, updated_at = now() WHERE id = ${job.id}
     `;
+    await noteKindFailures(job.kind);
     console.log(`失败 ${job.kind} · ${job.query} · ${message.slice(0, 160)}`);
     failedInARow += 1;
     // Several different jobs failing in a row points at something shared (network, pages, a bad prompt), not the jobs.

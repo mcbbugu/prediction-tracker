@@ -10,6 +10,7 @@
 //   6. The result is a proposal. Only a person on /review can apply it to the public record.
 import { arkJson, arkSearch } from "../core/ark";
 import { maybeQueueAudit, verdictAutoPublish } from "../scoring/calibration";
+import { recomputeScores } from "../scoring/score";
 import { sql } from "../core/db";
 import { logEvent } from "../core/migrate";
 import { excerpt, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
@@ -55,6 +56,8 @@ export type VerdictOutcome = {
   proposal_id: number | null;
   accepted: { source_id: number; url: string }[];
   rejected: { url: string; quote: string; reason: string }[];
+  agreed: boolean;
+  second_status: string | null;
 };
 
 export function verdictTrace(status: string, kept: KeptEvidence[], rejected: { url: string; quote: string; reason: string }[]) {
@@ -79,9 +82,10 @@ export type PageJudgement = {
 };
 
 // Steps 3–5: judge using only the saved page text; keep only evidence sentences found word for word.
-export async function judgeOnPages(claim: DueClaim, pages: Snapshot[], budget = 5000): Promise<PageJudgement> {
+export async function judgeOnPages(claim: DueClaim, pages: Snapshot[], budget = 5000, system?: string): Promise<PageJudgement> {
   const keys = terms(claim);
   const answer = (await arkJson(
+    system ??
     [
       "你是事实核查员。只能依据用户给出的网页原文判断，不能用你自己的记忆或常识补充事实。",
       "任务：判断这条预测在截止日时是否兑现。",
@@ -145,7 +149,25 @@ export function outcomeQuery(claim: DueClaim) {
   );
 }
 
-export async function verifyClaim(claim: DueClaim, emit: Emit = silent): Promise<VerdictOutcome> {
+export function verdictsAgree(first: string, second: string) {
+  return first === second;
+}
+
+const CROSS_PROMPT = [
+  "你是另一位事实核查员，独立判断。没有人告诉你先前的结论，你也不要假设已经有了结论。",
+  "只能依据用户给出的网页原文，不能用记忆补充事实。",
+  "status 只能是：已兑现、部分兑现、未兑现、待定、证据不足。",
+  "原文明确做到了 → 已兑现；只做到一部分 → 部分兑现；原文明确没做到 → 未兑现；原文没直接回答 → 证据不足。",
+  "evidence 里的 quote 必须从对应 page 的原文逐字复制（20 到 300 字）。",
+  '输出 JSON：{"status":"","actual_result":"","rationale":"","evidence":[{"page":1,"quote":""}]}',
+].join("\n");
+
+// Second opinion on pages we already archived. No web search, so it does not spend search AFP.
+export async function crossJudge(claim: DueClaim, pages: Snapshot[]) {
+  return judgeOnPages(claim, pages, 5000, CROSS_PROMPT);
+}
+
+export async function verifyClaim(claim: DueClaim, emit: Emit = silent, options?: { cross?: boolean }): Promise<VerdictOutcome> {
   const query = outcomeQuery(claim);
 
   await emit("running", `搜索这条预测的实际结果`, { claim: claim.id });
@@ -171,7 +193,7 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent): Promise
   if (pages.length === 0) {
     const trace = verdictTrace("证据不足", [], []);
     await emit("done", "判定建议：证据不足（没有可核对的网页）", trace);
-    return { status: "证据不足", pages: 0, evidence_kept: 0, evidence_rejected: 0, unreachable: unreachable.length, proposal_id: null, accepted: [], rejected: [] };
+    return { status: "证据不足", pages: 0, evidence_kept: 0, evidence_rejected: 0, unreachable: unreachable.length, proposal_id: null, accepted: [], rejected: [], agreed: true, second_status: null };
   }
 
   const judged = await judgeOnPages(claim, pages);
@@ -199,6 +221,26 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent): Promise
     after: { status, evidence: kept.map((item) => item.url) },
     note: `verdict_proposals#${rows[0].id}`,
   });
+  let agreed = true;
+  let secondStatus: string | null = null;
+  if (options?.cross) {
+    const second = await crossJudge(claim, pages);
+    secondStatus = second.status;
+    agreed = verdictsAgree(status, second.status);
+    if (!agreed) {
+      await sql`
+        UPDATE claims SET disagreement = ${sql.json({
+          first: { status, rationale },
+          second: { status: second.status, rationale: second.rationale },
+        })}
+        WHERE id = ${claim.id}
+      `;
+    }
+    await emit("info", agreed ? `交叉判定一致：${status}` : `交叉判定不一致：${status} / ${second.status}`, {
+      agreed,
+      second_status: second.status,
+    });
+  }
   const trace = verdictTrace(status, kept, rejected);
   await emit("done", `判定建议：${status}（证据 ${kept.length} 条通过原文核对，丢弃 ${rejected.length} 条）`, trace);
   return {
@@ -210,7 +252,41 @@ export async function verifyClaim(claim: DueClaim, emit: Emit = silent): Promise
     proposal_id: Number(rows[0].id),
     accepted: trace.accepted,
     rejected: trace.rejected,
+    agreed,
+    second_status: secondStatus,
   };
+}
+
+// An auto-collected person becomes「双模型一致」only when every cross-check agreed and no challenge is waiting.
+// reviewed stays reserved for a person.
+export async function promoteIfUnanimous(personId: string, checked: number) {
+  if (checked < 1) return false;
+  const [open] = await sql<{ n: number }[]>`
+    SELECT count(*)::int AS n FROM claims WHERE person_id = ${personId} AND disagreement IS NOT NULL
+  `;
+  const [pending] = await sql<{ n: number }[]>`
+    SELECT count(*)::int AS n FROM challenges WHERE person_id = ${personId} AND state = 'pending'
+  `;
+  if ((open?.n ?? 0) > 0 || (pending?.n ?? 0) > 0) return false;
+  const updated = await sql`
+    UPDATE people SET curation = 'cross_checked'
+    WHERE id = ${personId} AND curation = 'auto'
+    RETURNING id
+  `;
+  return updated.length > 0;
+}
+
+export async function resolveDisagreement(claimId: string, status: string) {
+  const rows = await sql<{ person_id: string }[]>`
+    UPDATE claims
+    SET status = ${status}, disagreement = NULL, reviewed_at = now()
+    WHERE id = ${claimId} AND disagreement IS NOT NULL
+    RETURNING person_id
+  `;
+  const personId = rows[0]?.person_id;
+  if (!personId) return null;
+  await recomputeScores(personId, { claim_id: claimId, action: "disagreement_resolved" });
+  return personId;
 }
 
 // Local-only mode (AUTO_PUBLISH): apply a verdict without a reviewer. The claim stays marked as

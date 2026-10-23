@@ -4,6 +4,7 @@
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ArkStopped, arkJson, arkSearch } from "../core/ark";
+import { noteKindFailures } from "../core/notify";
 import { sql } from "../core/db";
 import { logEvent } from "../core/migrate";
 import { excerpt, normalize, quoteOnPage, snapshot, usableLinks, type Snapshot } from "../evidence/sources";
@@ -11,7 +12,7 @@ import { ensurePortrait } from "../people/portrait";
 import { recomputeScores } from "../scoring/score";
 import { indicators } from "../scoring/indicators";
 import { fillPersonInterests } from "../interests/interests";
-import { applyVerdictAutomatically, verifyClaim, type DueClaim } from "./verdict";
+import { applyVerdictAutomatically, promoteIfUnanimous, verifyClaim, type DueClaim } from "./verdict";
 
 const MAX_PAGES = 10;
 // A fixed domain list: free-form labels ("人工智能" vs "大模型" vs "AI") split one person's record
@@ -541,7 +542,7 @@ export async function runAnalyzeJob(jobId: string) {
       await emit("到期核对", "running", `${due.length} 条已过截止日，逐条找结果`);
       for (const claim of due) {
         try {
-          const outcome = await verifyClaim(claim, (status, message, data) => emit("到期核对", status, message, { claim: claim.id, ...data }));
+          const outcome = await verifyClaim(claim, (status, message, data) => emit("到期核对", status, message, { claim: claim.id, ...data }), { cross: true });
           verdicts.push({ claim: claim.id, status: outcome.status, accepted: outcome.accepted, rejected: outcome.rejected });
           if (outcome.proposal_id) await applyVerdictAutomatically(outcome.proposal_id);
         } catch (error) {
@@ -577,6 +578,7 @@ export async function runAnalyzeJob(jobId: string) {
     }
 
     await sql`UPDATE people SET visibility = 'public' WHERE id = ${person.id}`;
+    const unanimous = await promoteIfUnanimous(person.id, verdicts.length);
     await importListedFilings(person.id, emit);
     await emit("分数与旁证", "running", "按已公开的主张重算领域分，并汇总改期和可检验度");
     await recomputeScores(person.id, { action: "auto_publish" });
@@ -598,6 +600,7 @@ export async function runAnalyzeJob(jobId: string) {
       due_checked: verdicts.length,
       verdicts,
       interests_found: interests.kept,
+      cross_checked: unanimous,
       ...(await usage()),
     };
     await emit(
@@ -618,6 +621,7 @@ export async function runAnalyzeJob(jobId: string) {
       WHERE id = ${jobId}
     `;
     // Not this person's fault (outage, budget, access): let the worker put the job back and pause.
+    if (!(error instanceof ArkStopped)) await noteKindFailures("analyze_person");
     if (error instanceof ArkStopped) throw error;
   } finally {
     const [row] = await sql<{ runner: string }[]>`SELECT runner FROM jobs WHERE id = ${jobId}`;

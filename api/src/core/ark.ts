@@ -1,5 +1,6 @@
 import { basename } from "node:path";
 import { sql } from "./db";
+import { notify } from "./notify";
 
 const base = () => (process.env.ARK_BASE_URL || "").replace(/\/$/, "");
 
@@ -39,6 +40,9 @@ async function reserve(kind: CallKind, path: string) {
         SELECT coalesce(sum(afp), 0)::float8 AS used FROM ark_calls
         WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')
       `;
+      if (used / DAILY_AFP_BUDGET >= 0.8) {
+        void notify("afp-80", `AFP 已用 ${Math.round(used)}/${DAILY_AFP_BUDGET}，超过当日预算的 80%`).catch(() => {});
+      }
       if (used + SEARCH_AFP > DAILY_AFP_BUDGET) {
         throw new BudgetExceeded(`AFP 额度：今日预算 ${DAILY_AFP_BUDGET} 已用 ${used}，停止联网搜索（AFP_DAILY_BUDGET 可调）`);
       }
@@ -150,6 +154,7 @@ export async function arkPost(path: string, payload: Record<string, unknown>) {
   for (let attempt = 0; ; attempt += 1) {
     const breaker = await breakerState(kind);
     if (breaker.open && breaker.retryAt) {
+      void notify(`breaker-${kind}`, `方舟${label}熔断打开，暂停到 ${clock(breaker.retryAt)}`).catch(() => {});
       throw new ArkUnavailable(`方舟${label}连续 ${breaker.streak} 次网络或服务端失败，暂停到 ${clock(breaker.retryAt)}`, "network", breaker.retryAt);
     }
     const slot = await reserve(kind, path);
