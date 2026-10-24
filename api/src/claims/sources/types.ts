@@ -6,6 +6,9 @@ export type SourcePerson = {
 
 export type RawDoc = {
   url: string;
+  // Where the bytes actually came from, if the adapter fetched them itself (after redirects).
+  finalUrl?: string;
+  status?: number;
   title: string;
   text?: string;
   bytes?: Uint8Array;

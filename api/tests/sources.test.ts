@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { cluesFrom, orderSources, searchSlots, timedChunks } from "../src/claims/sources/chunk";
-import { parseFeed } from "../src/claims/sources/rss";
+import { fetchArticle, findRss, parseFeed } from "../src/claims/sources/rss";
 import { youtubeSkipDetail } from "../src/claims/sources/youtube-captions";
 import { isHomepage, normalize, quoteOnPage, textFromHtml, usableLinks } from "../src/evidence/sources";
 
@@ -124,5 +124,37 @@ describe("多源发现", () => {
     expect(items).toEqual([{ title: "By 2027", link: "https://example.com/a", description: "next year" }]);
     expect(cluesFrom("Tesla will ship by 2027")).toContain("2027");
     if (!Bun.which("yt-dlp")) expect(youtubeSkipDetail()).toBe("本机没有 yt-dlp，已跳过");
+  });
+});
+
+describe("RSS 原文抓取失败（#7）", () => {
+  const longSummary = "By 2027 we will ship the new model to every customer. ".repeat(20);
+  const feedXml = `<rss><channel><item><title>Plan for 2027</title><link>https://example.com/post</link><description>${longSummary}</description></item></channel></rss>`;
+  const person = { id: "paul-graham", name_zh: "", name_en: "" };
+
+  for (const [label, article] of [
+    ["403", () => new Response("forbidden", { status: 403 })],
+    ["超时", () => { throw Object.assign(new Error("timed out"), { name: "TimeoutError" }); }],
+  ] as const) {
+    test(`文章 ${label}、摘要很长时不拿摘要冒充原文`, async () => {
+      const fetcher = (async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes("example.com/post")) return article();
+        return new Response(feedXml, { status: 200 });
+      }) as typeof fetch;
+      const result = await findRss(person, fetcher);
+      expect(result.docs).toEqual([]);
+      expect(result.detail).toContain("不用 feed 摘要代替");
+    });
+  }
+
+  test("原文能打开时记下跳转后的真实网址", async () => {
+    const body = `<html><head><title>Post</title></head><body><p>${longSummary}</p></body></html>`;
+    const result = await fetchArticle({ title: "Plan", link: "https://example.com/post" }, (async () => {
+      const response = new Response(body, { status: 200, headers: { "content-type": "text/html" } });
+      Object.defineProperty(response, "url", { value: "https://example.com/final" });
+      return response;
+    }) as unknown as typeof fetch);
+    expect("doc" in result && result.doc.finalUrl).toBe("https://example.com/final");
   });
 });

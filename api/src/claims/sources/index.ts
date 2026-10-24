@@ -40,9 +40,10 @@ async function materialize(doc: RawDoc): Promise<Snapshot | null> {
   if (doc.text && doc.text.length >= 400 && doc.bytes) {
     return archiveDocument({
       url: doc.url,
+      finalUrl: doc.finalUrl,
       bytes: doc.bytes,
       contentType: doc.contentType || "text/html",
-      status: 200,
+      status: doc.status ?? 200,
       title: doc.title,
       text: doc.text,
     });

@@ -190,15 +190,24 @@ export async function snapshot(url: string, maxChars = 200_000): Promise<Snapsho
 }
 
 // A document we fetched some other way (e.g. a filing over the SEC API), stored to the same standard.
+// finalUrl and via must describe where the bytes really came from; they default to "fetched directly from url".
 export async function archiveDocument(input: {
   url: string;
+  finalUrl?: string;
+  via?: FetchVia;
   bytes: Uint8Array;
   contentType: string;
   status: number;
   title: string;
   text: string;
 }) {
-  const fetched: Fetched = { status: input.status, finalUrl: input.url, bytes: input.bytes, contentType: input.contentType, via: "direct" };
+  const fetched: Fetched = {
+    status: input.status,
+    finalUrl: input.finalUrl || input.url,
+    bytes: input.bytes,
+    contentType: input.contentType,
+    via: input.via ?? "direct",
+  };
   return save(input.url, fetched, { title: input.title, text: input.text }, Number.MAX_SAFE_INTEGER);
 }
 

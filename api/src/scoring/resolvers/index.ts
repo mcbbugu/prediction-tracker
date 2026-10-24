@@ -84,6 +84,7 @@ async function resolvePrice(proposition: LiveProposition, fetchMissing: boolean)
   const text = await response.text();
   const saved = await archiveDocument({
     url,
+    finalUrl: response.url || url,
     bytes: new TextEncoder().encode(text),
     contentType: response.headers.get("content-type") || "text/csv",
     status: response.status,
