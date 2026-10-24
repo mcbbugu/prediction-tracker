@@ -13,3 +13,4 @@
 {"date":"2026-10-23","scored_people":20,"scored_domains":26,"claims":293,"judged":63,"afp_used":1315,"afp_budget":3000,"before":{"scored_people":19,"scored_domains":25,"claims":288,"judged":61,"afp_used":1270,"afp_budget":3000}}
 {"date":"2026-10-23","scored_people":20,"scored_domains":26,"claims":293,"judged":64,"afp_used":1330,"afp_budget":3000,"before":{"scored_people":20,"scored_domains":26,"claims":293,"judged":63,"afp_used":1315,"afp_budget":3000}}
 {"date":"2026-10-23","scored_people":20,"scored_domains":26,"claims":293,"judged":64,"afp_used":1330,"afp_budget":3000,"before":{"scored_people":20,"scored_domains":26,"claims":293,"judged":64,"afp_used":1330,"afp_budget":3000}}
+{"date":"2026-10-24","scored_people":23,"scored_domains":30,"claims":322,"judged":69,"afp_used":505,"afp_budget":3000,"scored_consistency":4,"before":{"scored_people":20,"scored_domains":26,"claims":293,"judged":64,"afp_used":125,"afp_budget":3000,"scored_consistency":4}}

@@ -303,6 +303,7 @@ function stepDetail(step: string, events: JobEvent[], open: boolean) {
   if (step === "到期核对") return <VerdictList events={events} open={open} />;
   if (step === "抽取预测" && data.candidates) return <CandidateList rows={data.candidates} open={open} />;
   if (step === "利益关系" && data.relations) return <RelationList rows={data.relations} open={open} />;
+  if (step === "可信度对照" && (data.topics?.length || data.outcomes?.length)) return <ConsistencyList data={data} open={open} />;
   return null;
 }
 
@@ -463,6 +464,38 @@ function VerdictLinks({ row }: { row: AnalysisVerdict }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function ConsistencyList({ data, open }: { data: JobEventData; open: boolean }) {
+  const topics = data.topics ?? [];
+  const outcomes = new Map((data.outcomes ?? []).map((row) => [row.topic, row]));
+  const rows = topics.length > 0 ? topics : (data.outcomes ?? []).map((row) => ({ topic: row.topic, domain: "", why: "" }));
+  if (rows.length === 0) return null;
+  return (
+    <Fold title={`${rows.length} 个话题`} open={open}>
+      <ul className="grid gap-2">
+        {rows.map((topic) => {
+          const outcome = outcomes.get(topic.topic);
+          const result = !outcome
+            ? ""
+            : outcome.status === "kept"
+              ? outcome.label === "consistent"
+                ? "一致"
+                : "不一致"
+              : outcome.status === "none"
+                ? "没有后来的说法"
+                : `丢弃：${outcome.reason ?? ""}`;
+          return (
+            <li key={topic.topic}>
+              <p className="text-ink">{topic.topic}</p>
+              <p className="text-mute">{[topic.domain, topic.why, result].filter(Boolean).join(" · ")}</p>
+            </li>
+          );
+        })}
+      </ul>
+      {data.bias ? <p className="mt-2 text-mute">{data.bias}</p> : null}
+    </Fold>
   );
 }
 

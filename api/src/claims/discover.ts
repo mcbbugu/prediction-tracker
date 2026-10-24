@@ -622,6 +622,14 @@ export async function runAnalyzeJob(jobId: string) {
       await emit("利益关系", "failed", `利益关系没补上：${error instanceof Error ? error.message.slice(0, 120) : error}`, { relations: [] });
     }
 
+    try {
+      const { collectConsistency } = await import("../consistency/collect");
+      await collectConsistency(person.id, { emit });
+    } catch (error) {
+      if (error instanceof ArkStopped) throw error;
+      await emit("可信度对照", "failed", `可信度对照没补上：${error instanceof Error ? error.message.slice(0, 120) : error}`);
+    }
+
     await sql`UPDATE people SET visibility = 'public' WHERE id = ${person.id}`;
     const unanimous = await promoteIfUnanimous(person.id, verdicts.length);
     await importListedFilings(person.id, emit);

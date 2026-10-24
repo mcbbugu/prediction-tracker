@@ -94,7 +94,20 @@ export async function expansionMetrics() {
     judged: claims?.judged ?? 0,
     afp_used: afp.used,
     afp_budget: afp.budget,
+    scored_consistency: await consistencyScoredPeople(),
   };
+}
+
+async function consistencyScoredPeople() {
+  const [row] = await sql<{ n: number }[]>`
+    SELECT count(DISTINCT person_id)::int AS n FROM (
+      SELECT person_id, domain FROM consistency_pairs
+      WHERE publication = 'published'
+      GROUP BY person_id, domain
+      HAVING count(*) >= 5
+    ) scored
+  `;
+  return row?.n ?? 0;
 }
 
 export async function buildPlan(rosterFiles = ROSTER_FILES) {
@@ -133,7 +146,18 @@ export async function buildPlan(rosterFiles = ROSTER_FILES) {
     }
   });
   const missing = concatRosters(roster).filter((row) => !known.some((person) => samePerson(row, person)));
-  return { ranked, verifies, missing };
+  const consistency = await sql<{ id: string; name: string; pairs: number }[]>`
+    SELECT p.id, p.name,
+           (SELECT count(*)::int FROM consistency_pairs cp WHERE cp.person_id = p.id AND cp.publication = 'published') AS pairs
+    FROM people p
+    WHERE EXISTS (
+      SELECT 1 FROM score_snapshots s
+      WHERE s.person_id = p.id AND s.slice = 'all' AND s.value IS NOT NULL
+    )
+    AND (SELECT count(*) FROM consistency_pairs cp WHERE cp.person_id = p.id AND cp.publication = 'published') < 5
+    ORDER BY pairs, p.name
+  `;
+  return { ranked, verifies, missing, consistency };
 }
 
 async function main() {
@@ -141,7 +165,7 @@ async function main() {
   const plan = await buildPlan();
   const metrics = await expansionMetrics();
   console.log(
-    `现在有分数的人 ${metrics.scored_people} · 领域 ${metrics.scored_domains} · 主张 ${metrics.claims} · 已判定 ${metrics.judged} · AFP ${metrics.afp_used}/${metrics.afp_budget}`,
+    `现在有分数的人 ${metrics.scored_people} · 领域 ${metrics.scored_domains} · 主张 ${metrics.claims} · 已判定 ${metrics.judged} · 有可信度分 ${metrics.scored_consistency} · AFP ${metrics.afp_used}/${metrics.afp_budget}`,
   );
   console.log(`离出分最近（还没出分）${plan.ranked.length} 人，其中有过期未判定的排在前面`);
   for (const row of plan.ranked.filter((item) => item.overdue > 0).slice(0, 20)) {
@@ -150,6 +174,8 @@ async function main() {
   console.log(`可入队的到期核对 ${plan.verifies.length} 条`);
   console.log(`名单里还没收录 ${plan.missing.length} 人`);
   for (const row of plan.missing.slice(0, 15)) console.log(`  ${row.query}`);
+  console.log(`已有兑现率、可信度对照少于 5 条 ${plan.consistency.length} 人`);
+  for (const row of plan.consistency.slice(0, 15)) console.log(`  ${row.pairs} 条 · ${row.name}`);
 }
 
 if (import.meta.main) {

@@ -27,6 +27,22 @@ async function enqueue() {
     `;
     verifies += 1;
   }
+  let consistency = 0;
+  for (const row of plan.consistency) {
+    if (consistency >= DISCOVER_LIMIT) break;
+    const busy = await sql`
+      SELECT 1 FROM jobs
+      WHERE kind = 'consistency_collect' AND person_id = ${row.id}
+        AND (state IN ('queued', 'running') OR (state IN ('done', 'rejected', 'failed') AND created_at > now() - interval '1 day'))
+      LIMIT 1
+    `;
+    if (busy.length) continue;
+    await sql`
+      INSERT INTO jobs (kind, query, person_id, runner, payload)
+      VALUES ('consistency_collect', ${row.name}, ${row.id}, 'worker', ${sql.json({ person_id: row.id })})
+    `;
+    consistency += 1;
+  }
   let discovered = 0;
   for (const row of plan.missing) {
     if (discovered >= DISCOVER_LIMIT) break;
@@ -40,7 +56,7 @@ async function enqueue() {
     await sql`INSERT INTO jobs (kind, query, runner) VALUES ('analyze_person', ${row.query}, 'worker')`;
     discovered += 1;
   }
-  console.log(`入队到期核对 ${verifies} 条，新人物 ${discovered} 人`);
+  console.log(`入队到期核对 ${verifies} 条，补可信度 ${consistency} 人，新人物 ${discovered} 人`);
 }
 
 function runWorker() {
@@ -58,7 +74,7 @@ function runWorker() {
 async function main() {
   await migrate();
   const before = await expansionMetrics();
-  console.log(`开始 · 有分数的人 ${before.scored_people} · 领域 ${before.scored_domains} · 主张 ${before.claims} · 已判定 ${before.judged} · AFP ${before.afp_used}/${before.afp_budget}`);
+  console.log(`开始 · 有分数的人 ${before.scored_people} · 领域 ${before.scored_domains} · 主张 ${before.claims} · 已判定 ${before.judged} · 有可信度分 ${before.scored_consistency} · AFP ${before.afp_used}/${before.afp_budget}`);
   await enqueue();
   const code = await runWorker();
   const after = await expansionMetrics();
@@ -68,6 +84,7 @@ async function main() {
     scored_domains: after.scored_domains,
     claims: after.claims,
     judged: after.judged,
+    scored_consistency: after.scored_consistency,
     afp_used: after.afp_used,
     afp_budget: after.afp_budget,
     before,
@@ -75,7 +92,7 @@ async function main() {
   const dir = join(root, "data/expansion");
   mkdirSync(dir, { recursive: true });
   appendFileSync(join(dir, "history.jsonl"), `${JSON.stringify(line)}\n`);
-  console.log(`结束 · 有分数的人 ${after.scored_people} · 领域 ${after.scored_domains} · 主张 ${after.claims} · 已判定 ${after.judged} · AFP ${after.afp_used}/${after.afp_budget} · worker ${code}`);
+  console.log(`结束 · 有分数的人 ${after.scored_people} · 领域 ${after.scored_domains} · 主张 ${after.claims} · 已判定 ${after.judged} · 有可信度分 ${after.scored_consistency} · AFP ${after.afp_used}/${after.afp_budget} · worker ${code}`);
 }
 
 if (import.meta.main) {

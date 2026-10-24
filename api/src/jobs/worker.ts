@@ -7,6 +7,7 @@ import { ArkUnavailable, ArkStopped, afpUsedToday, arkConfigured, arkPreflight }
 import { noteKindFailures } from "../core/notify";
 import { sql } from "../core/db";
 import { runAnalyzeJob } from "../claims/discover";
+import { collectConsistency } from "../consistency/collect";
 import { migrate } from "../core/migrate";
 import { recomputeScores } from "../scoring/score";
 import { applyVerdictIfAllowed, verifyClaim, type DueClaim } from "../claims/verdict";
@@ -21,7 +22,7 @@ const BURST_DELAY = "5 minutes";
 const MAX_ATTEMPTS = 3;
 const RETRYABLE = /RequestBurstTooFast|request burst|429|Too Many Requests/i;
 
-type Job = { id: string; kind: string; query: string; payload: { claim_id?: string }; attempts: number };
+type Job = { id: string; kind: string; query: string; payload: { claim_id?: string; person_id?: string }; attempts: number };
 
 let stopping = false;
 let stopReason = "";
@@ -96,6 +97,24 @@ async function verifyJob(job: Job) {
   return `${claim.person_id} · ${outcome.status}${applied ? " · 已生效" : " · 待审"}`;
 }
 
+async function consistencyJob(job: Job) {
+  const personId = job.payload.person_id ?? "";
+  const [person] = await sql<{ id: string }[]>`SELECT id FROM people WHERE id = ${personId}`;
+  if (!person) throw new Error(`没有这个人：${personId}`);
+  const emit = async (step: string, status: "running" | "done" | "failed" | "info", message: string, data: Record<string, unknown> = {}) => {
+    await sql`
+      INSERT INTO job_events (job_id, step, status, message, data)
+      VALUES (${job.id}, ${step}, ${status}, ${message}, ${sql.json(data as Parameters<typeof sql.json>[0])})
+    `;
+  };
+  const result = await collectConsistency(personId, { emit });
+  await recomputeScores(personId, { action: "auto_publish" });
+  await sql`
+    UPDATE jobs SET state = 'done', person_id = ${personId}, result = ${sql.json(result)}, updated_at = now() WHERE id = ${job.id}
+  `;
+  return `${personId} · ${result.summary}`;
+}
+
 async function runJob(job: Job) {
   const t0 = Date.now();
   try {
@@ -110,6 +129,8 @@ async function runJob(job: Job) {
       summary = `${job.query} · ${row.state} · 主张 ${row.result.claims_found ?? 0}`;
     } else if (job.kind === "verify_claim") {
       summary = await verifyJob(job);
+    } else if (job.kind === "consistency_collect") {
+      summary = await consistencyJob(job);
     } else {
       throw new Error(`未知任务类型：${job.kind}`);
     }

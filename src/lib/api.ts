@@ -81,6 +81,11 @@ export type JobEventData = {
   dropped?: AnalysisCandidate[];
   verdicts?: AnalysisVerdict[];
   relations?: AnalysisRelation[];
+  topics?: { topic: string; domain: string; why: string }[];
+  outcomes?: { topic: string; status: string; kind?: string; label?: string; reason?: string }[];
+  consistent?: number;
+  inconsistent?: number;
+  bias?: string | null;
   elapsed_ms?: number;
   search_count?: number;
   status?: string;

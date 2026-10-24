@@ -38,7 +38,8 @@
     "eval": "bun --env-file=.env run src/tools/eval.ts",
     "eval:check": "bun --env-file=.env run src/tools/eval.ts --check",
     "backfill:kind": "bun --env-file=.env run src/tools/backfill-kind.ts",
-    "backfill:quote-zh": "bun --env-file=.env run src/tools/backfill-quote-zh.ts"
+    "backfill:quote-zh": "bun --env-file=.env run src/tools/backfill-quote-zh.ts",
+    "collect-consistency": "bun --env-file=.env run src/consistency/collect.ts"
   },
   "dependencies": {
     "@elysiajs/cors": "1.2.0",
