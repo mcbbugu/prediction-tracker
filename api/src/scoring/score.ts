@@ -395,9 +395,8 @@ export async function recomputeScores(
   await refreshDelay(personId);
 }
 
-async function refreshDelay(personId: string) {
-  const today = new Date().toISOString().slice(0, 10);
-  const claims = await sql<SurvivalClaim[]>`
+async function survivalClaims() {
+  return sql<SurvivalClaim[]>`
     SELECT c.id, c.person_id, c.category, c.status, c.kind, c.thread_id,
            to_char(c.published_date, 'YYYY-MM-DD') AS published_date,
            to_char(c.deadline, 'YYYY-MM-DD') AS deadline,
@@ -413,6 +412,11 @@ async function refreshDelay(personId: string) {
     FROM claims c
     WHERE c.publication = 'published' AND c.kind = 'promise'
   `;
+}
+
+async function refreshDelay(personId: string) {
+  const today = new Date().toISOString().slice(0, 10);
+  const claims = await survivalClaims();
   const observations = promiseObservations(claims, today);
   const mine = observations.filter((row) => row.person_id === personId);
   const domains = ["", ...new Set(mine.map((row) => row.category))];
@@ -430,6 +434,31 @@ async function refreshDelay(personId: string) {
       )
     `;
   }
+}
+
+// Delay profile recomputed as it would have been on asOf (strict point-in-time, #8): only promises said before
+// asOf, a status counts only if it was judged before asOf, everything else is censored at asOf.
+export function survivalAt(claims: SurvivalClaim[], judgedAt: Map<string, string>, asOf: string) {
+  return claims
+    .filter((claim) => claim.published_date < asOf)
+    .map((claim) => {
+      const at = judgedAt.get(claim.id);
+      const known = at != null && at < asOf && (claim.resolved_on == null || claim.resolved_on < asOf);
+      return known ? claim : { ...claim, status: "待定", resolved_on: null };
+    });
+}
+
+export async function delayAt(personId: string, asOf: string, judgedAt: Map<string, string>) {
+  const observations = promiseObservations(survivalAt(await survivalClaims(), judgedAt, asOf), asOf);
+  const mine = observations.filter((row) => row.person_id === personId);
+  const domains = ["", ...new Set(mine.map((row) => row.category))];
+  return domains.flatMap((domain) => {
+    const personRows = domain ? mine.filter((row) => row.category === domain) : mine;
+    if (personRows.length === 0) return [];
+    const pool = domain ? observations.filter((row) => row.category === domain) : observations;
+    const estimate = estimateDelay(personRows, pool);
+    return [{ domain, ...estimate, sentence: delaySentence(estimate) }];
+  });
 }
 
 export async function latestDelay(personId: string) {

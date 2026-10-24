@@ -3,12 +3,14 @@
 // as_of：站在那一天看这个人的记录——只算那天之前说过、且期限在那天之前已到的主张，时间衰减也从那天起算。
 // 查今天时，提前兑现（期限未到但已判定）的主张也算，和人物页的分数一致。
 // 结果用的是今天查到的事实（我们并不知道当年的人是否已经知道结果），所以它回答的是
-// 「到那天为止，他到期的话兑现得怎么样」，不是「当年的人会怎么看」。
+// 「到那天为止，他到期的话兑现得怎么样」，不是「当年的人会怎么看」（as_of_semantics: retrospective）。
+// strict=1 是给评测用的严格时点（#8）：判定、证据、延迟系数、一致性对照都只用那天之前已经写进库里的，见 point-in-time.ts。
 import { sql } from "../core/db";
-import { FORMULA_VERSION, fulfillmentSplit, latestDelay, scoreDomain } from "../scoring/score";
+import { FORMULA_VERSION, delayAt, fulfillmentSplit, latestDelay, scoreDomain } from "../scoring/score";
 import { scoreConsistency } from "../scoring/consistency";
 import { indicators, type IndicatorClaim } from "../scoring/indicators";
 import { publishedClaims, personInterests, type ClaimRow } from "./records";
+import { claimAt, judgedAtMap, pairsAt, type PairRow } from "./point-in-time";
 import { DISCLOSURE, eventsByClaim, tallyTiers, verdictTier } from "./verdict-tier";
 
 const SITE = (process.env.SITE_URL || "http://localhost:4321").replace(/\/$/, "");
@@ -52,10 +54,12 @@ function domainPrior(
   asOf: string,
   today: string,
   events: Map<string, { action: string; actor: string; note: string }[]>,
+  strict = false,
 ) {
   // Said by as_of and due by as_of. For today, a claim already judged before its deadline (fulfilled early)
   // counts too; for a past date we don't know when it was fulfilled, so only the deadline decides.
-  const due = claims.filter((c) => c.deadline <= asOf || (asOf === today && JUDGED.has(c.status)));
+  // In strict mode statuses were already rolled back to as_of, so a judged one was known by then.
+  const due = claims.filter((c) => c.deadline <= asOf || ((asOf === today || strict) && JUDGED.has(c.status)));
   const scored = scoreDomain(
     due.map((c) => ({
       category: c.category,
@@ -119,14 +123,17 @@ function domainPrior(
   };
 }
 
-export async function priorAsOf(input: { person: string; domain?: string; as_of?: string }) {
+export async function priorAsOf(input: { person: string; domain?: string; as_of?: string; strict?: boolean }) {
+  const strict = Boolean(input.strict);
   const person = await resolvePerson(input.person);
   const today = new Date().toISOString().slice(0, 10);
   const asOf = input.as_of && isoDay.test(input.as_of) ? input.as_of : today;
   if (input.as_of && !isoDay.test(input.as_of)) throw new PriorError("as_of 要写成 YYYY-MM-DD", 400);
   if (asOf > today) throw new PriorError("as_of 不能晚于今天", 400);
 
-  const all = (await publishedClaims(person.id)).filter((c) => c.published_date <= asOf);
+  const said = (await publishedClaims(person.id)).filter((c) => c.published_date <= asOf);
+  const judgedAt = strict ? await judgedAtMap(person.id) : new Map<string, string>();
+  const all = strict ? said.map((c) => claimAt(c, judgedAt, asOf)) : said;
   const events = await eventsByClaim(person.id);
   const withEvents = all.map((claim) => ({ ...claim, events: events.get(claim.id) }));
   const domains = [...new Set(all.map((c) => c.category))].sort();
@@ -151,12 +158,14 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
     }));
 
   const picked = input.domain ? [input.domain] : domains;
-  const delayRows = await latestDelay(person.id);
-  const pairs = await sql<{ id: string; domain: string; topic: string; proposed_label: string; label: string | null; date: string | null }[]>`
-    SELECT id, domain, topic, proposed_label, label, b->>'date' AS date
+  const delayRows = strict ? await delayAt(person.id, asOf, await judgedAtMap()) : await latestDelay(person.id);
+  const pairRows = await sql<PairRow[]>`
+    SELECT id, domain, topic, proposed_label, label, a->>'date' AS a_date, b->>'date' AS date,
+           to_char(created_at, 'YYYY-MM-DD') AS created_at, to_char(reviewed_at, 'YYYY-MM-DD') AS reviewed_at
     FROM consistency_pairs
     WHERE person_id = ${person.id} AND publication = 'published'
   `;
+  const pairs = strict ? pairsAt(pairRows, asOf) : pairRows;
   const consistencyFor = (domain: string) => {
     const rows = pairs.filter((row) => row.domain === domain);
     const scored = scoreConsistency(rows.map((row) => ({ domain, consistent: (row.label ?? row.proposed_label) === "consistent", date: row.date ?? "1970-01-01" })));
@@ -173,11 +182,14 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
   return {
     person: { id: person.id, name: person.name, name_en: person.name_en, url: `${SITE}/p/${person.id}` },
     as_of: asOf,
+    as_of_semantics: strict ? ("strict" as const) : ("retrospective" as const),
     formula_version: FORMULA_VERSION,
     disclosure: DISCLOSURE,
     verdict_tiers: tallyTiers(withEvents),
     method: `${SITE}/method`,
-    note: "分数只在领域内成立。score 是承诺和预测混在一起的旧兑现率，已弃用；靠谱度看 promise，判断力看 forecast。as_of 只计那天之前说过、期限已到的主张；结果按今天查到的事实判定。证据不足作废不计分；同一承诺的反复改期整串按 √k 计。类别存疑的主张两边都不计。",
+    note: (strict
+      ? "严格时点：只用 as_of 之前已经写进库里的判定、证据、延迟系数和一致性对照；as_of 当天还没判的主张按待定算。"
+      : "as_of 只计那天之前说过、期限已到的主张；结果按今天查到的事实判定，不代表当年已经知道。") + "分数只在领域内成立。score 是承诺和预测混在一起的旧兑现率，已弃用；靠谱度看 promise，判断力看 forecast。证据不足作废不计分；同一承诺的反复改期整串按 √k 计。类别存疑的主张两边都不计。",
     domains: Object.fromEntries(
       picked.map((d) => [
         d,
@@ -187,6 +199,7 @@ export async function priorAsOf(input: { person: string; domain?: string; as_of?
             asOf,
             today,
             events,
+            strict,
           ),
           claims_url: `${SITE}/p/${person.id}?domain=${encodeURIComponent(d)}#claims`,
           delay: compact(d),
@@ -205,6 +218,7 @@ export const PRIOR_OUTPUT_SCHEMA = {
   properties: {
     person: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, name_en: { type: "string" }, url: { type: "string" } } },
     as_of: { type: "string", format: "date" },
+    as_of_semantics: { type: "string", enum: ["retrospective", "strict"], description: "retrospective：站在那天看，结果按今天查到的判定；strict：只用那天之前已经入库的信息" },
     formula_version: { type: "string" },
     note: { type: "string" },
     domains: {

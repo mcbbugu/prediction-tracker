@@ -1,6 +1,6 @@
 # 037 下游评测：时点一致的先验 + 证据分量表修复
 
-负责人：Cursor
+负责人：Claude
 优先级：P0（031 依赖它）
 关联 issue：#8、#9、#3
 
@@ -28,10 +28,18 @@
 
 ## 验收标准
 
-- [ ] fixture 测试通过；证据分解析测试通过
-- [ ] 重跑报告：严格模式下 A / B 对比（含 bootstrap 区间），以及有多少题因为 T 之前没有数据而得到「样本不足」
-- [ ] 在 issue #8、#9 下回复，不关闭
-- [ ] 通用检查全部通过
+- [x] fixture 测试通过；证据分解析测试通过
+- [x] 重跑报告：严格模式下 A / B 对比（含 bootstrap 区间），以及有多少题因为 T 之前没有数据而得到「样本不足」
+- [x] 在 issue #8、#9 下回复，不关闭
+- [x] 通用检查全部通过
 
 ## 完成记录
+
+- `/v1/prior` 返回里加 `as_of_semantics`：默认 `retrospective`（语义不变，note 里写明「结果按今天查到的事实判定，不代表当年已经知道」）；`strict=1` 时为 `strict`。
+- 严格模式（`api/src/queries/point-in-time.ts`）：判定时间取 `claim_events` 里写状态的事件（imported、proposed、verdict、verdict_auto_applied、verdict_accepted、seed_autochecked、disagreement_resolved、challenge_accepted）的最晚时间，在 T 之前才算已判，没有事件的当作没判；证据只留 T 之前抓取、带抓取时间的；一致性对照只用 T 之前录入、两句话都说在 T 之前的，T 之后才给的人工标签不用；延迟系数用 `delayAt` 按 T 截面重算（`score.ts` 只加了入口，`refreshDelay` 共用同一段查询）。
+- 评测脚本：`--v3` 用严格先验，写 `data/eval/downstream/report-v3.json`；API 进程如果没返回 `as_of_semantics: "strict"`（旧进程会忽略 strict），就退回直接调用函数，不会悄悄拿到回溯先验。回溯模式下 B 组提示词改成「判定结果是今天查到的，可能晚于说话当天」。
+- #9：`parseEvidenceScore` 只认 0、1、2（含数字字符串），其他记 null，计入 `evidence_invalid`，不进均值。
+- 测试：`api/tests/point-in-time.test.ts`（T 之后判定的主张、T 之后的证据、T 之后的一致性对照和人工标签、T 之后的兑现事件，加证据分解析和 bootstrap）。
+
+**重跑结果（2026-10-25，report-v3.json）**：无泄露题 10 道、8 个人（c01 凯茜·伍德已不在公开库里，跳过）。**10/10 题的严格先验都是样本不足**：所有判定都写入于 2026-10-21 之后，题目的说话日都更早。A Brier 0.157，B Brier 0.165，B−A = +0.008，95% bootstrap 区间 [−0.063, 0.041]（按题重抽 2000 次），没有差别。证据分 A 0.633 / B 0.667（0–2 量表，无非法值）。旧版 v2 的 B 组 Brier 0.141、证据分 0.933 用的是回溯先验和截断后的量表，不能和这次直接比较；030 的「先验有帮助」只算探索性结论。要测出先验的真实价值，需要说话日晚于 2026-10-21 的题，或者等判定时间跨度变长，031 要按这个设计。
 

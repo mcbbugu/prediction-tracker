@@ -1,5 +1,7 @@
-// bun --env-file=.env run src/tools/downstream-eval.ts
-// 同一模型答 10 题：A 不给先验，B 附上说话当天的 /v1/prior。每题每组 3 次。
+// bun --env-file=.env run src/tools/downstream-eval.ts [--v2 | --v3]
+// 同一模型答 10 题：A 不给先验，B 附上 /v1/prior。每题每组 3 次。
+// --v3（037）：B 组用严格时点的先验（strict=1，只含说话当天已经入库的信息），报告带 bootstrap 区间。
+// 默认和 --v2 用的是回溯先验（结果按今天查到的判定），有未来信息，只留作对照。
 // 走模型调用缓存。再跑一遍应得到同一份报告。评分模型看不到 A/B。
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -69,6 +71,12 @@ export function leaked(outcomeStatus: string, happened: string, detail: string) 
   return false;
 }
 
+// Evidence is scored 0, 1 or 2. Anything else is null (counted as invalid), never squeezed into range (#9).
+export function parseEvidenceScore(value: unknown): 0 | 1 | 2 | null {
+  const number = typeof value === "number" ? value : typeof value === "string" && /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
+  return number === 0 || number === 1 || number === 2 ? number : null;
+}
+
 export function clampProbability(value: unknown) {
   const number = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(number)) return null;
@@ -93,19 +101,32 @@ function loadQuestions() {
     .map((line) => JSON.parse(line) as Question);
 }
 
-async function priorJson(question: Question) {
+async function priorJson(question: Question, strict = false) {
   try {
-    const response = await fetch(`http://127.0.0.1:${process.env.PORT || 3011}/v1/prior?person=${encodeURIComponent(question.person_id)}&as_of=${question.as_of}`);
-    if (response.ok) return await response.text();
+    const response = await fetch(
+      `http://127.0.0.1:${process.env.PORT || 3011}/v1/prior?person=${encodeURIComponent(question.person_id)}&as_of=${question.as_of}${strict ? "&strict=1" : ""}`,
+    );
+    // An API process started before 037 ignores strict=1; only trust it if it says the answer is strict.
+    if (response.ok) {
+      const text = await response.text();
+      if (!strict || (JSON.parse(text) as { as_of_semantics?: string }).as_of_semantics === "strict") return text;
+    }
   } catch {
     // The API process may be down. The same function it serves is the fallback.
   }
-  return JSON.stringify(await priorAsOf({ person: question.person_id, as_of: question.as_of }));
+  return JSON.stringify(await priorAsOf({ person: question.person_id, as_of: question.as_of, strict }));
 }
 
-async function answerOnce(question: Question, group: "A" | "B", run: number, prior: string) {
+// Strict prior with nothing judged in any domain: the honest answer is 样本不足.
+export function priorIsEmpty(prior: string) {
+  const parsed = JSON.parse(prior) as { domains?: Record<string, { judged?: number }> };
+  return Object.values(parsed.domains ?? {}).every((domain) => !domain.judged);
+}
+
+async function answerOnce(question: Question, group: "A" | "B", run: number, prior: string, strict = false) {
   const body = [`题目 ${question.id}`, `运行 ${run}`, question.question];
-  if (group === "B") body.push("下面是说话当天可查到的先验，JSON 原样附上，不要把它当成后来才知道的结果。", prior);
+  if (group === "B" && strict) body.push("下面是说话当天已经可查到的先验（只含那天之前入库的判定和证据），JSON 原样附上。", prior);
+  else if (group === "B") body.push("下面是本站的先验，JSON 原样附上。其中的判定结果是今天查到的，可能晚于说话当天。", prior);
   const raw = (await arkJson(ANSWER_PROMPT, body.join("\n"), 800, ANSWER_V1)) as { probability?: unknown; reason?: string };
   const probability = clampProbability(raw.probability);
   if (probability == null) throw new Error(`${question.id} ${group}#${run} 没有概率`);
@@ -125,9 +146,8 @@ async function scoreOnce(question: Question, answer: Answer, key: string) {
     400,
     SCORE_V1,
   )) as { evidence?: unknown; uncertainty?: unknown };
-  const evidence = clampProbability(raw.evidence);
   const uncertainty = raw.uncertainty === 1 || raw.uncertainty === true ? 1 : 0;
-  return { evidence: evidence == null ? 0 : Math.min(2, evidence), uncertainty };
+  return { evidence: parseEvidenceScore(raw.evidence), uncertainty };
 }
 
 function snippet(text: string) {
@@ -155,12 +175,14 @@ function loadJsonl(name: string) {
     .map((line) => JSON.parse(line) as Question);
 }
 
-function summarize(rows: { group: "A" | "B"; brier: number; evidence: number; uncertainty: number; overconfident: boolean }[]) {
+function summarize(rows: { group: "A" | "B"; brier: number; evidence: number | null; uncertainty: number; overconfident: boolean }[]) {
   const side = (group: "A" | "B") => {
     const mine = rows.filter((row) => row.group === group);
+    const scored = mine.flatMap((row) => (row.evidence == null ? [] : [row.evidence]));
     return {
       brier: round(mean(mine.map((row) => row.brier))),
-      evidence: round(mean(mine.map((row) => row.evidence))),
+      evidence: round(mean(scored)),
+      evidence_invalid: mine.length - scored.length,
       uncertainty: round(mean(mine.map((row) => row.uncertainty))),
       overconfident: mine.filter((row) => row.overconfident).length,
       n: mine.length,
@@ -169,7 +191,29 @@ function summarize(rows: { group: "A" | "B"; brier: number; evidence: number; un
   return { A: side("A"), B: side("B") };
 }
 
-async function mainV2() {
+// Per-question mean Brier of B minus A, resampled by question (seeded, so a rerun gives the same interval).
+export function bootstrapDiff(pairs: { a: number; b: number }[], draws = 2000, seed = 37) {
+  if (!pairs.length) return null;
+  let state = seed;
+  const next = () => {
+    state = (state * 1_103_515_245 + 12_345) % 2 ** 31;
+    return state / 2 ** 31;
+  };
+  const diffs: number[] = [];
+  for (let i = 0; i < draws; i += 1) {
+    let sum = 0;
+    for (let j = 0; j < pairs.length; j += 1) {
+      const pick = pairs[Math.floor(next() * pairs.length)];
+      sum += pick.b - pick.a;
+    }
+    diffs.push(sum / pairs.length);
+  }
+  diffs.sort((x, y) => x - y);
+  const point = pairs.reduce((sum, pair) => sum + pair.b - pair.a, 0) / pairs.length;
+  return { b_minus_a: round(point), low: round(diffs[Math.floor(draws * 0.025)]), high: round(diffs[Math.floor(draws * 0.975)]), questions: pairs.length };
+}
+
+async function mainV2(strict = false) {
   await migrate();
   const original = loadJsonl("questions.jsonl");
   const extra = loadJsonl("candidates.jsonl");
@@ -185,21 +229,23 @@ async function mainV2() {
   console.log(`未泄露 ${clean.length} 题，人物 ${people.size}，拿来对照 ${picked.length} 题`);
   if (picked.length < 4 || people.size < 4) console.log("未泄露题或人物不足 4，报告里按实际数量写。");
 
-  const rows: { id: string; person: string; group: "A" | "B"; run: number; probability: number; reason: string; brier: number; overconfident: boolean; evidence: number; uncertainty: number }[] = [];
+  const rows: { id: string; person: string; group: "A" | "B"; run: number; probability: number; reason: string; brier: number; overconfident: boolean; evidence: number | null; uncertainty: number }[] = [];
   const used: Question[] = [];
+  const emptyPrior = new Set<string>();
   for (const question of clean) {
     if (used.length >= 10) break;
     let prior = "";
     try {
-      prior = await priorJson(question);
+      prior = await priorJson(question, strict);
     } catch (error) {
       console.log(`${question.id} 没有公开先验，跳过：${error instanceof Error ? error.message : error}`);
       continue;
     }
     used.push(question);
+    if (priorIsEmpty(prior)) emptyPrior.add(question.id);
     for (const group of ["A", "B"] as const) {
       for (let run = 1; run <= RUNS; run += 1) {
-        const answered = await answerOnce(question, group, run, prior);
+        const answered = await answerOnce(question, group, run, prior, strict);
         const key = createHash("sha256").update(`${question.id}:${group}:${run}:${answered.reason}`).digest("hex").slice(0, 12);
         const scored = await scoreOnce(question, answered, key);
         rows.push({
@@ -218,26 +264,33 @@ async function mainV2() {
       }
     }
   }
+  const perQuestion = used.map((question) => {
+    const side = (group: "A" | "B") => {
+      const mine = rows.filter((row) => row.id === question.id && row.group === group);
+      return { probability: round(mean(mine.map((row) => row.probability))), brier: round(mean(mine.map((row) => row.brier))) };
+    };
+    return { id: question.id, person: question.person, outcome: question.outcome_status, leaked: false, prior_empty: emptyPrior.has(question.id), A: side("A"), B: side("B") };
+  });
   const report = {
-    note: "019 还没做，没有 C 组。评分和作答是同一个方舟接入点，没有另一把密钥。",
+    note: strict
+      ? "037：B 组用严格时点先验（只含说话当天之前入库的判定、证据、延迟系数和一致性对照）。证据分按 0–2 解析，非法值不计入均值。旧版 report-v2.json 的证据分被截在 0–1、B 组拿的是回溯先验，和本报告不能直接比较。"
+      : "019 还没做，没有 C 组。评分和作答是同一个方舟接入点，没有另一把密钥。",
+    prior_mode: strict ? "strict" : "retrospective",
     people: new Set(used.map((row) => row.person_id)).size,
+    prior_empty: emptyPrior.size,
     probes: probes.map((row) => ({ id: row.id, person: row.person, outcome_status: row.outcome_status, happened: row.happened, leaked: row.leaked, detail: row.detail })),
     summary: summarize(rows),
-    perQuestion: used.map((question) => {
-      const side = (group: "A" | "B") => {
-        const mine = rows.filter((row) => row.id === question.id && row.group === group);
-        return { probability: round(mean(mine.map((row) => row.probability))), brier: round(mean(mine.map((row) => row.brier))) };
-      };
-      return { id: question.id, person: question.person, outcome: question.outcome_status, leaked: false, A: side("A"), B: side("B") };
-    }),
+    brier_diff_95: bootstrapDiff(perQuestion.flatMap((row) => (row.A.brier != null && row.B.brier != null ? [{ a: row.A.brier, b: row.B.brier }] : []))),
+    perQuestion,
   };
-  const out = join(dirname(fileURLToPath(import.meta.url)), "../../../data/eval/downstream/report-v2.json");
+  const out = join(dirname(fileURLToPath(import.meta.url)), `../../../data/eval/downstream/${strict ? "report-v3.json" : "report-v2.json"}`);
   writeFileSync(out, JSON.stringify(report, null, 2));
   console.log("\n泄露检测");
   for (const row of report.probes) console.log(`${row.id} ${row.person} 真实${row.outcome_status} 模型${row.happened} ${row.leaked ? "泄露" : "未泄露"}`);
   console.log("\n无泄露题");
   console.log(`A Brier ${report.summary.A.brier} 证据 ${report.summary.A.evidence} 过度自信 ${report.summary.A.overconfident}`);
   console.log(`B Brier ${report.summary.B.brier} 证据 ${report.summary.B.evidence} 过度自信 ${report.summary.B.overconfident}`);
+  console.log(`B−A Brier ${JSON.stringify(report.brier_diff_95)}；先验样本不足 ${report.prior_empty}/${used.length} 题`);
   for (const row of report.perQuestion) console.log(`${row.id} ${row.person} ${row.outcome} A ${row.A.probability}/${row.A.brier} B ${row.B.probability}/${row.B.brier}`);
 }
 
@@ -254,7 +307,7 @@ async function main() {
     reason: string;
     brier: number;
     overconfident: boolean;
-    evidence: number;
+    evidence: number | null;
     uncertainty: number;
   }[] = [];
 
@@ -286,7 +339,7 @@ async function main() {
   const byGroup = (group: "A" | "B") => rows.filter((row) => row.group === group);
   const summary = (group: "A" | "B") => ({
     brier: round(mean(byGroup(group).map((row) => row.brier))),
-    evidence: round(mean(byGroup(group).map((row) => row.evidence))),
+    evidence: round(mean(byGroup(group).flatMap((row) => (row.evidence == null ? [] : [row.evidence])))),
     uncertainty: round(mean(byGroup(group).map((row) => row.uncertainty))),
     overconfident: byGroup(group).filter((row) => row.overconfident).length,
   });
@@ -320,7 +373,7 @@ async function main() {
 }
 
 if (import.meta.main) {
-  const entry = process.argv.includes("--v2") ? mainV2 : main;
+  const entry = process.argv.includes("--v3") ? () => mainV2(true) : process.argv.includes("--v2") ? () => mainV2() : main;
   entry()
     .catch((error) => {
       console.error(error instanceof Error ? error.message : error);

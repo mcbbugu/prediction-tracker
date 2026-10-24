@@ -91,14 +91,14 @@ const app = new Elysia()
     "/v1/prior",
     async ({ query, set }) => {
       try {
-        return await priorAsOf({ person: query.person, domain: query.domain, as_of: query.as_of });
+        return await priorAsOf({ person: query.person, domain: query.domain, as_of: query.as_of, strict: query.strict === "1" || query.strict === "true" });
       } catch (error) {
         if (!(error instanceof PriorError)) throw error;
         set.status = error.status;
         return { error: error.message, candidates: error.candidates };
       }
     },
-    { query: t.Object({ person: t.String(), domain: t.Optional(t.String()), as_of: t.Optional(t.String()) }) },
+    { query: t.Object({ person: t.String(), domain: t.Optional(t.String()), as_of: t.Optional(t.String()), strict: t.Optional(t.String()) }) },
   )
   // MCP (2026-07-28, stateless): one read-only tool, get_prior.
   .post("/mcp", async ({ body, set }) => {
