@@ -1,29 +1,37 @@
-import { plainResult, spaceCjk } from "@/lib/terms";
+import { spaceCjk } from "@/lib/terms";
 import Link from "next/link";
 import { Suspense } from "react";
 import Loading from "@/app/loading";
 import { Icon } from "@/components/icon";
 import { ActivityGrid } from "@/components/activity-grid";
+import { ChangeRow } from "@/components/change-row";
+import { ClaimRow } from "@/components/claim-row";
 import { Portrait } from "@/components/portrait";
 import { ScoreBadge } from "@/components/score-badge";
-import { explainChanges, type ChangeLine, type Snapshot } from "@/lib/score-changes";
+import { SeeAll } from "@/components/see-all";
 import { InterestFlow } from "@/components/interest-flow";
-import { claimExposureChips, loadInterests } from "@/lib/interests";
+import { chipsByClaim, loadInterests } from "@/lib/interests";
 import { CopyButton } from "@/components/copy-button";
 import { ScoreHistoryCharts, type DomainHistory } from "@/components/score-history-chart";
-import { StatusPill } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
-import { PUBLIC_API_URL, curationLabel, getJson, type Claim, type DelayProfile, type Indicators, type Interest, type Person, type PersonInterests, type ProfileRow, type Score } from "@/lib/api";
+import {
+  PUBLIC_API_URL,
+  curationLabel,
+  getJson,
+  type ClaimSummary,
+  type DelayProfile,
+  type Indicators,
+  type Interest,
+  type Person,
+  type PersonInterests,
+  type ProfileRow,
+  type Score,
+  type ScoreChangePage,
+} from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
-
-// What each formula version changed, in reader terms (see SPEC 分数显示).
-const FORMULA_NOTES: Record<string, string> = {
-  "v1.1": "有一条判定就出分，并给出区间",
-  "v1.2": "时间衰减放宽为每 3 年减半，几年前的判定重新计入",
-};
+type Snapshot = Score & { computed_at: string };
 
 function KmChart({ curve }: { curve: DelayProfile["curve"] }) {
   if (curve.length < 2) return null;
@@ -42,79 +50,16 @@ function KmChart({ curve }: { curve: DelayProfile["curve"] }) {
   );
 }
 
-function quoteSnippet(claim: Claim | undefined) {
-  if (!claim) return "一条已不再公开的主张";
-  const text = claim.quote_zh.replace(/\s+/g, " ");
-  return `「${text.length > 34 ? `${text.slice(0, 34)}…` : text}」`;
-}
-
-// One reason line, in the reader's terms: what happened to which of this person's claims.
-function describe(line: ChangeLine, personId: string) {
-  const link = (claim: Claim | undefined) =>
-    claim ? (
-      <Link href={`/p/${personId}/${claim.id}`} className="text-ink/80 no-underline hover-fine:text-blue">
-        {quoteSnippet(claim)}
-      </Link>
-    ) : (
-      quoteSnippet(claim)
-    );
-  if (line.kind === "added") return <>新判定 <b className="font-medium text-ink">{line.status}</b>：{link(line.claim)}</>;
-  if (line.kind === "removed") return <>撤回不计（{line.status}）：{link(line.claim)}</>;
-  if (line.kind === "changed")
-    return (
-      <>
-        判定改为 <b className="font-medium text-ink">{line.to}</b>（原为 {line.from}）：{link(line.claim)}
-      </>
-    );
-  if (line.kind === "count")
-    return line.to > line.from ? `新增 ${line.to - line.from} 条已判定（${line.from} → ${line.to}）` : `减少 ${line.from - line.to} 条已判定（${line.from} → ${line.to}）`;
-  return FORMULA_NOTES[line.version] ? `计分规则升级到 ${line.version}：${FORMULA_NOTES[line.version]}` : `计分规则升级到 ${line.version}`;
-}
-
-function host(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
-}
-
-// 待定 with a passed deadline is not the same as 待定 still in the future: one is our backlog, the other is time.
-function phase(claim: Claim, today: string) {
-  if (JUDGED.has(claim.status)) return "judged";
-  if (claim.status === "证据不足") return "unclear";
-  return claim.deadline < today ? "overdue" : "upcoming";
-}
-
-// ?show= filters behind the clickable numbers.
-const SHOW: Record<string, { label: string; test: (claim: Claim, today: string) => boolean }> = {
-  judged: { label: "已判定", test: (c) => JUDGED.has(c.status) },
-  overdue: { label: "已过期待核对", test: (c, today) => phase(c, today) === "overdue" },
-  upcoming: { label: "未到期", test: (c, today) => phase(c, today) === "upcoming" },
-  unclear: { label: "证据不足（作废）", test: (c) => c.status === "证据不足" },
-  fulfilled: { label: "已兑现", test: (c) => c.status === "已兑现" },
-  partial: { label: "部分兑现", test: (c) => c.status === "部分兑现" },
-  missed: { label: "未兑现", test: (c) => c.status === "未兑现" },
-  rescheduled: { label: "改期串", test: (c) => Boolean(c.thread_id) },
-  machine: { label: "AI 判定", test: (c) => c.reviewed === false },
-  manual: { label: "人工复核", test: (c) => c.reviewed !== false },
-};
-
-function yearSpan(claim: Claim) {
-  return `${claim.published_date.slice(0, 7)} → ${claim.deadline.slice(0, 7)}`;
-}
-
-
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const data = await getJson<{ person: Person }>(`/v1/people/${id}`).catch(() => null);
   return { title: data?.person.name ?? "人物" };
 }
 
-export default function PersonPage(props: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ domain?: string; show?: string; year?: string; month?: string; rank?: string }>;
-}) {
+type Search = { domain?: string; show?: string; year?: string; month?: string; rank?: string };
+
+// Old links like /p/[id]?month=…#claims are redirected to /p/[id]/claims in next.config.ts (025).
+export default function PersonPage(props: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
   return (
     <Suspense fallback={<Loading />}>
       <PersonBody {...props} />
@@ -122,85 +67,29 @@ export default function PersonPage(props: {
   );
 }
 
-async function PersonBody({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ domain?: string; show?: string; year?: string; month?: string; rank?: string }>;
-}) {
+async function PersonBody({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
   const { id } = await params;
-  const { domain: domainFilter, show, year: rawYear, month: rawMonth, rank: rankParam } = await searchParams;
+  const { rank: rankParam } = await searchParams;
   const rank = rankParam === "forecast" || rankParam === "all" ? rankParam : "promise";
-  const yearFilter = rawYear && /^\d{4}$/.test(rawYear) ? rawYear : undefined;
-  const monthFilter = rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) ? rawMonth : undefined;
-  const [data, history] = await Promise.all([
-    getJson<{ person: Person; analysis_job_id?: string | null; claims: Claim[]; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators; delay?: DelayProfile[]; consistency?: { total: number; recent: { id: string; topic: string; kind: string; label: string }[] } }>(`/v1/people/${id}`),
-    getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history`).catch(() => ({ snapshots: [] as Snapshot[] })),
+  const [data, history, recentChanges] = await Promise.all([
+    getJson<{ person: Person; analysis_job_id?: string | null; claim_summary: ClaimSummary; scores: Score[]; profile: ProfileRow[]; interests?: PersonInterests; indicators?: Indicators; delay?: DelayProfile[]; consistency?: { total: number; recent: { id: string; topic: string; kind: string; label: string }[] } }>(`/v1/people/${id}`),
+    getJson<{ snapshots: Snapshot[] }>(`/v1/people/${id}/history?compact=1`).catch(() => ({ snapshots: [] as Snapshot[] })),
+    getJson<ScoreChangePage>(`/v1/people/${id}/score-changes?limit=5`).catch(() => ({ changes: [], next_cursor: null, total: 0, domains: {} }) as ScoreChangePage),
   ]);
   const today = new Date().toISOString().slice(0, 10);
-  const claims = data.claims;
-  const count = (list: Claim[], p: string) => list.filter((claim) => phase(claim, today) === p).length;
+  const summary = data.claim_summary;
+  const claimsHref = (query = "") => `/p/${id}/claims${query ? `?${query}` : ""}`;
 
   // One row per domain: scored first, then by sample size.
   const stage = (score: Score) => (score.value != null ? 1 : 0);
+  const empty = { total: 0, fulfilled: 0, partial: 0, missed: 0, voided: 0, threads: 0, overdue: 0, upcoming: 0, next_deadline: null };
   const domains = [...data.scores]
     .sort((a, b) => stage(b) - stage(a) || b.n - a.n)
-    .map((score) => {
-      const list = claims.filter((claim) => claim.category === score.domain);
-      const next = list
-        .filter((claim) => phase(claim, today) === "upcoming")
-        .sort((a, b) => a.deadline.localeCompare(b.deadline))[0];
-      return {
-        score,
-        total: list.length,
-        fulfilled: list.filter((claim) => claim.status === "已兑现").length,
-        partial: list.filter((claim) => claim.status === "部分兑现").length,
-        missed: list.filter((claim) => claim.status === "未兑现").length,
-        voided: list.filter((claim) => claim.status === "证据不足").length,
-        threads: new Set(list.filter((claim) => claim.thread_id).map((claim) => claim.thread_id)).size,
-        overdue: count(list, "overdue"),
-        upcoming: count(list, "upcoming"),
-        next,
-      };
-    });
+    .map((score) => ({ score, ...(summary.by_domain[score.domain] ?? empty) }));
 
-  // Past deadlines first (most recent at the top: these carry the record), then the future, soonest first.
-  const showFilter = show && SHOW[show] ? SHOW[show] : null;
-  const scoped = claims.filter(
-    (claim) =>
-      (!domainFilter || claim.category === domainFilter) &&
-      (!showFilter || showFilter.test(claim, today)) &&
-      (!yearFilter || claim.published_date.startsWith(yearFilter)) &&
-      (!monthFilter || claim.published_date.startsWith(monthFilter)),
-  );
-  // Every number on this page links to the claims behind it (SPEC: 数字都能追到原文).
-  const listHref = (next: { domain?: string | null; show?: string | null; year?: string | null; month?: string | null }) => {
-    const params = new URLSearchParams();
-    const d = next.domain === undefined ? domainFilter : next.domain;
-    const sh = next.show === undefined ? show : next.show;
-    const y = next.year === undefined ? yearFilter : next.year;
-    if (d) params.set("domain", d);
-    if (sh) params.set("show", sh);
-    if (y) params.set("year", y);
-    const mo = next.month === undefined ? monthFilter : next.month;
-    if (mo) params.set("month", mo);
-    const query = params.toString();
-    return `/p/${id}${query ? `?${query}` : ""}#claims`;
-  };
-  const shown = [
-    ...scoped.filter((claim) => claim.deadline < today).sort((a, b) => b.deadline.localeCompare(a.deadline)),
-    ...scoped.filter((claim) => claim.deadline >= today).sort((a, b) => a.deadline.localeCompare(b.deadline)),
-  ];
-  const upcoming = claims
-    .filter((claim) => phase(claim, today) === "upcoming")
-    .sort((a, b) => a.deadline.localeCompare(b.deadline))
-    .slice(0, 3);
-  const machine = claims.filter((claim) => claim.reviewed === false).length;
+  const machine = summary.machine;
   const lastChange = history.snapshots[0]?.computed_at?.slice(0, 10);
   const lead = domains.find((row) => row.score.value != null)?.score;
-
-  const changes = explainChanges(history.snapshots, claims, new Set(data.scores.map((score) => score.domain)));
 
   // Snapshots grouped per domain (oldest first), for the domains the person still has.
   const charts: DomainHistory[] = domains
@@ -231,13 +120,14 @@ async function PersonBody({
   // 利益关系: the layered payload when the API has it, otherwise layer 1 from this payload.
   const interests = data.interests ?? { status: "not_collected" as const, relations: [] as Interest[] };
   const flow = await loadInterests(id, interests.relations);
+  const chips = chipsByClaim(flow, summary.statuses);
 
   const stats = [
-    { label: "公开主张", value: claims.length, show: null },
-    { label: "已判定", value: claims.filter((claim) => JUDGED.has(claim.status)).length, show: "judged" },
-    { label: "已过期待核对", value: count(claims, "overdue"), hint: "截止日已过，还没找到结果", show: "overdue" },
-    { label: "未到期", value: count(claims, "upcoming"), show: "upcoming" },
-    { label: "证据不足", value: count(claims, "unclear"), show: "unclear" },
+    { label: "公开主张", value: summary.total, show: null },
+    { label: "已判定", value: summary.judged, show: "judged" },
+    { label: "已过期待核对", value: summary.overdue, hint: "截止日已过，还没找到结果", show: "overdue" },
+    { label: "未到期", value: summary.upcoming, show: "upcoming" },
+    { label: "证据不足", value: summary.unclear, show: "unclear" },
   ];
 
   return (
@@ -268,7 +158,7 @@ async function PersonBody({
         </div>
         <dl className="grid grid-cols-5 gap-x-5 gap-y-1">
           {stats.map((stat) => {
-            const href = `/p/${id}${stat.show ? `?show=${stat.show}` : ""}#claims`;
+            const href = claimsHref(stat.show ? `show=${stat.show}` : "");
             return (
               <div key={stat.label} title={stat.hint ?? `看${stat.label}的主张`}>
                 <dd className={cn("display-num text-[26px] leading-none font-[800]", stat.value === 0 && "text-mute/50")}>
@@ -288,7 +178,7 @@ async function PersonBody({
       </section>
       <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 px-1 text-[11px] text-mute">
         <span>
-          {machine === claims.length ? `${machine} 条判定都由 AI 完成，尚未经人工校准` : `${machine} 条由 AI 判定、${claims.length - machine} 条经人工复核；AI 判定尚未经人工校准`}
+          {machine === summary.total ? `${machine} 条判定都由 AI 完成，尚未经人工校准` : `${machine} 条由 AI 判定、${summary.total - machine} 条经人工复核；AI 判定尚未经人工校准`}
           {" · "}
           <Link href="/method#eval" className="text-mute hover-fine:text-blue">
             怎么判的 →
@@ -408,9 +298,7 @@ async function PersonBody({
               ) : null}
               {data.consistency && data.consistency.total > 0 ? (
                 <p className="mt-2 text-[11px]">
-                  <Link href={`/p/${id}/consistency`} className="text-blue no-underline">
-                    查看全部 {data.consistency.total} 条 →
-                  </Link>
+                  <SeeAll href={`/p/${id}/consistency`} n={data.consistency.total} />
                 </p>
               ) : null}
             </div>
@@ -443,7 +331,7 @@ async function PersonBody({
                   改期与可检验度<span>不进综合分</span>
                 </p>
                 <p className="num mt-1.5 text-sm font-bold">
-                  <Link href={`/p/${id}?show=rescheduled#claims`} className="text-ink no-underline hover-fine:text-blue">
+                  <Link href={claimsHref("show=rescheduled")} className="text-ink no-underline hover-fine:text-blue">
                     改期 {data.indicators.rescheduling.rescheduled}/{data.indicators.rescheduling.commitments} 条主张
                   </Link>
                   {data.indicators.rescheduling.pushes ? (
@@ -455,7 +343,7 @@ async function PersonBody({
                 </p>
                 <p className="num text-sm font-bold">
                   可判定 {data.indicators.testability.judged}/{data.indicators.testability.resolved}
-                  <Link href={`/p/${id}?show=unclear#claims`} className="font-normal text-mute no-underline hover-fine:text-blue">
+                  <Link href={claimsHref("show=unclear")} className="font-normal text-mute no-underline hover-fine:text-blue">
                     {" "}
                     · 作废 {data.indicators.testability.voided}（证据不足）
                   </Link>
@@ -520,13 +408,10 @@ async function PersonBody({
         <section className="mt-8">
           <h2 className="flex items-baseline justify-between text-[15px] font-bold">
             利益版图
-            <Link href={`/p/${id}/interests`} className="inline-flex items-center gap-1 text-xs font-normal text-blue no-underline">
-              查看全貌
-              <Icon name="arrow-right" size={12} />
-            </Link>
+            <SeeAll href={`/p/${id}/interests`} n={flow.orgs.reduce((sum, org) => sum + org.relations.length, 0)} />
           </h2>
           <Link href={`/p/${id}/interests`} className="mt-3 block rounded-[14px] bg-card px-4 pt-4 pb-3 no-underline">
-            <InterestFlow personName={data.person.name} orgs={flow.orgs} claims={data.claims.map(({ id, status }) => ({ id, status }))} claimLinks={flow.claim_links} compact maxOrgs={4} maxSources={3} />
+            <InterestFlow personName={data.person.name} orgs={flow.orgs} claims={summary.statuses} claimLinks={flow.claim_links} compact maxOrgs={4} maxSources={3} />
           </Link>
           <p className="mt-2 px-1 text-[11px] text-mute">
             {flow.orgs.length} 个机构 · {flow.orgs.reduce((sum, org) => sum + org.relations.length, 0)} 段关系
@@ -564,12 +449,12 @@ async function PersonBody({
             <tbody>
               {domains.map((row) => {
                 const judged = row.fulfilled + row.partial + row.missed;
-                const active = domainFilter === row.score.domain;
+                const domainQuery = `domain=${encodeURIComponent(row.score.domain)}`;
                 return (
-                  <tr key={row.score.domain} className={cn("border-b border-line last:border-0", active && "bg-blue-tint/40")}>
+                  <tr key={row.score.domain} className="border-b border-line last:border-0">
                     <td className="py-2.5 pr-2 pl-4">
                       <Link
-                        href={active ? `/p/${id}` : `/p/${id}?domain=${encodeURIComponent(row.score.domain)}#claims`}
+                        href={claimsHref(domainQuery)}
                         className="font-medium no-underline hover-fine:text-blue"
                       >
                         {row.score.domain}
@@ -609,7 +494,7 @@ async function PersonBody({
                                 <span key={key}>
                                   {i ? " · " : ""}
                                   <Link
-                                    href={listHref({ domain: row.score.domain, show: key })}
+                                    href={claimsHref(`${domainQuery}&show=${key}`)}
                                     title={hint || `看这个领域里${label}的主张`}
                                     className="text-mute no-underline hover-fine:text-blue"
                                   >
@@ -625,7 +510,7 @@ async function PersonBody({
                     </td>
                     <td className={cn("num px-2 text-right", row.overdue > 0 ? "text-ink" : "text-mute/50")}>{row.overdue}</td>
                     <td className={cn("num px-2 text-right", row.upcoming > 0 ? "text-ink" : "text-mute/50")}>{row.upcoming}</td>
-                    <td className="num py-2.5 pr-4 pl-2 text-xs whitespace-nowrap text-mute">{row.next?.deadline ?? "—"}</td>
+                    <td className="num py-2.5 pr-4 pl-2 text-xs whitespace-nowrap text-mute">{row.next_deadline ?? "—"}</td>
                   </tr>
                 );
               })}
@@ -645,53 +530,26 @@ async function PersonBody({
         </div>
         <h3 className="mt-5 flex items-baseline justify-between text-[13px] font-bold">
           变化原因
-          <span className="text-xs font-normal text-mute">每次分数变化是哪几条主张引起的，新的在上</span>
+          {recentChanges.total > recentChanges.changes.length ? (
+            <SeeAll href={`/p/${id}/history`} n={recentChanges.total} />
+          ) : (
+            <span className="text-xs font-normal text-mute">每次分数变化是哪几条主张引起的，新的在上</span>
+          )}
         </h3>
         <ul className="mt-2 rounded-[14px] bg-card px-4 py-1 text-sm">
-          {changes.slice(0, 30).map((change) => {
-            const after = change.after;
-            const delta = change.before?.value != null && after.value != null ? after.value - change.before.value : null;
-            return (
-              <li key={`${change.domain}-${change.at}`} className="grid gap-x-4 gap-y-1 border-b border-line py-2.5 last:border-0 sm:grid-cols-[1fr_auto]">
-                <div className="min-w-0">
-                  <p className="font-medium">{change.domain}</p>
-                  <ul className="mt-0.5 space-y-0.5 text-xs text-mute">
-                    {change.lines.length === 0 ? <li>旧判定随时间降低权重，分数略有变化</li> : null}
-                    {change.lines.slice(0, 4).map((line, index) => (
-                      <li key={index} className="truncate">
-                        {describe(line, id)}
-                      </li>
-                    ))}
-                    {change.lines.length > 4 ? <li>另有 {change.lines.length - 4} 条变化</li> : null}
-                  </ul>
-                </div>
-                <div className="flex shrink-0 items-start gap-3 text-xs text-mute sm:flex-col sm:items-end sm:gap-0.5">
-                  <span className="num text-sm text-ink">
-                    {after.value != null ? `${after.value.toFixed(1)}（${after.low}–${after.high}）` : "样本不足"}
-                    {delta != null && Math.abs(delta) >= 0.05 ? (
-                      <span className={cn("ml-1.5 text-xs", delta > 0 ? "text-blue" : "text-ink/60")}>
-                        {delta > 0 ? "↑" : "↓"}
-                        {Math.abs(delta).toFixed(1)}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="num">
-                    {after.n} 条 · {change.at.slice(5, 16).replace("T", " ")}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-          {changes.length === 0 ? <li className="py-2 text-xs text-mute">分数还没有变化过。</li> : null}
+          {recentChanges.changes.map((change) => (
+            <ChangeRow key={`${change.domain}-${change.at}`} change={change} personId={id} limit={4} />
+          ))}
+          {recentChanges.total === 0 ? <li className="py-2 text-xs text-mute">分数还没有变化过。</li> : null}
         </ul>
       </section>
 
       {/* Upcoming deadlines */}
-      {upcoming.length > 0 ? (
+      {summary.soon.length > 0 ? (
         <section className="mt-8">
           <h2 className="text-[15px] font-bold">即将到期</h2>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
-            {upcoming.map((claim) => (
+            {summary.soon.map((claim) => (
               <Link key={claim.id} href={`/p/${id}/${claim.id}`} className="rounded-[14px] bg-card p-4 no-underline hover-fine:ring-2 hover-fine:ring-blue/20">
                 <span className="flex items-center justify-between text-xs text-mute">
                   <span>{claim.category}</span>
@@ -704,120 +562,25 @@ async function PersonBody({
         </section>
       ) : null}
 
-      {/* Claims */}
+      {/* Recent claims: an overview; the full list with filters is /p/[id]/claims */}
       <section id="claims" className="mt-14 scroll-mt-24">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-8">
           <div className="shrink-0" title="按说话月份：颜色越深，那个月收录的带期限说法越多；只统计已收录的话">
             <p className="mb-2 text-[11px] tracking-wide text-mute">按月份</p>
-            <ActivityGrid claims={claims} href={(month) => listHref({ month, year: null, show: null })} active={monthFilter} />
+            <ActivityGrid months={summary.months} href={(month) => claimsHref(`month=${month}`)} />
           </div>
-          <div className="min-w-0">
-        <h2 className="text-[15px] font-bold">全部主张</h2>
-        <p className="mt-1 text-xs text-mute">先列已到期的（最近的在上），再列未到期的</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {domainFilter ? (
-            <Link href={listHref({ domain: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
-              {domainFilter}
-              <Icon name="cancel" size={11} />
-            </Link>
-          ) : null}
-          {monthFilter ? (
-            <Link href={listHref({ month: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
-              {monthFilter.slice(0, 4)} 年 {Number(monthFilter.slice(5))} 月说的
-              <Icon name="cancel" size={11} />
-            </Link>
-          ) : null}
-          {yearFilter ? (
-            <Link href={listHref({ year: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
-              {yearFilter} 年说的
-              <Icon name="cancel" size={11} />
-            </Link>
-          ) : null}
-          {showFilter ? (
-            <Link href={listHref({ show: null })} className="inline-flex items-center gap-1 rounded-full bg-blue-tint px-2 py-0.5 text-xs font-medium text-blue-deep no-underline">
-              {showFilter.label} · {shown.length} 条
-              <Icon name="cancel" size={11} />
-            </Link>
-          ) : null}
-        </div>
+          <div className="flex min-w-0 flex-1 items-end justify-between gap-4">
+            <div>
+              <h2 className="text-[15px] font-bold">最近主张</h2>
+              <p className="mt-1 text-xs text-mute">最近说的 {summary.recent.length} 条；点格子看那个月说的</p>
+            </div>
+            {summary.total > summary.recent.length ? <SeeAll href={claimsHref()} n={summary.total} /> : null}
           </div>
         </div>
         <ul className="mt-6 overflow-hidden rounded-[14px] bg-card">
-          {shown.map((claim) => {
-            const p = phase(claim, today);
-            const chips = claimExposureChips(flow, claim.id, Number(claim.published_date.slice(0, 4)));
-            return (
-              <li key={claim.id} className="border-b border-line last:border-0">
-                <Link
-                  prefetch={false}
-                  href={`/p/${id}/${claim.id}`}
-                  className="grid gap-x-4 gap-y-1 px-4 py-3 no-underline hover-fine:bg-sunken/60 md:grid-cols-[112px_1fr_150px]"
-                >
-                  <span className="flex flex-wrap items-start gap-1.5">
-                    {p === "overdue" ? (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-ink/30 px-2 py-0.5 text-[12px] font-medium text-ink">
-                        <Icon name="hourglass" size={12} />
-                        待核对
-                      </span>
-                    ) : (
-                      <StatusPill status={p === "upcoming" ? "未到期" : claim.status} />
-                    )}
-                    {claim.quote_kind === "reported" ? (
-                      <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">转述</span>
-                    ) : null}
-                    {claim.kind === "promise" || claim.kind === "forecast" || claim.kind === "uncertain" ? (
-                      <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">
-                        {claim.kind === "promise" ? "承诺" : claim.kind === "forecast" ? "预测" : "类别存疑"}
-                      </span>
-                    ) : null}
-                    {claim.disputed ? (
-                      <span title="有人提交了反证，正在复核" className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">
-                        有争议
-                      </span>
-                    ) : null}
-                    {claim.recheck_note?.includes("结论不变") ? (
-                      <span className="rounded-md bg-sunken px-1.5 py-0.5 text-[11px] text-mute">已复核，结论不变</span>
-                    ) : null}
-                    {claim.disagreed ? (
-                      <span title="两次独立判定不一致，等待人工裁定" className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">
-                        有分歧
-                      </span>
-                    ) : null}
-                    {curationLabel(data.person.curation) ? (
-                      <span className="rounded-md border border-dashed border-ink/40 px-1.5 py-0.5 text-[11px] text-ink">{curationLabel(data.person.curation)}</span>
-                    ) : null}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="line-clamp-2 block text-[15px] leading-6">{claim.quote_zh}</span>
-                    {claim.interest_note ? <span className="mt-0.5 block text-xs text-mute">{spaceCjk(claim.interest_note)}</span> : null}
-                    {chips.length > 0 ? (
-                      <span className="mt-1 flex flex-wrap gap-1">
-                        {chips.map((chip) => (
-                          <span key={chip.key} title={chip.reason} className="rounded bg-sunken px-1.5 py-0.5 text-[11px] text-ink/80">
-                            {chip.label}
-                          </span>
-                        ))}
-                      </span>
-                    ) : null}
-                    {JUDGED.has(claim.status) && claim.actual_result ? (
-                      <span className="mt-0.5 line-clamp-1 block text-xs text-mute">
-                        <span className="font-medium text-ink/70">结果：</span>
-                        {plainResult(claim.actual_result)}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="flex flex-row flex-wrap gap-x-3 text-[11px] text-mute md:flex-col md:items-end md:text-right">
-                    <span className="num">{yearSpan(claim)}</span>
-                    <span>{claim.category}</span>
-                    <span className="truncate">
-                      {host(claim.source_url)}
-                      {claim.reviewed === false ? "" : " · 人工复核"}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
+          {summary.recent.map((claim) => (
+            <ClaimRow key={claim.id} claim={claim} today={today} chips={chips[claim.id]} />
+          ))}
         </ul>
       </section>
 

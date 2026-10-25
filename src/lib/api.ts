@@ -161,12 +161,84 @@ export type PersonInterests =
   | { status: "not_collected"; relations: Interest[] }
   | { status: "collected"; relations: Interest[]; related: AccuracyPart; unrelated: AccuracyPart };
 
+export type SiteStats = {
+  claims: number;
+  judged: number;
+  upcoming: number;
+  voided: number;
+  overdue: number;
+  fulfilled: number;
+  partial: number;
+  missed: number;
+  rescheduled: number;
+  since: number | null;
+};
+
 export type HomePayload = {
   people: Person[];
-  claims: Claim[];
+  stats: SiteStats;
   scores: (Score & { person_id: string })[];
   today: string;
 };
+
+// GET /v1/claims and GET /v1/people/:id/claims: one page, plus facet counts under the other active filters.
+export type ClaimPage = {
+  claims: Claim[];
+  next_cursor: string | null;
+  total: number;
+  today: string;
+  names: Record<string, string>;
+  counts: {
+    all: number;
+    status: Record<string, number>;
+    domain: Record<string, number>;
+    person: Record<string, number>;
+    kind: Record<string, number>;
+    month: Record<string, number>;
+  };
+};
+
+// The person page overview (claim_summary on GET /v1/people/:id).
+export type ClaimSummary = {
+  total: number;
+  judged: number;
+  overdue: number;
+  upcoming: number;
+  unclear: number;
+  machine: number;
+  months: Record<string, number>;
+  statuses: { id: string; status: string; year: number }[];
+  by_domain: Record<
+    string,
+    { total: number; fulfilled: number; partial: number; missed: number; voided: number; threads: number; overdue: number; upcoming: number; next_deadline: string | null }
+  >;
+  recent: Claim[];
+  soon: Claim[];
+};
+
+export type ClaimRef = { id: string; quote_zh: string; status: string };
+export type ScoreChangeLine =
+  | { kind: "added"; status: string; claim: ClaimRef | null }
+  | { kind: "removed"; status: string; claim: ClaimRef | null }
+  | { kind: "changed"; from: string; to: string; claim: ClaimRef | null }
+  | { kind: "count"; from: number; to: number }
+  | { kind: "formula"; version: string };
+export type ScorePoint = { value: number | null; low: number | null; high: number | null; n: number; formula_version: string };
+export type ScoreChange = { domain: string; at: string; before: ScorePoint | null; after: ScorePoint; lines: ScoreChangeLine[] };
+export type ScoreChangePage = { changes: ScoreChange[]; next_cursor: string | null; total: number; domains: Record<string, number> };
+
+// For a page that genuinely needs a person's whole record (the interest map): follow the cursor to the end.
+export async function getAllClaims(path: string) {
+  const claims: Claim[] = [];
+  let cursor: string | null = null;
+  do {
+    const sep = path.includes("?") ? "&" : "?";
+    const page: ClaimPage = await getJson<ClaimPage>(`${path}${sep}limit=100${cursor ? `&cursor=${cursor}` : ""}`);
+    claims.push(...page.claims);
+    cursor = page.next_cursor;
+  } while (cursor);
+  return claims;
+}
 
 export type ConsultEvaluation = {
   person_id: string;

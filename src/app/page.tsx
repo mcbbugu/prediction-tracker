@@ -19,7 +19,7 @@ import { HomeWash } from "@/components/home-wash";
 import { Portrait } from "@/components/portrait";
 import { ScoreBadge, scoreCaption } from "@/components/score-badge";
 import { cn } from "@/lib/utils";
-import { curationLabel, getJson, type Claim, type Person, type Score } from "@/lib/api";
+import { curationLabel, getJson, type Claim, type ClaimPage, type Person, type Score, type SiteStats } from "@/lib/api";
 import { plainResult, shortTitle, spaceCjk, TERMS } from "@/lib/terms";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +44,6 @@ function rankDomains(scores: Score[], rank: "promise" | "forecast" | "all") {
   return view.sort((a, b) => stage(b) - stage(a) || b.n - a.n);
 }
 
-const JUDGED = new Set(["已兑现", "部分兑现", "未兑现"]);
 
 function host(url: string | null | undefined) {
   try {
@@ -67,28 +66,13 @@ type ClaimDetail = {
 };
 
 // Live material for the home story. Every number and quote here is read from the database at request time.
-async function buildStory(everyone: PeoplePage, home: { claims: Claim[]; today: string }, scored: number) {
-  const claims = home.claims;
-  const judged = claims.filter((c) => JUDGED.has(c.status));
-  const years = claims.map((c) => Number(c.published_date.slice(0, 4))).filter(Boolean);
-  const stats: HomeStats = {
-    people: everyone.total,
-    scored,
-    claims: claims.length,
-    judged: judged.length,
-    upcoming: claims.filter((c) => c.status === "待定" && c.deadline >= home.today).length,
-    voided: claims.filter((c) => c.status === "证据不足").length,
-    overdue: claims.filter((c) => c.status === "待定" && c.deadline < home.today).length,
-    fulfilled: claims.filter((c) => c.status === "已兑现").length,
-    partial: claims.filter((c) => c.status === "部分兑现").length,
-    missed: claims.filter((c) => c.status === "未兑现").length,
-    rescheduled: new Set(claims.map((c) => c.thread_id).filter(Boolean)).size,
-    since: years.length ? Math.min(...years) : null,
-  };
+async function buildStory(everyone: PeoplePage, home: { stats: SiteStats }, scored: number) {
+  const stats: HomeStats = { people: everyone.total, scored, ...home.stats };
   // Most recent deadlines first, at most two per person so one prolific speaker does not fill the ticker.
+  const recent = await getJson<ClaimPage>("/v1/claims?status=judged&sort=deadline_desc&limit=100").catch(() => null);
   const perPerson = new Map<string, number>();
   const ticker: TickerItem[] = [];
-  for (const c of [...judged].sort((a, b) => b.deadline.localeCompare(a.deadline))) {
+  for (const c of recent?.claims ?? []) {
     const n = perPerson.get(c.person_id) ?? 0;
     if (n >= 2) continue;
     perPerson.set(c.person_id, n + 1);
@@ -107,10 +91,8 @@ async function buildStory(everyone: PeoplePage, home: { claims: Claim[]; today: 
   // The receipt: the most-judged person's latest fulfilled claim that carries evidence.
   const lead = everyone.people.find((p) => p.domains.some((d) => d.value != null && d.n >= 5)) ?? null;
   // Prefer a claim whose source page we archived ourselves, so the receipt can show the hash.
-  const candidates = judged
-    .filter((c) => c.person_id === lead?.id && c.status === "已兑现" && Array.isArray(c.evidence) && c.evidence.length > 0)
-    .sort((a, b) => b.deadline.localeCompare(a.deadline))
-    .slice(0, 4);
+  const fulfilled = lead ? await getJson<ClaimPage>(`/v1/claims?person=${lead.id}&status=fulfilled&sort=deadline_desc&limit=20`).catch(() => null) : null;
+  const candidates = (fulfilled?.claims ?? []).filter((c) => Array.isArray(c.evidence) && c.evidence.length > 0).slice(0, 4);
   let receipt: Receipt | null = null;
   for (const pick of candidates) {
     const detail = await getJson<ClaimDetail>(`/v1/people/${pick.person_id}/claims/${pick.id}`).catch(() => null);
@@ -203,7 +185,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     page === 1
       ? await Promise.all([
           getJson<PeoplePage>(`/v1/people?limit=100&offset=0&sort=judged`),
-          getJson<{ claims: Claim[]; today: string }>("/v1/home").catch(() => null),
+          getJson<{ stats: SiteStats }>("/v1/home").catch(() => null),
         ])
       : [null, null];
   const scoredCount = everyone ? everyone.people.filter((p) => p.domains.some((d) => d.value != null)).length : 0;

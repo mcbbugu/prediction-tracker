@@ -39,7 +39,7 @@
 | [020](020-difficulty-hierarchical.md) | 难度调整技能分 + 分层贝叶斯，公式 v2.0（依赖 012） | Cursor | P0 | 待办 | |
 | [021](021-commitment-strength.md) | 承诺强度与本人校准（依赖 012） | Cursor | P1 | 待办 | |
 | [024](024-vague-claims.md) | 模糊表述按多种定义判定（依赖 012） | Cursor | P1 | 待办 | |
-| [025](025-growing-lists-pages.md) | 长列表进子页（变化原因、全部主张）+ 服务端分页 | Cursor（接口）→ Claude（页面） | P1 | 待办 | |
+| [025](025-growing-lists-pages.md) | 长列表进子页（变化原因、全部主张）+ 服务端分页 | Claude | P1 | 已完成 | |
 | [018](018-event-study-baseline.md) | 事件研究与同类基准（依赖 012） | Cursor | P2 | 待办 | |
 | [023](023-prediction-powered-inference.md) | 预测驱动推断：少量人工给出有效区间（#4，先验证代理变量） | Cursor | P2 | 暂缓 | |
 | [H01](H01-blind-calibration.md) | 盲标 49 条校准判定（近期版本不做） | 人工 | P2 | 待办 | — |

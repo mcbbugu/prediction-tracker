@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { Claim } from "@/lib/api";
 
 // GitHub 风格的小格子图：一列一年、一行一个月，颜色越深那个月收录的带期限说法越多。点格子筛出那个月说的话。
 // 只统计已收录的话，受报道量影响，不代表全部的公开表达。
@@ -7,22 +6,19 @@ import type { Claim } from "@/lib/api";
 const CELL = 10;
 const GAP = 2;
 
+// months: "YYYY-MM" → how many claims were said that month (the API counts them; see claim_summary.months).
 export function ActivityGrid({
-  claims,
+  months,
   href,
   active,
 }: {
-  claims: Claim[];
+  months: Record<string, number>;
   href: (month: string) => string;
   active?: string;
 }) {
-  if (claims.length === 0) return null;
-  const counts = new Map<string, number>();
-  for (const c of claims) {
-    const month = c.published_date.slice(0, 7);
-    counts.set(month, (counts.get(month) ?? 0) + 1);
-  }
-  const years = claims.map((c) => Number(c.published_date.slice(0, 4)));
+  const counts = new Map(Object.entries(months).filter(([, n]) => n > 0));
+  if (counts.size === 0) return null;
+  const years = [...counts.keys()].map((month) => Number(month.slice(0, 4)));
   const first = Math.min(...years);
   const last = Math.max(...years);
   const cols = Array.from({ length: last - first + 1 }, (_, i) => first + i);

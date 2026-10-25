@@ -4,7 +4,7 @@ import { InterestFlow } from "@/components/interest-flow";
 import { InterestLedger } from "@/components/interest-ledger";
 import { InterestTimeline } from "@/components/interest-timeline";
 import { Portrait } from "@/components/portrait";
-import { getJson, type Claim, type Interest, type Person, type PersonInterests } from "@/lib/api";
+import { getAllClaims, getJson, type Interest, type Person, type PersonInterests } from "@/lib/api";
 import { isCurrent, loadInterests, orgLabel, stakeOf } from "@/lib/interests";
 import { assignClaims, buildMoneyFlow } from "@/lib/money-flow";
 
@@ -18,7 +18,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function InterestsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await getJson<{ person: Person; claims: Claim[]; interests?: PersonInterests }>(`/v1/people/${id}`);
+  // The map links claims to organisations, so it needs the whole record, not the overview.
+  const [person, allClaims] = await Promise.all([
+    getJson<{ person: Person; interests?: PersonInterests }>(`/v1/people/${id}`),
+    getAllClaims(`/v1/people/${id}/claims`),
+  ]);
+  const data = { ...person, claims: allClaims };
   const fallback = data.interests ?? { status: "not_collected" as const, relations: [] as Interest[] };
   const flow = await loadInterests(id, fallback.relations);
   const claims = new Map(data.claims.map((claim) => [claim.id, claim]));

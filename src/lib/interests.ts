@@ -216,3 +216,11 @@ export function claimExposureChips(flow: InterestsPayload, claimId: string, said
     };
   });
 }
+
+// Exposure chips for every claim the interest map links to, so a paged list can show them on rows it loads later.
+export function chipsByClaim(flow: InterestsPayload, claims: { id: string; year: number }[]) {
+  const linked = new Set(flow.claim_links.map((link) => link.claim_id));
+  return Object.fromEntries(
+    claims.filter((claim) => linked.has(claim.id)).map((claim) => [claim.id, claimExposureChips(flow, claim.id, claim.year)] as const).filter(([, chips]) => chips.length > 0),
+  );
+}

@@ -1,6 +1,6 @@
 # 025 会增长的数据：概览 + 子页 + 服务端分页
 
-负责人：Cursor
+负责人：Claude
 优先级：P1
 
 ## 目标
@@ -43,10 +43,19 @@ SPEC「页面结构：会增长的数据」。人物页只放摘要，长列表�
 
 ## 验收标准
 
-- [ ] 马斯克人物页首屏的数据请求体积比改前明显变小（完成记录写前后字节数）
-- [ ] 旧的 `?month=` 链接能跳到新子页
-- [ ] 分页接口的测试：游标连续翻页不重不漏
-- [ ] 通用检查全部通过
+- [x] 马斯克人物页首屏的数据请求体积比改前明显变小（完成记录写前后字节数）
+- [x] 旧的 `?month=` 链接能跳到新子页
+- [x] 分页接口的测试：游标连续翻页不重不漏
+- [x] 通用检查全部通过
 
 ## 完成记录
+
+- **接口**：`GET /v1/claims`、`GET /v1/people/:id/claims`（筛选 status/domain/person/kind/month/year，排序 record/said/deadline/deadline_desc，带各维分面计数和人名），`GET /v1/people/:id/score-changes`（变化原因从前端搬到后端算，`api/src/queries/score-changes.ts`）。游标是排序键（含 id）的 base64url，下一页取严格排在后面的，默认 20、最多 100。逻辑在 `api/src/queries/claim-list.ts`，测试 `api/tests/claim-list.test.ts`：四种排序 × 每页 1/7/20/100 条连续翻页不重不漏、带筛选翻页、分面计数。
+- `/v1/people/:id` 不再带 `claims`，改为 `claim_summary`（各项计数、按领域汇总、按月计数、id→状态、最近 5 条、即将到期 3 条）；`/v1/people/:id/history?compact=1` 只给画图用的快照；`/v1/home` 不再带全量主张，改给 `stats`。
+- **首屏体积（马斯克，42 条主张）**：改前 `/v1/people/musk` 99,176 字节 + `/history` 85,858 = 185,034；改后 31,792 + 7,586（compact）+ 1,972（最近 5 次变化）= 41,350，约为原来的 22%。首页 `/v1/home` 514,081 → 46,815。
+- **页面**：新增 `/p/[id]/history`（全部领域走势 + 完整变化原因，可按领域筛，「加载更多」）和 `/p/[id]/claims`（状态、领域、月份格子图筛选写进 URL，「加载更多」）。人物页改成概览：变化原因 5 条、最近主张 5 条 + 格子图，各配「查看全部 N 条 →」；利益版图、可信度入口统一成同一个 `SeeAll` 组件。人物页上所有数字链接都改指向 `/p/[id]/claims?…`。
+- 旧链接 `/p/[id]?domain|show|year|month=…` 在 `next.config.ts` 里 307 到 `/p/[id]/claims`，查询参数保留。
+- `/claims` 改用 `/v1/claims` 分页；首页的滚动核对结果和凭证改从 `/v1/claims` 取；利益子页需要全部主张，用 `getAllClaims` 按游标翻完。
+- 共用组件：`ClaimRow`、`ClaimFeed`、`ChangeRow`、`ChangeFeed`、`usePaged`、`MoreButton`、`SeeAll`、`PersonSubhead`。`src/lib/score-changes.ts` 删除（搬到后端）。
+- 浏览器核对：人物页、两个子页（含移动端）、`/claims`、首页都正常；`/p/musk/claims` 点「加载更多」后 40 条无重复。
 

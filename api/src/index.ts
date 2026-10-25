@@ -15,6 +15,8 @@ import { assertSafeToStart, corsOrigin } from "./core/env";
 import { sql } from "./core/db";
 import { logEvent, migrate } from "./core/migrate";
 import { PEOPLE_LIMIT_DEFAULT, PEOPLE_LIMIT_MAX, peopleSummary } from "./queries/people";
+import { claimSummary, clampLimit, listClaims, siteStats, type ListSort } from "./queries/claim-list";
+import { personScoreChanges } from "./queries/score-changes";
 import { latestScores, oneClaim, personInterestAtlas, personInterests, publishedClaims, type ScoreRow } from "./queries/records";
 import { liveProposition, resolutionStats } from "./queries/resolution";
 import { COMPOSITE_WEIGHTS, interestSplit, latestDelay, personProfile, recomputeScores } from "./scoring/score";
@@ -82,6 +84,19 @@ function consistencyInputs(rows: { domain: string; proposed_label: string; label
 function consistencyTier(label: string | null) {
   return label ? "human" : "machine";
 }
+
+// Shared by GET /v1/claims and GET /v1/people/:id/claims. limit defaults to 20, at most 100.
+const LIST_QUERY = t.Object({
+  status: t.Optional(t.String()),
+  domain: t.Optional(t.String()),
+  person: t.Optional(t.String()),
+  kind: t.Optional(t.String()),
+  month: t.Optional(t.String()),
+  year: t.Optional(t.String()),
+  sort: t.Optional(t.String()),
+  cursor: t.Optional(t.String()),
+  limit: t.Optional(t.String()),
+});
 
 const app = new Elysia()
   .use(cors({ origin: corsOrigin(), allowedHeaders: ["Content-Type", "x-review-token"] }))
@@ -169,8 +184,16 @@ const app = new Elysia()
       WHERE slice = 'all'
       ORDER BY person_id, domain, computed_at DESC
     `;
-    return { people, claims, scores: scores.filter((score) => score.confidence !== "已移除"), today: new Date().toISOString().slice(0, 10) };
+    const today = new Date().toISOString().slice(0, 10);
+    // Totals only; the claims themselves are paged from /v1/claims (025).
+    return { people, stats: siteStats(claims, today), scores: scores.filter((score) => score.confidence !== "已移除"), today };
   })
+  // 全站主张，筛选、计数和游标分页（025）。
+  .get("/v1/claims", async ({ query }) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const all = await publishedClaims();
+    return { ...listClaims(all, { ...query, sort: (query.sort as ListSort) ?? "said" }, today), today };
+  }, { query: LIST_QUERY })
   // 首页列表：一页人物的计数和领先领域，在 SQL 里聚合好（/v1/home 是把全量发给前端自己算）。
   .get(
     "/v1/people",
@@ -214,6 +237,7 @@ const app = new Elysia()
       `,
     ]);
     const claims = claimRows.map((claim) => ({ ...claim, interest_note: interests.claim_notes[claim.id] ?? null }));
+    const today = new Date().toISOString().slice(0, 10);
     const rows = claims.map((claim) => ({
       category: claim.category,
       status: claim.status,
@@ -228,7 +252,8 @@ const app = new Elysia()
     return {
       person,
       analysis_job_id: analysisJobs[0]?.id ?? null,
-      claims,
+      // An overview: counts and a few claims. The full list is GET /v1/people/:id/claims (025).
+      claim_summary: claimSummary(claims, today),
       scores,
       profile,
       composite_weights: COMPOSITE_WEIGHTS,
@@ -255,6 +280,21 @@ const app = new Elysia()
         })),
       },
     };
+  })
+  .get("/v1/people/:id/claims", async ({ params, query, set }) => {
+    const people = await sql<{ id: string }[]>`SELECT id FROM people WHERE id = ${params.id} LIMIT 1`;
+    if (!people[0]) {
+      set.status = 404;
+      return { error: "未找到该人物" };
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const [claimRows, interests] = await Promise.all([publishedClaims(params.id), personInterests(params.id)]);
+    const claims = claimRows.map((claim) => ({ ...claim, interest_note: interests.claim_notes[claim.id] ?? null }));
+    return { ...listClaims(claims, { ...query, person: undefined, sort: (query.sort as ListSort) ?? "record" }, today), today };
+  }, { query: LIST_QUERY })
+  .get("/v1/people/:id/score-changes", async ({ params, query }) =>
+    personScoreChanges(params.id, { domain: query.domain || undefined, cursor: query.cursor, limit: clampLimit(query.limit) }), {
+    query: t.Object({ domain: t.Optional(t.String()), cursor: t.Optional(t.String()), limit: t.Optional(t.String()) }),
   })
   .get("/v1/people/:id/interests", async ({ params, set }) => {
     const people = await sql<{ id: string }[]>`SELECT id FROM people WHERE id = ${params.id} LIMIT 1`;
@@ -737,26 +777,30 @@ const app = new Elysia()
     `;
     return { job: jobs[0], events, queue_position: await queuePosition(sql, params.id) };
   })
-  .get("/v1/people/:id/history", async ({ params }) => {
+  // ?compact=1: just the series for the charts (no basis, no events).
+  .get("/v1/people/:id/history", async ({ params, query }) => {
+    const compact = query.compact === "1";
     const [snapshots, events] = await Promise.all([
       sql`
         SELECT domain, value::float8 AS value, low::float8 AS low, high::float8 AS high, n, confidence, formula_version,
-               trigger_claim_id, trigger_action, computed_at, basis
+               trigger_claim_id, trigger_action, computed_at${compact ? sql`` : sql`, basis`}
         FROM score_snapshots
         WHERE person_id = ${params.id} AND slice = 'all'
         ORDER BY computed_at DESC
         LIMIT 200
       `,
-      sql`
-        SELECT claim_id, action, actor, before, after, note, created_at
-        FROM claim_events
-        WHERE person_id = ${params.id}
-        ORDER BY created_at DESC
-        LIMIT 200
-      `,
+      compact
+        ? Promise.resolve([])
+        : sql`
+            SELECT claim_id, action, actor, before, after, note, created_at
+            FROM claim_events
+            WHERE person_id = ${params.id}
+            ORDER BY created_at DESC
+            LIMIT 200
+          `,
     ]);
-    return { snapshots, events };
-  });
+    return compact ? { snapshots } : { snapshots, events };
+  }, { query: t.Object({ compact: t.Optional(t.String()) }) });
 
 const port = Number(process.env.PORT || 3011);
 app.listen(port);

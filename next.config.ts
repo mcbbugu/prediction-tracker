@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
   images: {
     localPatterns: [{ pathname: "/portraits/**" }],
   },
+  // The full claim list moved off the person page (025): old filter links land on /p/[id]/claims, query kept.
+  async redirects() {
+    return ["domain", "show", "year", "month"].map((key) => ({
+      source: "/p/:id",
+      has: [{ type: "query" as const, key }],
+      destination: "/p/:id/claims",
+      permanent: false,
+    }));
+  },
 };
 
 export default nextConfig;
