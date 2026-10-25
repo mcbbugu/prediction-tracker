@@ -195,6 +195,7 @@ export async function archiveDocument(input: {
   url: string;
   finalUrl?: string;
   via?: FetchVia;
+  transcriptKind?: "auto" | "manual";
   bytes: Uint8Array;
   contentType: string;
   status: number;
@@ -208,10 +209,10 @@ export async function archiveDocument(input: {
     contentType: input.contentType,
     via: input.via ?? "direct",
   };
-  return save(input.url, fetched, { title: input.title, text: input.text }, Number.MAX_SAFE_INTEGER);
+  return save(input.url, fetched, { title: input.title, text: input.text }, Number.MAX_SAFE_INTEGER, input.transcriptKind ?? null);
 }
 
-async function save(url: string, fetched: Fetched, page: { title: string; text: string }, maxChars: number): Promise<Snapshot> {
+async function save(url: string, fetched: Fetched, page: { title: string; text: string }, maxChars: number, transcriptKind: string | null = null): Promise<Snapshot> {
   // Postgres text cannot hold NUL bytes; some pages (and PDFs served as text) contain them.
   const kept = page.text.replace(/\u0000/g, "").replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/g, " ").slice(0, maxChars);
   const cleanTitle = page.title.replace(/[\u0000-\u001f]/g, " ").trim();
@@ -219,9 +220,9 @@ async function save(url: string, fetched: Fetched, page: { title: string; text: 
   const rawSha256 = createHash("sha256").update(fetched.bytes).digest("hex");
   const rawGz = Buffer.from(Bun.gzipSync(new Uint8Array(fetched.bytes)));
   const rows = await sql<{ id: number }[]>`
-    INSERT INTO sources (url, final_url, http_status, title, text, sha256, raw_gz, raw_sha256, content_type, fetched_via)
+    INSERT INTO sources (url, final_url, http_status, title, text, sha256, raw_gz, raw_sha256, content_type, fetched_via, transcript_kind)
     VALUES (${url}, ${fetched.finalUrl}, ${fetched.status}, ${cleanTitle}, ${kept}, ${sha256},
-            ${rawGz}, ${rawSha256}, ${fetched.contentType.slice(0, 200)}, ${fetched.via})
+            ${rawGz}, ${rawSha256}, ${fetched.contentType.slice(0, 200)}, ${fetched.via}, ${transcriptKind})
     RETURNING id
   `;
   return {

@@ -9,6 +9,8 @@ export type RawDoc = {
   // Where the bytes actually came from, if the adapter fetched them itself (after redirects).
   finalUrl?: string;
   status?: number;
+  // Captions and transcripts: auto = machine speech recognition (may mishear), manual = made by a person.
+  transcriptKind?: "auto" | "manual";
   title: string;
   text?: string;
   bytes?: Uint8Array;

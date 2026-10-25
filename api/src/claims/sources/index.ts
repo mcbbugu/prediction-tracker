@@ -1,6 +1,7 @@
 import { sql } from "../../core/db";
 import { archiveDocument, snapshot, type Snapshot } from "../../evidence/sources";
 import { cluesFrom, orderSources } from "./chunk";
+import { findPodcastTranscripts } from "./podcast-transcripts";
 import { findRss } from "./rss";
 import { findSecTranscripts } from "./sec-transcripts";
 import type { RawDoc, SourceAdapter, SourcePerson } from "./types";
@@ -10,6 +11,7 @@ import { findYoutubeCaptions } from "./youtube-captions";
 const ADAPTERS: SourceAdapter[] = [
   { name: "sec_transcripts", find: (person) => findSecTranscripts(person) },
   { name: "youtube_captions", find: (person) => findYoutubeCaptions(person) },
+  { name: "podcast_transcripts", find: (person) => findPodcastTranscripts(person) },
   { name: "rss", find: (person) => findRss(person) },
   { name: "web_search", find: (person, ctx) => findWebSearch(person, ctx.clues, ctx.searchesUsed) },
 ];
@@ -41,6 +43,7 @@ async function materialize(doc: RawDoc): Promise<Snapshot | null> {
     return archiveDocument({
       url: doc.url,
       finalUrl: doc.finalUrl,
+      transcriptKind: doc.transcriptKind,
       bytes: doc.bytes,
       contentType: doc.contentType || "text/html",
       status: doc.status ?? 200,

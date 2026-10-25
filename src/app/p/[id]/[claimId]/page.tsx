@@ -9,7 +9,7 @@ import { ChallengeForm } from "@/components/challenge-form";
 
 export const dynamic = "force-dynamic";
 
-type Archive = { url: string; fetched_at: string; sha256: string; wayback_url: string | null; fetched_via: string };
+type Archive = { url: string; fetched_at: string; sha256: string; wayback_url: string | null; fetched_via: string; transcript_kind?: string | null };
 
 // Our archived copy (date + hash) and the Wayback capture, next to every external link.
 type PropositionRow = {
@@ -58,6 +58,11 @@ function ArchiveNote({ archive }: { archive?: Archive }) {
   return (
     <span className="text-[11px] text-mute" title={`抓取途径 ${archive.fetched_via} · 正文 sha256 ${archive.sha256}`}>
       {archive.fetched_at} 已存档
+      {archive.transcript_kind === "auto" ? (
+        <span title="视频的自动生成字幕，可能有识别错误；原话按字幕逐字核对"> · 出自自动字幕</span>
+      ) : archive.transcript_kind === "manual" ? (
+        " · 出自文字稿"
+      ) : null}
       {archive.wayback_url ? (
         <>
           {" · "}

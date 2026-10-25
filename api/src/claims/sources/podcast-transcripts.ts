@@ -1,0 +1,148 @@
+import { mentions } from "./chunk";
+import type { AdapterResult, RawDoc, SourcePerson } from "./types";
+
+// Podcasts that publish their own speaker-labelled transcripts (028). We match the guest by name in the episode
+// title, then keep only the guest's turns, so every sentence in the archived text is attributable to them.
+// The raw page is archived whole; the text is the guest's turns copied verbatim, each with its speaker label.
+
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) prediction-tracker/0.2";
+const LEX_FEED = "https://lexfridman.com/feed/podcast/";
+const DWARKESH_ARCHIVE = "https://www.dwarkesh.com/api/v1/archive?sort=new";
+
+export function decodeEntities(text: string) {
+  return text
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+const plain = (html: string) => decodeEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+
+// "#471 – Sundar Pichai: CEO of Google" or "Dario Amodei – …": is this person the (or a) guest?
+export function isGuest(person: SourcePerson, title: string) {
+  const name = person.name_en.trim().toLowerCase();
+  if (!name) return false;
+  const guests = title.replace(/^#\d+\s*[–-]\s*/, "").split(/[:–—]/)[0].replace(/\([^)]*\)/g, "").toLowerCase();
+  return guests.split(/\s*(?:,|&|\band\b)\s*/).some((guest) => guest.trim() === name);
+}
+
+type Turn = { speaker: string; stamp: string; text: string };
+
+// lexfridman.com/<slug>-transcript: <div class="ts-segment"> with ts-name, ts-timestamp, ts-text.
+export function lexTurns(html: string): Turn[] {
+  return [...html.matchAll(/<div class="ts-segment">([\s\S]*?)<\/div>/g)].map(([, block]) => ({
+    speaker: plain(block.match(/<span class="ts-name">([\s\S]*?)<\/span>/)?.[1] ?? ""),
+    stamp: plain(block.match(/<span class="ts-timestamp">([\s\S]*?)<\/span>\s*<span class="ts-text">/)?.[1] ?? ""),
+    text: plain(block.match(/<span class="ts-text">([\s\S]*?)<\/span>/)?.[1] ?? ""),
+  }));
+}
+
+// Substack transcripts: a paragraph that is only <strong>Name</strong> starts that speaker's turn.
+export function substackTurns(html: string): Turn[] {
+  const turns: Turn[] = [];
+  let speaker = "";
+  for (const [, inner] of html.matchAll(/<p>([\s\S]*?)<\/p>/g)) {
+    const label = inner.match(/^\s*<strong>([^<]{2,60})<\/strong>\s*$/);
+    if (label) {
+      speaker = plain(label[1]);
+      continue;
+    }
+    const text = plain(inner);
+    if (!speaker || !text) continue;
+    const last = turns[turns.length - 1];
+    if (last && last.speaker === speaker) last.text += ` ${text}`;
+    else turns.push({ speaker, stamp: "", text });
+  }
+  return turns;
+}
+
+export function guestText(person: SourcePerson, turns: Turn[]) {
+  // A speaker label may carry only part of the name (e.g. "Jensen Huang" vs "Jensen"), so match like mentions().
+  const mine = turns.filter((turn) => turn.text && mentions(person, turn.speaker));
+  return mine.map((turn) => `${turn.speaker}${turn.stamp ? ` ${turn.stamp}` : ""} ${turn.text}`).join("\n");
+}
+
+async function get(url: string, fetcher: typeof fetch) {
+  const response = await fetcher(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: AbortSignal.timeout(20_000) });
+  if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
+  return response;
+}
+
+let lexEpisodes: Promise<{ title: string; link: string }[]> | null = null;
+let dwarkeshEpisodes: Promise<{ title: string; link: string }[]> | null = null;
+
+function loadLex(fetcher: typeof fetch) {
+  lexEpisodes ??= get(LEX_FEED, fetcher)
+    .then((response) => response.text())
+    .then((xml) =>
+      xml
+        .split(/<item>/)
+        .slice(1)
+        .map((item) => ({
+          title: plain(item.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? ""),
+          link: decodeEntities(item.match(/<link>([\s\S]*?)<\/link>/)?.[1] ?? "").split("?")[0],
+        })),
+    )
+    .catch((error) => {
+      lexEpisodes = null;
+      throw error;
+    });
+  return lexEpisodes;
+}
+
+function loadDwarkesh(fetcher: typeof fetch) {
+  dwarkeshEpisodes ??= (async () => {
+    const all: { title: string; link: string }[] = [];
+    for (let offset = 0; offset < 300; offset += 50) {
+      const page = (await (await get(`${DWARKESH_ARCHIVE}&offset=${offset}&limit=50`, fetcher)).json()) as { title?: string; canonical_url?: string }[];
+      all.push(...page.flatMap((post) => (post.title && post.canonical_url ? [{ title: post.title, link: post.canonical_url }] : [])));
+      if (page.length === 0) break;
+    }
+    return all;
+  })().catch((error) => {
+    dwarkeshEpisodes = null;
+    throw error;
+  });
+  return dwarkeshEpisodes;
+}
+
+export async function findPodcastTranscripts(person: SourcePerson, fetcher: typeof fetch = fetch): Promise<AdapterResult> {
+  const docs: RawDoc[] = [];
+  const notes: string[] = [];
+  const shows = [
+    { name: "Lex Fridman", list: () => loadLex(fetcher), transcript: (link: string) => `${link.replace(/\/$/, "")}-transcript/`, turns: lexTurns },
+    { name: "Dwarkesh", list: () => loadDwarkesh(fetcher), transcript: (link: string) => link, turns: substackTurns },
+  ];
+  for (const show of shows) {
+    try {
+      const episodes = (await show.list()).filter((episode) => isGuest(person, episode.title)).slice(0, 2);
+      for (const episode of episodes) {
+        if (docs.length >= 3) break;
+        const url = show.transcript(episode.link);
+        // One episode without a transcript page must not stop the others.
+        const response = await get(url, fetcher).catch((error: Error) => {
+          notes.push(`${show.name}「${episode.title.slice(0, 30)}」${error.message.replace(url, "").trim()}`);
+          return null;
+        });
+        if (!response) continue;
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const text = guestText(person, show.turns(new TextDecoder().decode(bytes)));
+        if (text.length < 400) {
+          notes.push(`${show.name}「${episode.title.slice(0, 30)}」没有解析出本人的发言`);
+          continue;
+        }
+        docs.push({ url, finalUrl: response.url || url, status: response.status, title: episode.title, text, bytes, contentType: "text/html", transcriptKind: "manual" });
+      }
+    } catch (error) {
+      notes.push(`${show.name}：${error instanceof Error ? error.message.slice(0, 100) : error}`);
+    }
+  }
+  if (!docs.length && !notes.length) notes.push("没有以本人为嘉宾的节目");
+  return { docs, searches: 0, detail: notes.join("；"), searchLog: [] };
+}

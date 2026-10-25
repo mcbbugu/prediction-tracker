@@ -1,5 +1,5 @@
 import { textFromHtml } from "../../evidence/sources";
-import { TIME_HINT } from "./chunk";
+import { mentions, TIME_HINT } from "./chunk";
 import type { AdapterResult, RawDoc, SourcePerson } from "./types";
 
 // Personal blogs and company newsrooms. A missing feed is skipped, not fatal.
@@ -14,7 +14,6 @@ const FEEDS: Record<string, string[]> = {
   "aravind-srinivas": ["https://www.perplexity.ai/blog/rss.xml"],
   "fei-fei-li": ["https://blog.google/rss/"],
   "kevin-scott": ["https://blogs.microsoft.com/feed/"],
-  "qi-lu": ["https://blogs.microsoft.com/feed/"],
 };
 
 // Sites whose articles we reach through a feed; used to find archives made by the old summary fallback (#7).
@@ -73,6 +72,7 @@ export async function findRss(person: SourcePerson, fetcher: typeof fetch = fetc
   const docs: AdapterResult["docs"] = [];
   const notes: string[] = [];
   const skipped: string[] = [];
+  let notTheirs = 0;
   for (const feed of feeds) {
     try {
       const response = await fetcher(feed, { headers: { Accept: "application/rss+xml, application/xml, text/xml" }, signal: AbortSignal.timeout(12_000) });
@@ -84,13 +84,16 @@ export async function findRss(person: SourcePerson, fetcher: typeof fetch = fetc
       for (const item of items) {
         if (docs.length >= 3) break;
         const result = await fetchArticle(item, fetcher);
-        if ("doc" in result) docs.push(result.doc);
-        else skipped.push(result.skipped);
+        if (!("doc" in result)) skipped.push(result.skipped);
+        // Company newsrooms mostly carry posts by others; keep only those that name the person (028).
+        else if (!mentions(person, `${item.title} ${result.doc.text ?? ""}`)) notTheirs += 1;
+        else docs.push(result.doc);
       }
     } catch (error) {
       notes.push(`${feed}：${error instanceof Error ? error.message.slice(0, 80) : error}`);
     }
   }
+  if (notTheirs) notes.push(`${notTheirs} 篇没有提到本人，跳过`);
   if (skipped.length) notes.push(`${skipped.length} 篇原文打不开，已跳过，不用 feed 摘要代替（${[...new Set(skipped)].join("、")}）`);
   return { docs: docs.slice(0, 3), searches: 0, detail: notes.join("；"), searchLog: [] };
 }

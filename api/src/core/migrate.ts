@@ -271,6 +271,8 @@ async function migrateUnlocked() {
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS content_type text`;
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS fetched_via text NOT NULL DEFAULT 'direct'`;
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS wayback_url text`;
+  // Captions and transcripts (028): auto = machine speech recognition, manual = human-made. Null for other pages.
+  await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS transcript_kind text`;
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS wayback_at timestamptz`;
   await sql`ALTER TABLE sources ADD COLUMN IF NOT EXISTS wayback_error text`;
   // Where an exposure came from. 'crawl' = the bulk web crawl of 2026-10 (frozen, shown as unverified);

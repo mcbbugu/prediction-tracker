@@ -336,8 +336,8 @@ const app = new Elysia()
     // Our own archived copies of the source and evidence pages, with the Wayback capture when there is one,
     // so a reader can still check the quote after the original page changes or disappears.
     const urls = [claim.source_url, ...claim.evidence.map((item) => item.url)].filter(Boolean);
-    const archives = await sql<{ url: string; fetched_at: string; sha256: string; wayback_url: string | null; fetched_via: string }[]>`
-      SELECT DISTINCT ON (url) url, to_char(fetched_at, 'YYYY-MM-DD') AS fetched_at, sha256, wayback_url, fetched_via
+    const archives = await sql<{ url: string; fetched_at: string; sha256: string; wayback_url: string | null; fetched_via: string; transcript_kind: string | null }[]>`
+      SELECT DISTINCT ON (url) url, to_char(fetched_at, 'YYYY-MM-DD') AS fetched_at, sha256, wayback_url, fetched_via, transcript_kind
       FROM sources
       WHERE url IN ${sql(urls)}
       ORDER BY url, (wayback_url IS NOT NULL) DESC, fetched_at DESC

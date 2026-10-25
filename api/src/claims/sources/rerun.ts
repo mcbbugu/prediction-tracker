@@ -1,4 +1,4 @@
-// bun --env-file=.env run src/claims/sources/rerun.ts
+// bun --env-file=.env run src/claims/sources/rerun.ts [id ...]（不给 id 就跑下面 12 人）
 // 对 003 里主张为 0 的人再找一轮。陆奇也是 0 条，算上他一共 12 人。
 // 先走申报、字幕、RSS，联网搜索每人最多 6 次。
 import { supplementPerson } from "../discover";
@@ -23,7 +23,8 @@ export const RERUN_IDS = [
 async function main() {
   await migrate();
   console.log("人物\t之前\t之后\t来源");
-  for (const id of RERUN_IDS) {
+  const ids = process.argv.slice(2).filter((arg) => !arg.startsWith("-"));
+  for (const id of ids.length ? ids : RERUN_IDS) {
     const result = await supplementPerson(id);
     const sources = result.runs.map((run) => `${run.source}:${run.documents}文档/${run.claims}主张/${run.searches}搜${run.detail ? `(${run.detail})` : ""}`).join(" ");
     console.log(`${result.name}\t${result.before}\t${result.after}\t${result.error ?? sources}`);
