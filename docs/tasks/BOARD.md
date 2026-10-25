@@ -31,7 +31,7 @@
 | [035](035-consistency-auto-collect.md) | 可信度接进每日扩库，新人物自动采集（依赖 034） | Cursor | P1 | 已完成 | c89134c |
 | [028](028-fix-structured-sources.md) | 修好结构化来源：字幕、8-K、播客（需先装 yt-dlp） | Cursor | P1 | 待办 | |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 已完成 | dd9dcc0 |
-| [031](031-downstream-benchmark.md) | 下游对照实验做成常设基准，≥50 题带区间（#3，依赖 037） | Cursor | P1 | 待办 | |
+| [031](031-downstream-benchmark.md) | 下游对照改为前瞻式：先登记预测、到期再打分（#3 #8） | Cursor | P1 | 待办 | |
 | [014](014-transparency-log.md) | 透明日志与每日根哈希（依赖 011） | Cursor | P1 | 待办 | |
 | [016](016-exposure-intervals.md) | 推算带区间、假设和时间对齐（依赖 011） | Cursor | P1 | 待办 | |
 | [017](017-insider-trades.md) | 言行一致：SEC Form 4 内部人交易 | Cursor | P1 | 待办 | |
