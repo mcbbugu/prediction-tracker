@@ -26,10 +26,12 @@ const plain = (html: string) => decodeEntities(html.replace(/<[^>]+>/g, " ")).re
 
 // "#471 – Sundar Pichai: CEO of Google" or "Dario Amodei – …": is this person the (or a) guest?
 export function isGuest(person: SourcePerson, title: string) {
-  const name = person.name_en.trim().toLowerCase();
-  if (!name) return false;
+  // Middle names are dropped: "Satya Narayana Nadella" is billed as "Satya Nadella".
+  const parts = person.name_en.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!parts.length) return false;
+  const names = new Set([parts.join(" "), `${parts[0]} ${parts[parts.length - 1]}`]);
   const guests = title.replace(/^#\d+\s*[–-]\s*/, "").split(/[:–—]/)[0].replace(/\([^)]*\)/g, "").toLowerCase();
-  return guests.split(/\s*(?:,|&|\band\b)\s*/).some((guest) => guest.trim() === name);
+  return guests.split(/\s*(?:,|&|\band\b)\s*/).some((guest) => names.has(guest.trim()));
 }
 
 type Turn = { speaker: string; stamp: string; text: string };
@@ -74,8 +76,15 @@ async function get(url: string, fetcher: typeof fetch) {
   return response;
 }
 
-let lexEpisodes: Promise<{ title: string; link: string }[]> | null = null;
-let dwarkeshEpisodes: Promise<{ title: string; link: string }[]> | null = null;
+type Episode = { title: string; link: string; date: string };
+let lexEpisodes: Promise<Episode[]> | null = null;
+let dwarkeshEpisodes: Promise<Episode[]> | null = null;
+
+// YYYY-MM-DD from an RSS pubDate or an ISO timestamp; empty when unreadable.
+export function isoDay(value: string) {
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? new Date(time).toISOString().slice(0, 10) : "";
+}
 
 function loadLex(fetcher: typeof fetch) {
   lexEpisodes ??= get(LEX_FEED, fetcher)
@@ -87,6 +96,7 @@ function loadLex(fetcher: typeof fetch) {
         .map((item) => ({
           title: plain(item.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? ""),
           link: decodeEntities(item.match(/<link>([\s\S]*?)<\/link>/)?.[1] ?? "").split("?")[0],
+          date: isoDay(item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] ?? ""),
         })),
     )
     .catch((error) => {
@@ -98,10 +108,10 @@ function loadLex(fetcher: typeof fetch) {
 
 function loadDwarkesh(fetcher: typeof fetch) {
   dwarkeshEpisodes ??= (async () => {
-    const all: { title: string; link: string }[] = [];
+    const all: Episode[] = [];
     for (let offset = 0; offset < 300; offset += 50) {
-      const page = (await (await get(`${DWARKESH_ARCHIVE}&offset=${offset}&limit=50`, fetcher)).json()) as { title?: string; canonical_url?: string }[];
-      all.push(...page.flatMap((post) => (post.title && post.canonical_url ? [{ title: post.title, link: post.canonical_url }] : [])));
+      const page = (await (await get(`${DWARKESH_ARCHIVE}&offset=${offset}&limit=50`, fetcher)).json()) as { title?: string; canonical_url?: string; post_date?: string }[];
+      all.push(...page.flatMap((post) => (post.title && post.canonical_url ? [{ title: post.title, link: post.canonical_url, date: isoDay(post.post_date ?? "") }] : [])));
       if (page.length === 0) break;
     }
     return all;
@@ -132,11 +142,13 @@ export async function findPodcastTranscripts(person: SourcePerson, fetcher: type
         });
         if (!response) continue;
         const bytes = new Uint8Array(await response.arrayBuffer());
-        const text = guestText(person, show.turns(new TextDecoder().decode(bytes)));
-        if (text.length < 400) {
+        const turns = guestText(person, show.turns(new TextDecoder().decode(bytes)));
+        if (turns.length < 400) {
           notes.push(`${show.name}「${episode.title.slice(0, 30)}」没有解析出本人的发言`);
           continue;
         }
+        // The turns carry no date; the episode's title and air date go on top so a quote can be dated (said_on).
+        const text = `${episode.title}\n${episode.date ? `${episode.date}\n` : ""}\n${turns}`;
         docs.push({ url, finalUrl: response.url || url, status: response.status, title: episode.title, text, bytes, contentType: "text/html", transcriptKind: "manual" });
       }
     } catch (error) {

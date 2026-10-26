@@ -59,7 +59,10 @@ function usable(page: Snapshot | null): page is Snapshot {
 }
 
 export async function collectSources(person: SourcePerson) {
-  const ordered = orderSources(ADAPTERS.map((adapter) => adapter.name), await rates());
+  // DISCOVER_SOURCES=sec_transcripts,podcast_transcripts limits a run to some sources (to measure them alone).
+  const only = (process.env.DISCOVER_SOURCES ?? "").split(",").map((name) => name.trim()).filter(Boolean);
+  const enabled = ADAPTERS.filter((adapter) => !only.length || only.includes(adapter.name));
+  const ordered = orderSources(enabled.map((adapter) => adapter.name), await rates());
   const byName = new Map(ADAPTERS.map((adapter) => [adapter.name, adapter]));
   const runs: SourceRun[] = [];
   const pages: CollectedPage[] = [];

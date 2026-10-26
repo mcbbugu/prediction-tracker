@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { mentions, timedChunks } from "../src/claims/sources/chunk";
-import { guestText, isGuest, lexTurns, substackTurns } from "../src/claims/sources/podcast-transcripts";
+import { guestText, isGuest, isoDay, lexTurns, substackTurns } from "../src/claims/sources/podcast-transcripts";
 import { findRss } from "../src/claims/sources/rss";
 import { pickExhibit, pickFilings } from "../src/claims/sources/sec-transcripts";
 import { parseVtt } from "../src/claims/sources/youtube-captions";
@@ -32,6 +32,15 @@ describe("播客文字稿（028）", () => {
     expect(isGuest({ ...huang, name_en: "Dario Amodei" }, "Dario Amodei (Anthropic CEO) — The hidden pattern")).toBe(true);
     expect(isGuest({ ...huang, name_en: "Satya Nadella" }, "Satya Nadella — Microsoft’s AGI plan")).toBe(true);
     expect(isGuest(huang, "#400 – Elon Musk: War, AI, Aliens")).toBe(false);
+    // Our English names can carry middle names that show titles leave out.
+    expect(isGuest({ ...huang, name_en: "Satya Narayana Nadella" }, "Satya Nadella — Microsoft’s AGI plan")).toBe(true);
+    expect(isGuest({ ...huang, name_en: "Mark Elliot Zuckerberg" }, "#383 – Mark Zuckerberg: Future of AI at Meta")).toBe(true);
+  });
+
+  test("播出日期读成 YYYY-MM-DD", () => {
+    expect(isoDay("Thu, 14 Nov 2024 18:30:00 +0000")).toBe("2024-11-14");
+    expect(isoDay("2025-04-29T15:00:00.000Z")).toBe("2025-04-29");
+    expect(isoDay("not a date")).toBe("");
   });
 
   test("Lex 文字稿只留嘉宾的发言，带说话人和时间", () => {
@@ -103,5 +112,17 @@ describe("RSS 只留提到本人的文章（028）", () => {
     const result = await findRss({ id: "paul-graham", name_zh: "保罗·格雷厄姆", name_en: "Paul Graham" }, fetcher);
     expect(result.docs.map((doc) => doc.url)).toEqual(["https://example.com/a"]);
     expect(result.detail).toContain("1 篇没有提到本人");
+  });
+});
+
+describe("同一段话切得长短不同也算重复", () => {
+  test("包含关系且较短的够长才算", async () => {
+    const { overlapsKnown } = await import("../src/claims/discover");
+    const long = "we will see a lot more progress in the next couple of years as i think ai itself on a self-improving track. today, we are constraining the models.";
+    const short = "we will see a lot more progress in the next couple of years as i think ai itself on a self-improving track.";
+    expect(overlapsKnown(short, new Set([long]))).toBe(true);
+    expect(overlapsKnown(long, new Set([short]))).toBe(true);
+    expect(overlapsKnown("next year", new Set([long]))).toBe(false);
+    expect(overlapsKnown(short, new Set(["something else entirely that is long enough to be compared at all here"]))).toBe(false);
   });
 });

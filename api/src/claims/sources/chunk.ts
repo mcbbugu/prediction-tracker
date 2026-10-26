@@ -14,6 +14,9 @@ export const TIME_HINT = /20\d{2}|明年|后年|年内|三年|by\s+20\d{2}|next 
 // Forward-looking wording: a block with these is more likely to hold a dated prediction or promise.
 const FORWARD = /\b(?:will|going to|expect|plan to|by 20\d{2}|next year|within \d+|in the next \d+|by the end of)\b|将|会|计划|预计|明年|年底前/gi;
 
+// An explicit deadline phrase is the strongest sign of a checkable claim.
+const DEADLINE = /\b(?:by (?:the end of )?20\d{2}|next year|later this year|(?:in|within) the next (?:few|\d+|two|three|five|ten) (?:months|years)|within (?:\d+|a few|two|three|five) (?:months|years))\b|明年|后年|年底前|\d+ ?年内/gi;
+
 // Long documents (8-K, transcripts) hold far more than the model reads. Keep the blocks that look most like
 // dated predictions until the budget is spent, then return them in document order.
 export function timedChunks(text: string, size = 1200, budget = 4000) {
@@ -22,7 +25,8 @@ export function timedChunks(text: string, size = 1200, budget = 4000) {
     const chunk = text.slice(index, index + size + 160).trim();
     if (!chunk || !TIME_HINT.test(chunk)) continue;
     const years = (chunk.match(/\b20[2-9]\d\b/g) ?? []).length;
-    candidates.push({ index, chunk, score: (chunk.match(FORWARD) ?? []).length + 2 * years });
+    const deadlines = (chunk.match(DEADLINE) ?? []).length;
+    candidates.push({ index, chunk, score: (chunk.match(FORWARD) ?? []).length + 2 * years + 4 * deadlines });
   }
   const picked: typeof candidates = [];
   let used = 0;

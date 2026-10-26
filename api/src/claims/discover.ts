@@ -52,6 +52,16 @@ export const hasChinese = (value: string) => /[\u4e00-\u9fff]/.test(value);
 const REPORTING =
   /\b(he|she)\s+(\w+ed|\w+s|told|wrote|put|thinks?|said)\b|\bthey\s+(said|told|wrote|claimed|predicted)\b|(他|她)(表示|称|说|认为|预测|透露|承诺|指出|估计|预计|相信)/i;
 
+// One quote contains the other, and the shorter is long enough (48+ characters) not to match by accident.
+export function overlapsKnown(quote: string, seen: Set<string>) {
+  if (quote.length < 48) return false;
+  for (const known of seen) {
+    if (known.length < 48) continue;
+    if (known.includes(quote) || quote.includes(known)) return true;
+  }
+  return false;
+}
+
 export function isReportedSpeech(quote: string, names: string[]) {
   // An unclosed quotation mark runs to the end of the text.
   const outside = normalize(quote).replace(/"[^"]*("|$)/g, " ");
@@ -285,7 +295,12 @@ async function extractClaims(identity: Identity, pages: Snapshot[], emit: Return
   const found: { page: Snapshot; item: Extracted; callId: string | null }[] = [];
   const readable = pages.flatMap((page) => {
     const chunks = timedChunks(page.text);
-    return chunks.length ? [{ page, text: chunks.join("\n").slice(0, 4000) }] : [];
+    if (!chunks.length) return [];
+    // The top of a document usually carries its date and byline (transcripts: title and air date); the model
+    // needs it to fill said_on even when the dated passages come from far down the page.
+    const head = page.text.slice(0, 240);
+    const body = chunks.join("\n");
+    return [{ page, text: (body.startsWith(head.slice(0, 80)) ? body : `${head}\n……\n${body}`).slice(0, 4000) }];
   });
   for (let start = 0; start < readable.length; start += 3) {
     const batch = readable.slice(start, start + 3);
@@ -376,7 +391,8 @@ async function keepVerified(
       dropped.push({ quote, reason: "网页里没有出现此人名字", source_id: page.id, outcome: "dropped" });
       continue;
     }
-    if (seen.has(normalize(quote))) {
+    // Also a duplicate: the same passage cut a little longer or shorter on another run (transcripts especially).
+    if (seen.has(normalize(quote)) || overlapsKnown(normalize(quote), seen)) {
       dropped.push({ quote, reason: "库里已有", source_id: page.id, outcome: "dropped" });
       continue;
     }
