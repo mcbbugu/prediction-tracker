@@ -65,10 +65,10 @@ export function SiteHeader() {
 
   return (
     <header className={cn("sticky top-0 z-40 -mx-5 flex items-center gap-4 px-5 py-3 transition-colors sm:gap-6", scrolled && "bg-paper")}>
-      <Link href="/" aria-label="先验首页" className="shrink-0 no-underline">
+      <Link href="/" aria-label="先验首页" className="flex shrink-0 items-center no-underline">
         <Logo />
       </Link>
-      <nav aria-label="站点" className="flex min-w-0 items-center gap-0.5 text-sm">
+      <nav aria-label="站点" className="flex shrink-0 items-center gap-0.5 text-sm">
         {NAV.map((item) => {
           const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
           return (
@@ -77,7 +77,7 @@ export function SiteHeader() {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "rounded-full px-3 py-1.5 no-underline",
+                "rounded-full px-3 py-1.5 whitespace-nowrap no-underline",
                 active ? "font-medium text-ink" : "text-mute hover-fine:text-ink",
               )}
             >
