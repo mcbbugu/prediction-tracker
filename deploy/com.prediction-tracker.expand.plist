@@ -5,7 +5,7 @@
   <key>Label</key>
   <string>com.prediction-tracker.expand</string>
   <key>WorkingDirectory</key>
-  <string>/Users/bugu/IndieHacker/prediction-tracker</string>
+  <string>/path/to/prediction-tracker</string>
   <key>ProgramArguments</key>
   <array>
     <string>/usr/local/bin/pnpm</string>
