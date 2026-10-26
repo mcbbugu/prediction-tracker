@@ -29,9 +29,11 @@
 | [036](036-rss-provenance.md) | RSS 回退不得冒充文章原文（#7） | Claude | P0 | 已完成 | acae51a |
 | [037](037-point-in-time-eval.md) | 下游评测：时点一致的先验 + 证据分量表修复（#8 #9） | Claude | P0 | 已完成 | 7d68485 |
 | [035](035-consistency-auto-collect.md) | 可信度接进每日扩库，新人物自动采集（依赖 034） | Cursor | P1 | 已完成 | c89134c |
+| [039](039-youtube-speaker-attribution.md) | YouTube 字幕核实说话人、原始字幕单独存档（#13） | Cursor | P0 | 待办 | |
 | [038](038-consistency-collect-fixes.md) | 自动可信度采集：时间条件、去重、言行对照方向（#10 #11 #12） | Cursor | P0 | 待办 | |
 | [028](028-fix-structured-sources.md) | 修好结构化来源：字幕、8-K、播客（需先装 yt-dlp） | Claude | P1 | 已完成 | 17cb191 |
 | [015](015-eval-bench.md) | 评测台与版本指标（依赖 011、012） | Cursor | P0 | 已完成 | dd9dcc0 |
+| [040](040-point-in-time-status-history.md) | 严格时点从历史事件还原当时判定（#8） | Cursor | P1 | 待办 | |
 | [031](031-downstream-benchmark.md) | 下游对照改为前瞻式：先登记预测、到期再打分（#3 #8） | Cursor | P1 | 待办 | |
 | [014](014-transparency-log.md) | 透明日志与每日根哈希（依赖 011） | Cursor | P1 | 待办 | |
 | [016](016-exposure-intervals.md) | 推算带区间、假设和时间对齐（依赖 011） | Cursor | P1 | 待办 | |
