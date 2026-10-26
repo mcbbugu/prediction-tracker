@@ -24,14 +24,23 @@ export function decodeEntities(text: string) {
 
 const plain = (html: string) => decodeEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 
-// "#471 – Sundar Pichai: CEO of Google" or "Dario Amodei – …": is this person the (or a) guest?
+// Guest names billed in an episode title: "#471 – Sundar Pichai: CEO of Google", "Dario Amodei (Anthropic CEO) — …",
+// "Jeff Dean & Noam Shazeer — …". Lower-cased; parenthesised titles dropped.
+export function titleGuests(title: string) {
+  const head = title.replace(/^#\d+\s*[–-]\s*/, "").split(/[:–—]/)[0].replace(/\([^)]*\)/g, "").toLowerCase();
+  return head.split(/\s*(?:,|&|\band\b)\s*/).map((guest) => guest.trim()).filter(Boolean);
+}
+
+// The ways a person may be billed: full English name, and first + last (middle names dropped:
+// "Satya Narayana Nadella" is billed as "Satya Nadella").
+export function billedNames(nameEn: string) {
+  const parts = nameEn.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return parts.length ? [parts.join(" "), `${parts[0]} ${parts[parts.length - 1]}`] : [];
+}
+
 export function isGuest(person: SourcePerson, title: string) {
-  // Middle names are dropped: "Satya Narayana Nadella" is billed as "Satya Nadella".
-  const parts = person.name_en.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (!parts.length) return false;
-  const names = new Set([parts.join(" "), `${parts[0]} ${parts[parts.length - 1]}`]);
-  const guests = title.replace(/^#\d+\s*[–-]\s*/, "").split(/[:–—]/)[0].replace(/\([^)]*\)/g, "").toLowerCase();
-  return guests.split(/\s*(?:,|&|\band\b)\s*/).some((guest) => names.has(guest.trim()));
+  const names = new Set(billedNames(person.name_en));
+  return titleGuests(title).some((guest) => names.has(guest));
 }
 
 type Turn = { speaker: string; stamp: string; text: string };
@@ -120,6 +129,16 @@ function loadDwarkesh(fetcher: typeof fetch) {
     throw error;
   });
   return dwarkeshEpisodes;
+}
+
+// Everyone billed as a guest on the shows we read, for the daily expansion to put first (they have transcripts).
+export async function podcastGuests(fetcher: typeof fetch = fetch) {
+  const guests = new Set<string>();
+  for (const list of [loadLex(fetcher), loadDwarkesh(fetcher)]) {
+    const episodes = await list.catch(() => [] as Episode[]);
+    for (const episode of episodes) for (const guest of titleGuests(episode.title)) guests.add(guest);
+  }
+  return guests;
 }
 
 export async function findPodcastTranscripts(person: SourcePerson, fetcher: typeof fetch = fetch): Promise<AdapterResult> {
