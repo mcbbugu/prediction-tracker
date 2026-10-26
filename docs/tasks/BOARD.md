@@ -8,9 +8,9 @@
 
 | 编号 | 任务 | 负责人 | 优先级 | 状态 | 提交 |
 | --- | --- | --- | --- | --- | --- |
-| [038](038-measure-on-demand.md) | 量线上实时调研，修掉最大的瓶颈 | Claude | P0 | 待办 | |
-| [039](039-blind-check-small.md) | 小规模人工盲标 40 条：AI 判定准不准 | 用户标注 + Claude | P0 | 待办 | |
-| [040](040-downstream-retest.md) | 重做下游对照：模拟时点回测 + 前瞻登记 | Claude | P0 | 待办 | |
+| [041](041-measure-on-demand.md) | 量线上实时调研，修掉最大的瓶颈 | Claude | P0 | 待办 | |
+| [042](042-blind-check-small.md) | 小规模人工盲标 40 条：AI 判定准不准 | 用户标注 + Claude | P0 | 待办 | |
+| [043](043-downstream-retest.md) | 重做下游对照：模拟时点回测 + 前瞻登记 | Claude | P0 | 待办 | |
 
 ## 总表
 
